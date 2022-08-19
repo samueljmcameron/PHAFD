@@ -1,6 +1,7 @@
 #include <fstream>
 #include <memory>
 
+
 #include "ps_pde/fftw_mpi_3darray.hpp"
 #include "ps_pde/integrator.hpp"
 
@@ -223,8 +224,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	 std::vector<std::vector<double>> &X_is) {
 
 
+
   // split the polymers between the processors.
 
+
+
+  
   std::vector<std::unique_ptr<NoTetherWrap>> free_polys;
   std::vector<std::unique_ptr<SingleTetherWrap>> single_polys;
   std::vector<std::unique_ptr<DoubleTetherWrap>> double_polys;
@@ -237,7 +242,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
 
 
-  for (int i = 0; i < polymertypes.size(); i++) {
+  for (std::vector<std::string>::size_type i = 0; i < polymertypes.size(); i++) {
 
     if (i % gp.mpi_size == gp.id) {
       if (polymertypes.at(i) == "no_tether") {
@@ -268,7 +273,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
   // add dummy vectors to ensure the correct number of nucleation sites
   // in addition to the stationary sites
-  for (int i = 0; i < polymertypes.size(); i++) {
+  for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++) {
     X_is.push_back({0,0,0});
 
   }
@@ -343,8 +348,9 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
   
   if (gp.restart_flag) {
-
-    std::cout << "restarting!" << std::endl;
+    if (gp.id == 0) {
+      std::cout << "restarting!" << std::endl;
+    }
     // load in polymer data.
 
     for (auto &pmer : free_polys) {
@@ -371,7 +377,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
     }
 
-    std::cout << "made it past free_polys! " << std::endl;
+
     
     
     for (auto &pmer : single_polys) {
@@ -396,7 +402,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
 
-    std::cout << "made it past single_polys! " << std::endl;
+
     
     for (auto &pmer : double_polys) {
       
@@ -422,23 +428,23 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
 
-    std::cout << "made it past double_polys! " << std::endl;
+
     
-    for (int i = 0; i < polymertypes.size(); i++)
+    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
       MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
 
 
-    std::cout << "made it past the broadcasting of all nucleation points! " << std::endl;
 
-    psPDE::ioVTK::restartVTKcollection(collection_name);
-    std::cout << "made it past the restart vtk real collection! " << std::endl;
+
+    psPDE::ioVTK::restartVTKcollection(collection_name,gp.comm);
+
     
-    psPDE::ioVTK::restartVTKcollection(complexcollection_name);
-    std::cout << "made it past the restart vtk complex collection! " << std::endl;
+    psPDE::ioVTK::restartVTKcollection(complexcollection_name,gp.comm);
+
     
     
     psPDE::ioVTK::readVTKImageData({&phi},fname_p);
-    std::cout << "made it past the restart vtk read image data! " << std::endl;
+
     
     
     for (int i = 0; i < integrator.ft_phi.axis_size(0); i++) {
@@ -450,7 +456,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     }
 
 
-    std::cout << "made it past solution initialise! " << std::endl;
+
     // open thermo data so we can append to it
 
     if (gp.id == 0) {
@@ -458,7 +464,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
 
-    std::cout << "made it past appending data! " << std::endl;
+
     
   } else {
 
@@ -518,7 +524,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       pmer->set_G();
       
     }
-    for (int i = 0; i < polymertypes.size(); i++)
+    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
       MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
         
 
@@ -540,13 +546,13 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	
       }
       for (auto &pmer : single_polys) {
-
+	
 	single_step(teq,*pmer,gp.dt);
 	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
 				 pmer->atoms[pmer->nuc_beads[0]].R,
 				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 				 gp.realspace.get_Lz());
-	
+
       }
       for (auto &pmer : double_polys) {
 
@@ -559,14 +565,11 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
 
       // and also their nucleation site positions.
-      for (int i = 0; i < polymertypes.size(); i++)
+      for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
 	MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
       
     }
-    
-
-
-    
+        
     // write equilibrated state.
     for (auto &pmer : free_polys) {
       
@@ -653,7 +656,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
   }
 
-  std::cout << " polymers and solution are initialized and/or equilibrated." << std::endl;
+  std::cout << " all polymers and solution are initialized and/or equilibrated on process"
+	    << gp.id << "." << std::endl;
   
   // main loop!
   
@@ -667,313 +671,154 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
   for (int it = 1+gp.startstep; it <= gp.steps+gp.startstep; it ++) {
 
-    if (abs(t-1.28463) < 1e-12 || abs(t-1.284625) < 1e-12 ) {
 
-      std::cout << "going to get stuck on this step. " << std::endl;
-      // compute nl(t) given phi(t), and also free energy derivatives for the different
-      //   nucleation sites.
-      free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,free_energy);
-      std::cout << " did the integration step. " << std::endl;
-
-      if (gp.id == 0 ) {
-	std::cout.precision(10);
-	std::cout << std::fixed;
-	std::cout << "printing here " << t << std::endl;
+    
+    // compute nl(t) given phi(t), and also free energy derivatives for the different
+    //   nucleation sites.
+    free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,free_energy); 
+    
+    
+    if (gp.id == 0 && it % gp.thermo_every == 0) {
+      myfile << t;
+      
+      for (unsigned index = 0; index < X_is.size() ; index ++) {
+	
+	myfile << "\t " << X_is.at(index).at(0) << "\t "
+	       << X_is.at(index).at(1) << "\t "
+	       << X_is.at(index).at(2);
       }
       
-      if (gp.id == 0 && it % gp.thermo_every == 0) {
-	myfile << t;
+      myfile << "\t " << free_energy;
+      for (unsigned index = 0; index < free_energy_derivs.size() ; index ++) {
 	
-	for (unsigned index = 0; index < X_is.size() ; index ++) {
-	  
-	  myfile << "\t " << X_is.at(index).at(0) << "\t "
-		 << X_is.at(index).at(1) << "\t "
-		 << X_is.at(index).at(2);
-	}
-	
-	myfile << "\t " << free_energy;
-	for (unsigned index = 0; index < free_energy_derivs.size() ; index ++) {
-	  
-	  myfile << "\t " << free_energy_derivs.at(index).at(0) << "\t "
-		 << free_energy_derivs.at(index).at(1) << "\t "
-		 << free_energy_derivs.at(index).at(2);
-	}
-	
-	
-	myfile << std::endl;
-	
-      }
-      
-      t += gp.dt;
-      std::cout << " saved the free energy. " << std::endl;
-      // update the nucleation sites via the polymers.
-      
-      for (auto &pmer : free_polys)  {
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	if ( it % gp.polymer_dump_every == 0) {
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	  std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	    + std::string(".vtp");
-	  BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	  BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						       poly_fname,t);
-	}
-	
+	myfile << "\t " << free_energy_derivs.at(index).at(0) << "\t "
+	       << free_energy_derivs.at(index).at(1) << "\t "
+	       << free_energy_derivs.at(index).at(2);
       }
       
       
-      for (auto &pmer : single_polys)  {
-
+      myfile << std::endl;
+      
+    }
+    
+    t += gp.dt;
+    
+    // update the nucleation sites via the polymers.
+    
+    for (auto &pmer : free_polys)  {
+      transfer_free_energy(pmer->dFdX,free_energy_derivs,
+			   pmer->nuc_index+stationary_nuc_count);
+      single_step(t,*pmer,gp.dt);
+      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
+			       pmer->atoms[pmer->nuc_beads[0]].R,
+			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+			       gp.realspace.get_Lz());
+      
+      
+      if ( it % gp.polymer_dump_every == 0) {
 	std::string poly_collection = gp.polymer_dump_file + pmer->name;
 	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
 	  + std::string(".vtp");
 	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
 	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
 						     poly_fname,t);
-	
-	
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	
       }
-
-      std::cout << " got past the single_polys on id " << gp.id << std::endl;                  
-      for (auto &pmer : double_polys)  {
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	if ( it % gp.polymer_dump_every == 0) {
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	  std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	    + std::string(".vtp");
-	  BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	  BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						       poly_fname,t);
-	}
-	
-      }
-      
-      std::cout << " got past the double_polys. " << std::endl;      
-      
-      // update the volume fraction phi
-      
-      fftw_execute(forward_phi);
-      fftw_execute(forward_nonlinear);
-      std::cout << "survived the forward fft. " << std::endl;      
-      
-      timestep.update(t,integrator);
-
-      std::cout << "survived timestep update. " << std::endl;
-      
-      integrator.ft_phi.running_mod(modulus);
-      running_average_count += 1;
-      
-      if (it % gp.solution_dump_every == 0) {
-	
-	if (gp.id == 0) {
-	  std::cout << " saving at t = " << t << std::endl;
-	}
-	
-	
-	fname_p = prefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
-	complexfname_p = complexprefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
-	modulus /= running_average_count;
-	if (gp.id == 0) {
-	  modulus(0,0,0) = 0.0;
-	}
-	
-	running_average_count = 0;
-	
-	psPDE::ioVTK::writeVTKImageData(complexfname_p,{&modulus},modulus.grid);
-	psPDE::ioVTK::writeVTKcollectionMiddle(complexcollection_name,complexfname_p,t);
-	fftw_execute(backward_phi); // get phi(t+dt)
-	
-	integrator.initialize(modulus,0,0);
-	
-	psPDE::ioVTK::writeVTKImageData(fname_p,{&phi},phi.grid);
-	psPDE::ioVTK::writeVTKcollectionMiddle(collection_name,fname_p,t);
-      } else {
-	fftw_execute(backward_phi); // get phi(t+dt)
-      }
-      
-      // broadcast the new nucleation sites across the processes
-      for (int i = 0; i < polymertypes.size(); i++)
-	MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
-      
-      
-      
-    } else {
-      
-      // compute nl(t) given phi(t), and also free energy derivatives for the different
-      //   nucleation sites.
-      free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,free_energy); 
-      
-      
-      if (gp.id == 0 && it % gp.thermo_every == 0) {
-	myfile << t;
-	
-	for (unsigned index = 0; index < X_is.size() ; index ++) {
-	  
-	  myfile << "\t " << X_is.at(index).at(0) << "\t "
-		 << X_is.at(index).at(1) << "\t "
-		 << X_is.at(index).at(2);
-	}
-	
-	myfile << "\t " << free_energy;
-	for (unsigned index = 0; index < free_energy_derivs.size() ; index ++) {
-	  
-	  myfile << "\t " << free_energy_derivs.at(index).at(0) << "\t "
-		 << free_energy_derivs.at(index).at(1) << "\t "
-		 << free_energy_derivs.at(index).at(2);
-	}
-	
-	
-	myfile << std::endl;
-	
-      }
-      
-      t += gp.dt;
-      
-      // update the nucleation sites via the polymers.
-      
-      for (auto &pmer : free_polys)  {
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	if ( it % gp.polymer_dump_every == 0) {
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	  std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	    + std::string(".vtp");
-	  BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	  BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						       poly_fname,t);
-	}
-	
-      }
-      
-      
-      for (auto &pmer : single_polys)  {
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	if ( it % gp.polymer_dump_every == 0) {
-	  
-	  
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	  std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	    + std::string(".vtp");
-	  BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	  BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						       poly_fname,t);
-	}
-	
-      }
-      
-      
-      for (auto &pmer : double_polys)  {
-	transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			     pmer->nuc_index+stationary_nuc_count);
-	single_step(t,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-	
-	
-	if ( it % gp.polymer_dump_every == 0) {
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	  std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	    + std::string(".vtp");
-	  BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	  BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						       poly_fname,t);
-	}
-	
-      }
-      
-      
-      
-      // update the volume fraction phi
-      
-      fftw_execute(forward_phi);
-      fftw_execute(forward_nonlinear);
-      
-      
-      timestep.update(t,integrator);
-      
-      integrator.ft_phi.running_mod(modulus);
-      running_average_count += 1;
-      
-      if (it % gp.solution_dump_every == 0) {
-	
-	if (gp.id == 0) {
-	  std::cout << " saving at t = " << t << std::endl;
-	}
-	
-	
-	fname_p = prefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
-	complexfname_p = complexprefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
-	modulus /= running_average_count;
-	if (gp.id == 0) {
-	  modulus(0,0,0) = 0.0;
-	}
-	
-	running_average_count = 0;
-	
-	psPDE::ioVTK::writeVTKImageData(complexfname_p,{&modulus},modulus.grid);
-	psPDE::ioVTK::writeVTKcollectionMiddle(complexcollection_name,complexfname_p,t);
-	fftw_execute(backward_phi); // get phi(t+dt)
-	
-	integrator.initialize(modulus,0,0);
-	
-	psPDE::ioVTK::writeVTKImageData(fname_p,{&phi},phi.grid);
-	psPDE::ioVTK::writeVTKcollectionMiddle(collection_name,fname_p,t);
-      } else {
-	fftw_execute(backward_phi); // get phi(t+dt)
-      }
-      
-      // broadcast the new nucleation sites across the processes
-      for (int i = 0; i < polymertypes.size(); i++)
-	MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
-      
-      
       
     }
-
+    
+    
+    for (auto &pmer : single_polys)  {
+      transfer_free_energy(pmer->dFdX,free_energy_derivs,
+			   pmer->nuc_index+stationary_nuc_count);
+      single_step(t,*pmer,gp.dt);
+      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
+			       pmer->atoms[pmer->nuc_beads[0]].R,
+			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+			       gp.realspace.get_Lz());
+      
+      
+      if ( it % gp.polymer_dump_every == 0) {
+	
+	
+	std::string poly_collection = gp.polymer_dump_file + pmer->name;
+	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
+	  + std::string(".vtp");
+	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
+	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
+						     poly_fname,t);
+      }
+      
+    }
+    
+    
+    for (auto &pmer : double_polys)  {
+      transfer_free_energy(pmer->dFdX,free_energy_derivs,
+			   pmer->nuc_index+stationary_nuc_count);
+      single_step(t,*pmer,gp.dt);
+      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
+			       pmer->atoms[pmer->nuc_beads[0]].R,
+			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+			       gp.realspace.get_Lz());
+      
+      
+      if ( it % gp.polymer_dump_every == 0) {
+	std::string poly_collection = gp.polymer_dump_file + pmer->name;
+	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
+	  + std::string(".vtp");
+	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
+	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
+						     poly_fname,t);
+      }
+      
+    }
+    
+    
+    
+    // update the volume fraction phi
+    
+    fftw_execute(forward_phi);
+    fftw_execute(forward_nonlinear);
+    
+    
+    timestep.update(t,integrator);
+    
+    integrator.ft_phi.running_mod(modulus);
+    running_average_count += 1;
+    
+    if (it % gp.solution_dump_every == 0) {
+      
+      if (gp.id == 0) {
+	std::cout << " saving at t = " << t << std::endl;
+      }
+	
+      
+      fname_p = prefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
+      complexfname_p = complexprefix + std::string("_") +  std::to_string(it) +  std::string(".vti");
+      modulus /= running_average_count;
+      if (gp.id == 0) {
+	modulus(0,0,0) = 0.0;
+      }
+      
+      running_average_count = 0;
+      
+      psPDE::ioVTK::writeVTKImageData(complexfname_p,{&modulus},modulus.grid);
+      psPDE::ioVTK::writeVTKcollectionMiddle(complexcollection_name,complexfname_p,t);
+      fftw_execute(backward_phi); // get phi(t+dt)
+      
+      integrator.initialize(modulus,0,0);
+      
+      psPDE::ioVTK::writeVTKImageData(fname_p,{&phi},phi.grid);
+      psPDE::ioVTK::writeVTKcollectionMiddle(collection_name,fname_p,t);
+    } else {
+      fftw_execute(backward_phi); // get phi(t+dt)
+    }
+    
+    // broadcast the new nucleation sites across the processes
+    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
+      MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
+    
+    
+    
   }
     
   if (gp.id == 0) {
