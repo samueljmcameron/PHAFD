@@ -1,6 +1,6 @@
 #include <fstream>
 #include <memory>
-
+#include <chrono>
 
 #include "ps_pde/fftw_mpi_3darray.hpp"
 #include "ps_pde/integrator.hpp"
@@ -669,13 +669,33 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   double t = gp.starttime;
 
 
+  using Clock = std::chrono::steady_clock;
+  using namespace std::literals;
+  auto constexpr chronoitvl = 1.0s/60.0;
+  using duration = std::chrono::duration<double>;
+  using time_point = std::chrono::time_point<Clock,duration>;
+
+  duration tt_integral = 0s;
+  duration tt_free_t = 0s;
+  duration tt_sing_t = 0s;
+  duration tt_doub_t = 0s;
+
+  duration tt_freeenergy = 0s;
+
+  
+  
   for (int it = 1+gp.startstep; it <= gp.steps+gp.startstep; it ++) {
 
 
     
     // compute nl(t) given phi(t), and also free energy derivatives for the different
     //   nucleation sites.
+
+    auto current_time = Clock::now();
+    
     free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,free_energy); 
+
+    tt_freeenergy += Clock::now() - current_time;
     
     
     if (gp.id == 0 && it % gp.thermo_every == 0) {
@@ -706,6 +726,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     // update the nucleation sites via the polymers.
     
     for (auto &pmer : free_polys)  {
+
+      current_time = Clock::now();    
       transfer_free_energy(pmer->dFdX,free_energy_derivs,
 			   pmer->nuc_index+stationary_nuc_count);
       single_step(t,*pmer,gp.dt);
@@ -713,7 +735,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 			       pmer->atoms[pmer->nuc_beads[0]].R,
 			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 			       gp.realspace.get_Lz());
-      
+      tt_free_t += Clock::now() - current_time;      
       
       if ( it % gp.polymer_dump_every == 0) {
 	std::string poly_collection = gp.polymer_dump_file + pmer->name;
@@ -726,16 +748,22 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
     
-    
+
     for (auto &pmer : single_polys)  {
+      
+      current_time = Clock::now();    
       transfer_free_energy(pmer->dFdX,free_energy_derivs,
 			   pmer->nuc_index+stationary_nuc_count);
+
+
       single_step(t,*pmer,gp.dt);
+
       transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
 			       pmer->atoms[pmer->nuc_beads[0]].R,
 			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 			       gp.realspace.get_Lz());
       
+      tt_sing_t += Clock::now() - current_time;
       
       if ( it % gp.polymer_dump_every == 0) {
 	
@@ -752,6 +780,9 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
     
     for (auto &pmer : double_polys)  {
+
+
+      current_time = Clock::now();          
       transfer_free_energy(pmer->dFdX,free_energy_derivs,
 			   pmer->nuc_index+stationary_nuc_count);
       single_step(t,*pmer,gp.dt);
@@ -760,6 +791,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 			       gp.realspace.get_Lz());
       
+      tt_doub_t += Clock::now() - current_time;
       
       if ( it % gp.polymer_dump_every == 0) {
 	std::string poly_collection = gp.polymer_dump_file + pmer->name;
@@ -779,8 +811,9 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     fftw_execute(forward_phi);
     fftw_execute(forward_nonlinear);
     
-    
+    current_time = Clock::now();
     timestep.update(t,integrator);
+    tt_integral = Clock::now() - current_time;
     
     integrator.ft_phi.running_mod(modulus);
     running_average_count += 1;
@@ -860,7 +893,31 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   fftw_destroy_plan(backward_phi);
   fftw_destroy_plan(forward_nonlinear);
   fftw_destroy_plan(backward_nonlinear);
-  
+
+
+  const double tot_integral = tt_integral/chronoitvl;
+  const double tot_free_t = tt_free_t/chronoitvl;
+  const double tot_sing_t = tt_sing_t/chronoitvl;
+  const double tot_doub_t = tt_doub_t/chronoitvl;
+  const double tot_freeenergy = tt_freeenergy/chronoitvl;
+
+  std::cout << "total integration time on process " << gp.id << " is " << tot_integral
+	    << std::endl;
+
+
+  std::cout << "total free tether time on process " << gp.id << " is " << tot_free_t
+	    << std::endl;
+
+  std::cout << "total single tether time on process " << gp.id << " is " << tot_sing_t
+	    << std::endl;
+
+  std::cout << "total double time on process " << gp.id << " is " << tot_doub_t
+	    << std::endl;
+
+
+  std::cout << "total free energy time on process " << gp.id << " is " << tot_freeenergy
+	    << std::endl;
+
   
   return;
 }
