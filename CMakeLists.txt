@@ -11,9 +11,20 @@ set(ENV{PKG_CONFIG_PATH} "${PKG_FFTW_MPI_LIB_DIR}/pkgconfig")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 
+#include(CheckIPOSupported)
+#check_ipo_supported(RESULT supported OUTPUT error)
+
+#if( supported )
+#    message(STATUS "IPO / LTO enabled")
+#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+#else()
+#	message(STATUS "IPO / LTO not supported: <${error}>")
+#endif()
 
 
-##add_compile_options(-O3 -Wall -Wextra -g -Wuninitialized)
+add_compile_options(-flto -fuse-linker-plugin)
+add_link_options(-flto -fuse-linker-plugin)
+
 
 find_package(MPI REQUIRED)
 add_definitions(-DOMPI_SKIP_MPICXX)
@@ -52,3 +63,11 @@ pkg_check_modules(BEADRODPMER IMPORTED_TARGET REQUIRED beadrodpmer)
 
 
 add_subdirectory(src)
+
+
+
+MESSAGE(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})
+MESSAGE(STATUS "Compiler cxx debug flags:" ${CMAKE_CXX_FLAGS_DEBUG})
+MESSAGE(STATUS "Compiler cxx release flags:" ${CMAKE_CXX_FLAGS_RELEASE})
+MESSAGE(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
+MESSAGE(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
