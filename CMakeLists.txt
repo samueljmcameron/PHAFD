@@ -11,19 +11,15 @@ set(ENV{PKG_CONFIG_PATH} "${PKG_FFTW_MPI_LIB_DIR}/pkgconfig")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 
-#include(CheckIPOSupported)
-#check_ipo_supported(RESULT supported OUTPUT error)
+include(CheckIPOSupported)
+check_ipo_supported(RESULT supported OUTPUT error)
 
-#if( supported )
-#    message(STATUS "IPO / LTO enabled")
-#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-#else()
-#	message(STATUS "IPO / LTO not supported: <${error}>")
-#endif()
-
-
-add_compile_options(-flto -fuse-linker-plugin)
-add_link_options(-flto -fuse-linker-plugin)
+if( supported )
+    message(STATUS "IPO / LTO enabled")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+	message(STATUS "IPO / LTO not supported: <${error}>")
+endif()
 
 
 find_package(MPI REQUIRED)
