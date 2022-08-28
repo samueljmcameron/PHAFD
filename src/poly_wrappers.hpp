@@ -10,14 +10,14 @@
 class SingleTetherWrap : public BeadRodPmer::SingleTether {
 public:
 
-  int nuc_index;
+  int number,nuc_index;
   std::string name;
-  std::vector<double> dFdX;
+  std::vector<std::vector<double>> dFdX_is;
 
   SingleTetherWrap(const std::vector<std::string> & splitvec,
-		   int nuc_index,std::string name)
-    : BeadRodPmer::SingleTether(splitvec),nuc_index(nuc_index),
-      name(name),dFdX{0,0,0} {};
+		   int number,int nuc_index,std::string name)
+    : BeadRodPmer::SingleTether(splitvec),number(number),nuc_index(nuc_index),
+      name(name) {};
   
   ~SingleTetherWrap() {};
 
@@ -27,14 +27,14 @@ public:
 class NoTetherWrap : public BeadRodPmer::NoTether {
 public:
 
-  int nuc_index;
+  int number,nuc_index;
   std::string name;
-  std::vector<double> dFdX;
+  std::vector<std::vector<double>> dFdX_is;
   
   NoTetherWrap(const std::vector<std::string> & splitvec,
-	       int nuc_index,std::string name)
-    : BeadRodPmer::NoTether(splitvec),nuc_index(nuc_index),
-      name(name),dFdX{0,0,0} {};
+	       int number,int nuc_index,std::string name)
+    : BeadRodPmer::NoTether(splitvec),number(number),nuc_index(nuc_index),
+      name(name) {};
 
   
   ~NoTetherWrap() {};
@@ -45,14 +45,14 @@ public:
 class DoubleTetherWrap : public BeadRodPmer::DoubleTether {
 public:
 
-  int nuc_index;
+  int number,nuc_index;
   std::string name;
-  std::vector<double> dFdX;
+  std::vector<std::vector<double>> dFdX_is;
 
   DoubleTetherWrap(const std::vector<std::string> & splitvec,
-		   int nuc_index,std::string name)
-    : BeadRodPmer::DoubleTether(splitvec),nuc_index(nuc_index),
-      name(name),dFdX{0,0,0} {};
+		   int number,int nuc_index,std::string name)
+    : BeadRodPmer::DoubleTether(splitvec),number(number),nuc_index(nuc_index),
+      name(name) {};
 
   
   ~DoubleTetherWrap() {};

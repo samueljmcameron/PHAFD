@@ -53,181 +53,123 @@ void transfer_free_energy(std::vector<double> & dFdX,
 
 }
 
-
-void single_step(double t, NoTetherWrap & pmer,
-		 double dt)
-{
-  pmer.set_unprojected_noise(dt);
-  pmer.update_G();
-  pmer.update_Hhat();
-  pmer.compute_noise();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-  
-  pmer.compute_tension();
-  pmer.initial_integrate(dt);
-  
-
-  
-  pmer.update_Hhat();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-  
-  pmer.compute_tension();
-
-  int itermax = 20;
-  
-  int iterations = pmer.correct_tension(dt,itermax,1e-8);
-
-  
-  if (iterations > itermax) {
-    std::cout << "too many iterations when correcting tension at time " << t
-	      <<  ", retrying the step with new noise " << std::endl;
-    for (int i = 0; i < pmer.get_Nbeads(); i++) 
-      pmer.atoms[i].R = pmer.Rtmp[i];
-
-    single_step(t,pmer,dt);
-  }
-  else {
-    pmer.final_integrate(dt);
-  
-    pmer.compute_tangents_and_friction();
-  }
-
-  return;
-}
-
-void single_step(double  t,DoubleTetherWrap & pmer,
-		 double dt)
-{
-  pmer.set_unprojected_noise(dt);
-  pmer.update_G();
-  pmer.update_Hhat();
-  pmer.compute_noise();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-  
-  
-  pmer.compute_tension({0.0,0.0,0.0},{0.0,0.0,0.0});
-  pmer.initial_integrate(dt);
-  
-
-  
-  pmer.update_Hhat();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-  
-  pmer.compute_tension({0.0,0.0,0.0},{0.0,0.0,0.0});
-  int itermax = 20;
-  
-  int iterations = pmer.correct_tension(dt,pmer.atoms[0].R,
-					pmer.atoms[pmer.get_Nbeads()-1].R,
-					itermax,1e-8);
-
-  
-  if (iterations > itermax) {
-    std::cout << "too many iterations when correcting tension at time " << t
-	      <<  ", retrying the step with new noise " << std::endl;
-    for (int i = 0; i < pmer.get_Nbeads(); i++) 
-      pmer.atoms[i].R = pmer.Rtmp[i];
-
-    single_step(t,pmer,dt);
-  }
-  else {
-    pmer.final_integrate(dt);
-  
-    pmer.compute_tangents_and_friction();
-  }
-
-  return;
-}
-
-
-void single_step(double t,SingleTetherWrap & pmer,
-		 double dt)
-{
-  
-  pmer.set_unprojected_noise(dt);
-  pmer.update_G();
-  pmer.update_Hhat();
-  pmer.compute_noise();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();  
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-
-
-  pmer.compute_tension({0.0,0.0,0.0});
-  pmer.initial_integrate(dt);
-  
-
-  pmer.update_Hhat();
-  pmer.compute_effective_kappa();
-  pmer.compute_uc_forces();
-  pmer.add_external_force(pmer.dFdX,pmer.nuc_beads[0]);
-
-  
-  pmer.compute_tension({0.0,0.0,0.0});
-  int itermax = 20;
-  
-  int iterations = pmer.correct_tension(dt,pmer.atoms[0].R,itermax,1e-8);
-  if (iterations > itermax) {
-    std::cout << "too many iterations when correcting tension at time " << t
-	      <<  ", retrying the step with new noise " << std::endl;
-    for (int i = 0; i < pmer.get_Nbeads(); i++) 
-      pmer.atoms[i].R = pmer.Rtmp[i];
-
-    single_step(t,pmer,dt);
-  }
-  else {
-    pmer.final_integrate(dt);
-  
-    pmer.compute_tangents_and_friction();
-  }
-
-  return;
-}
-
-
 std::string getLastLine(std::string filename);
 
 void put_in_vectors(std::vector<std::vector<double>> & X_is,
 		    std::string filename, MPI_Comm comm,int mpi_id);
 
 
-void shift_pmer(std::vector<double> & X_i,
-		SingleTetherWrap & pmer) {
 
-  Eigen::Vector3d shift;
 
-  int Nf = pmer.get_Nbeads() -1;
 
-  shift(0) = pmer.atoms[Nf].R(0) - X_i[0];
-  shift(1) = pmer.atoms[Nf].R(1) - X_i[1];
-  shift(2) = pmer.atoms[Nf].R(2) - X_i[2];
 
-  for (int i = 0; i <= Nf; i++) {
-    pmer.atoms[i].R -= shift;
+void split_polymers_across_processors(const std::vector<std::string>
+				      &polymertypes,
+				      const std::vector<std::vector<std::string>>
+				      & polymersplitvecs,
+				      std::vector<std::vector<double>> &X_is,
+				      std::vector<int> & beads_per_pmer,
+				      std::vector<std::unique_ptr<NoTetherWrap>>
+				      &free_polys,
+				      std::vector<std::unique_ptr<SingleTetherWrap>> 
+				      &single_polys,
+				      std::vector<std::unique_ptr<DoubleTetherWrap>>
+				      &double_polys,int mpi_size,int id)
+{
+  
+  int running_total_beads = 0; 
+
+  for (std::vector<std::string>::size_type i = 0; i < polymertypes.size(); i++) {
+
+    if (polymertypes.at(i) == "no_tether") {
+      
+      std::unique_ptr<NoTetherWrap>
+	tmpobj(new NoTetherWrap(polymersplitvecs.at(i),i,
+				running_total_beads,
+				polymertypes.at(i)+std::to_string(i)));
+      
+      beads_per_pmer.push_back(tmpobj->nuc_beads.size());
+
+      if (i % mpi_size == id) {
+	free_polys.push_back( std::move(tmpobj));
+	free_polys.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : free_polys.back()->dFdX_is)
+	  dFdX = {0,0,0};
+	  
+      }
+
+    } else if (polymertypes.at(i) == "single_tether") {
+
+      std::unique_ptr<SingleTetherWrap>
+	tmpobj(new SingleTetherWrap(polymersplitvecs.at(i),i,
+				    running_total_beads,
+				    polymertypes.at(i)+std::to_string(i)));
+      
+      beads_per_pmer.push_back(tmpobj->nuc_beads.size());
+
+      
+      if (i % mpi_size == id) {
+	single_polys.push_back(std::move(tmpobj) );
+	single_polys.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : single_polys.back()->dFdX_is)
+	  dFdX = {0,0,0};
+	
+      }
+
+    } else if (polymertypes.at(i) == "double_tether") {
+
+      std::unique_ptr<DoubleTetherWrap>
+	tmpobj(new DoubleTetherWrap(polymersplitvecs.at(i),i,
+				    running_total_beads,
+				    polymertypes.at(i)+std::to_string(i)));
+      
+      beads_per_pmer.push_back(tmpobj->nuc_beads.size());
+      
+      if (i % mpi_size == id) {
+	double_polys.push_back(std::move(tmpobj));
+	double_polys.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : double_polys.back()->dFdX_is)
+	  dFdX = {0,0,0};
+      }
+
+    } else {
+      throw std::runtime_error("Incompatible polymer type.");
+    }
+    running_total_beads += beads_per_pmer.back();
   }
 
-  return;
+  
+  for (int index = 0; index < running_total_beads; index ++) 
+    X_is.push_back({0,0,0});
+      
 
+
+  return;
 }
 
+void broadcast_X_is(int stationary_nuc_count, const std::vector<int> &beads_per_pmer,
+		    std::vector<std::vector<double>> &X_is,int mpi_size,
+		    MPI_Comm comm)
+{
+  int startpoint = stationary_nuc_count;    
+  for (int index = 0; index <  beads_per_pmer.size(); index ++) {
+    
+    if (index != 0) {
+      startpoint += beads_per_pmer.at(index-1);
+    }
+    int ni = beads_per_pmer.at(index);
+    
+    for (int ipos = 0; ipos < ni; ipos ++)
+      MPI_Bcast(X_is[startpoint + ipos].data(),3,MPI_DOUBLE,
+		index % mpi_size,comm);
+  }
+  return;
+}
 
 void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	 const std::vector<std::string> &polymertypes,
 	 const std::vector<std::vector<std::string>> & polymersplitvecs,
 	 std::vector<std::vector<double>> &X_is) {
-
-
-
-  // split the polymers between the processors.
-
-
 
   
   std::vector<std::unique_ptr<NoTetherWrap>> free_polys;
@@ -236,49 +178,14 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
   int stationary_nuc_count = X_is.size();
   
+  std::vector<int> beads_per_pmer;
   
-  // split up polymers of each type between all the processes, and assign them to a
-  // nucleation site
+  // split the polymers between the processors.
+  split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
+				   beads_per_pmer,free_polys,single_polys,
+				   double_polys,gp.mpi_size,gp.id);
 
-
-
-  for (std::vector<std::string>::size_type i = 0; i < polymertypes.size(); i++) {
-
-    if (i % gp.mpi_size == gp.id) {
-      if (polymertypes.at(i) == "no_tether") {
-	free_polys.push_back(
-	 std::unique_ptr<NoTetherWrap>( new NoTetherWrap(polymersplitvecs.at(i),i,
-							 polymertypes.at(i)
-							 +std::to_string(i)))
-			     );
-      } else if (polymertypes.at(i) == "single_tether") {
-	single_polys.push_back(
-	 std::unique_ptr<SingleTetherWrap>( new SingleTetherWrap(polymersplitvecs.at(i),i,
-								 polymertypes.at(i)
-								 +std::to_string(i)))
-			       );
-      } else if (polymertypes.at(i) == "double_tether") {
-	double_polys.push_back(
-	 std::unique_ptr<DoubleTetherWrap>( new DoubleTetherWrap (polymersplitvecs.at(i),i,
-								  polymertypes.at(i)
-								  +std::to_string(i)))
-			       );
-      } else {
-	throw std::runtime_error("Incompatible polymer type.");
-      }
-    }
-
-  }
-
-
-  // add dummy vectors to ensure the correct number of nucleation sites
-  // in addition to the stationary sites
-  for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++) {
-    X_is.push_back({0,0,0});
-
-  }
-
-
+  
   psPDE::fftw_MPI_3Darray<double> phi(gp.comm,"concentration",gp.realspace);
   psPDE::fftw_MPI_3Darray<double> nonlinear(gp.comm,"chempotential",gp.realspace);
 
@@ -362,12 +269,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
 
 
-
-      
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
       
       pmer->compute_tangents_and_friction();
       
@@ -387,12 +294,15 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       BeadRodPmer::ioVTK::restartVTKcollection(poly_collection + std::string(".pvd"));
       BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
-      
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
-      
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
+
+
 
       pmer->compute_tangents_and_friction();
       
@@ -414,11 +324,13 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       BeadRodPmer::ioVTK::restartVTKcollection(poly_collection + std::string(".pvd"));
       BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
 
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
-      
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
 
       pmer->compute_tangents_and_friction();
       
@@ -427,14 +339,9 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       pmer->set_G();
       
     }
-
-
     
-    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
-      MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
 
-
-
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
 
     psPDE::ioVTK::restartVTKcollection(collection_name,gp.comm);
 
@@ -474,10 +381,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
       BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
 
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
       
       pmer->compute_tangents_and_friction();
       
@@ -493,11 +402,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
       BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
       
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
-      
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
       
       pmer->compute_tangents_and_friction();
       
@@ -512,10 +422,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
       BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
       
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
       
       pmer->compute_tangents_and_friction();
       
@@ -524,10 +436,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       pmer->set_G();
       
     }
-    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
-      MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
-        
 
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
 
     // equilibrate polymers before nucleating
     
@@ -538,35 +448,45 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       // update the polymers
       for (auto &pmer : free_polys)  {
 
-	single_step(teq,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
+	pmer->single_step(teq,gp.dt,pmer->dFdX_is);
+
+	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				   pmer->atoms[pmer->nuc_beads[index]].R,
+				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				   gp.realspace.get_Lz());
+	}
 	
+
       }
       for (auto &pmer : single_polys) {
+
+	pmer->single_step(teq,gp.dt,pmer->dFdX_is);	
 	
-	single_step(teq,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
+	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				   pmer->atoms[pmer->nuc_beads[index]].R,
+				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				   gp.realspace.get_Lz());
+	}
 
       }
       for (auto &pmer : double_polys) {
+	
+	pmer->single_step(teq,gp.dt,pmer->dFdX_is);	
 
-	single_step(teq,*pmer,gp.dt);
-	transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[0]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
+	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				   pmer->atoms[pmer->nuc_beads[index]].R,
+				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				   gp.realspace.get_Lz());
+	}
+
 	
       }
 
       // and also their nucleation site positions.
-      for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
-	MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
+      broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
       
     }
         
@@ -662,7 +582,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   // main loop!
   
   psPDE::TimeStep timestep(gp.comm,gp.mpi_size,gp.id,integrator.ft_phi.axis_size(0),
-		    integrator.ft_phi.axis_size(1));
+			   integrator.ft_phi.axis_size(1));
 
   double free_energy;
 
@@ -685,8 +605,6 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   
   
   for (int it = 1+gp.startstep; it <= gp.steps+gp.startstep; it ++) {
-
-
     
     // compute nl(t) given phi(t), and also free energy derivatives for the different
     //   nucleation sites.
@@ -727,14 +645,27 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
     for (auto &pmer : free_polys)  {
 
-      current_time = Clock::now();    
-      transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			   pmer->nuc_index+stationary_nuc_count);
-      single_step(t,*pmer,gp.dt);
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
+      current_time = Clock::now();
+
+
+
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_free_energy(pmer->dFdX_is[index],free_energy_derivs,
+			     pmer->nuc_index+index+stationary_nuc_count);
+
+      }
+
+      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
+      
+
       tt_free_t += Clock::now() - current_time;      
       
       if ( it % gp.polymer_dump_every == 0) {
@@ -751,18 +682,24 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
     for (auto &pmer : single_polys)  {
       
-      current_time = Clock::now();    
-      transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			   pmer->nuc_index+stationary_nuc_count);
+      current_time = Clock::now();
 
 
-      single_step(t,*pmer,gp.dt);
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_free_energy(pmer->dFdX_is[index],free_energy_derivs,
+			     pmer->nuc_index+index+stationary_nuc_count);
 
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
-      
+      }
+
+      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
+
       tt_sing_t += Clock::now() - current_time;
       
       if ( it % gp.polymer_dump_every == 0) {
@@ -782,15 +719,23 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     for (auto &pmer : double_polys)  {
 
 
-      current_time = Clock::now();          
-      transfer_free_energy(pmer->dFdX,free_energy_derivs,
-			   pmer->nuc_index+stationary_nuc_count);
-      single_step(t,*pmer,gp.dt);
-      transfer_nucleation_site(X_is[pmer->nuc_index+stationary_nuc_count],
-			       pmer->atoms[pmer->nuc_beads[0]].R,
-			       gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-			       gp.realspace.get_Lz());
-      
+      current_time = Clock::now();
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_free_energy(pmer->dFdX_is[index],free_energy_derivs,
+			     pmer->nuc_index+index+stationary_nuc_count);
+
+      }
+
+      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+
+      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				 gp.realspace.get_Lz());
+      }
+
       tt_doub_t += Clock::now() - current_time;
       
       if ( it % gp.polymer_dump_every == 0) {
@@ -803,7 +748,6 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
       
     }
-    
     
     
     // update the volume fraction phi
@@ -847,10 +791,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     }
     
     // broadcast the new nucleation sites across the processes
-    for (std::vector<std::string>::size_type  i = 0; i < polymertypes.size(); i++)
-      MPI_Bcast(X_is[i+stationary_nuc_count].data(),3,MPI_DOUBLE,i % gp.mpi_size,gp.comm);
-    
-    
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
     
   }
     
