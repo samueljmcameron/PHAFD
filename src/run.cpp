@@ -169,20 +169,11 @@ void broadcast_X_is(int stationary_nuc_count, const std::vector<int> &beads_per_
 
 
 void broadcast_errorcheck(std::vector<int> &pmer_errs,
-			  const std::vector<int> &beads_per_pmer,
 			  int mpi_size, MPI_Comm comm)
 {
-  int startpoint = 0;    
-  for (int index = 0; index <  beads_per_pmer.size(); index ++) {
-    
-    if (index != 0) {
-      startpoint += beads_per_pmer.at(index-1);
-    }
-    int ni = beads_per_pmer.at(index);
-    
-    for (int ipos = 0; ipos < ni; ipos ++)
-      MPI_Bcast(&(pmer_errs[startpoint + ipos]),1,MPI_INT,
-		index % mpi_size,comm);
+  for (int index = 0; index <  pmer_errs.size(); index ++) {
+    MPI_Bcast(&(pmer_errs[index]),1,MPI_INT,
+	      index % mpi_size,comm);
   }
   return;
 }
@@ -521,7 +512,11 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
 
       // check if any of the above polymers have not succeeded
-      broadcast_errorcheck(pmer_errs,beads_per_pmer,gp.mpi_size, gp.comm);
+      for (int index = 0; index <  pmer_errs.size(); index ++) {
+	MPI_Bcast(&(pmer_errs[index]),1,MPI_INT,
+		  index % gp.mpi_size,gp.comm);
+      }
+
 
       for (auto err : pmer_errs) {
 	if (err == -1)
@@ -798,7 +793,11 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
 
     // check if any of the above polymers have not succeeded
-    broadcast_errorcheck(pmer_errs,beads_per_pmer,gp.mpi_size, gp.comm);
+    for (int index = 0; index <  pmer_errs.size(); index ++) {
+      MPI_Bcast(&(pmer_errs[index]),1,MPI_INT,
+		index % gp.mpi_size,gp.comm);
+    }
+
     
     for (auto err : pmer_errs) {
       if (err == -1) {
