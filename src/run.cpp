@@ -166,11 +166,37 @@ void broadcast_X_is(int stationary_nuc_count, const std::vector<int> &beads_per_
   return;
 }
 
+
+
+void broadcast_errorcheck(std::vector<int> &pmer_errs,
+			  const std::vector<int> &beads_per_pmer,
+			  int mpi_size, MPI_Comm comm)
+{
+  int startpoint = 0;    
+  for (int index = 0; index <  beads_per_pmer.size(); index ++) {
+    
+    if (index != 0) {
+      startpoint += beads_per_pmer.at(index-1);
+    }
+    int ni = beads_per_pmer.at(index);
+    
+    for (int ipos = 0; ipos < ni; ipos ++)
+      MPI_Bcast(&(pmer_errs[startpoint + ipos]),1,MPI_INT,
+		index % mpi_size,comm);
+  }
+  return;
+}
+
+
 void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	 const std::vector<std::string> &polymertypes,
 	 const std::vector<std::vector<std::string>> & polymersplitvecs,
 	 std::vector<std::vector<double>> &X_is) {
 
+
+  int itermax = 20;
+  int numtries = 5;
+  bool throw_exception=false;
   
   std::vector<std::unique_ptr<NoTetherWrap>> free_polys;
   std::vector<std::unique_ptr<SingleTetherWrap>> single_polys;
@@ -179,6 +205,10 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   int stationary_nuc_count = X_is.size();
   
   std::vector<int> beads_per_pmer;
+
+  // if any of the entries in this list are negative one, then part of the polymer code has failed.
+  std::vector<int> pmer_errs(polymertypes.size(),0);
+
   
   // split the polymers between the processors.
   split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
@@ -252,6 +282,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   int running_average_count = 0;
 
   std::ofstream myfile;
+
+
 
   
   if (gp.restart_flag) {
@@ -448,7 +480,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       // update the polymers
       for (auto &pmer : free_polys)  {
 
-	pmer->single_step(teq,gp.dt,pmer->dFdX_is);
+	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
+						       numtries,throw_exception);
 
 	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -461,7 +494,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
       for (auto &pmer : single_polys) {
 
-	pmer->single_step(teq,gp.dt,pmer->dFdX_is);	
+	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
+						       numtries,throw_exception);	
 	
 	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -473,7 +507,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
       for (auto &pmer : double_polys) {
 	
-	pmer->single_step(teq,gp.dt,pmer->dFdX_is);	
+	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
+						       numtries,throw_exception);
 
 	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -485,6 +520,15 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	
       }
 
+      // check if any of the above polymers have not succeeded
+      broadcast_errorcheck(pmer_errs,beads_per_pmer,gp.mpi_size, gp.comm);
+
+      for (auto err : pmer_errs) {
+	if (err == -1)
+	  throw std::runtime_error("Polymer calculation error.");
+      }
+
+      
       // and also their nucleation site positions.
       broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
       
@@ -656,7 +700,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       }
 
-      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,
+						     itermax,numtries,throw_exception);
 
       for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -691,7 +736,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       }
 
-      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,
+						     itermax,numtries,throw_exception);
 
       for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -727,7 +773,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       }
 
-      pmer->single_step(t,gp.dt,pmer->dFdX_is);
+      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,itermax,
+						     numtries,throw_exception);
 
       for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
@@ -749,6 +796,29 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
     
+
+    // check if any of the above polymers have not succeeded
+    broadcast_errorcheck(pmer_errs,beads_per_pmer,gp.mpi_size, gp.comm);
+    
+    for (auto err : pmer_errs) {
+      if (err == -1) {
+
+	std::string str = "External forces on polymer due to liquid at failure:\n ";
+	for (unsigned index = 0; index < free_energy_derivs.size() ; index ++) {
+	  
+	  str += std::to_string(free_energy_derivs.at(index).at(0));
+	  str += "\t";
+	  str += std::to_string(free_energy_derivs.at(index).at(1));
+	  str += "\t";
+	  str += std::to_string(free_energy_derivs.at(index).at(1));
+	  str += "\n";
+	}
+	
+	
+	throw std::runtime_error(str.c_str());
+
+      }
+    }
     
     // update the volume fraction phi
     
