@@ -518,9 +518,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
 
 
-      for (auto err : pmer_errs) {
-	if (err == -1)
-	  throw std::runtime_error("Polymer calculation error.");
+      for (int index = 0; index < pmer_errs.size(); index ++ ) {
+	if (pmer_errs[index] == -1) {
+	  std::string str = "Polymer " + index + std::string(" failed to equilibrate.\n");
+
+	  throw std::runtime_error(str.c_str());
+	}
       }
 
       
@@ -812,10 +815,45 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	  str += std::to_string(free_energy_derivs.at(index).at(1));
 	  str += "\n";
 	}
+
+
+	if (gp.id == 0) {
+	  myfile.close();
+	}
+	
+	psPDE::ioVTK::writeVTKcollectionFooter(collection_name);
+	psPDE::ioVTK::writeVTKcollectionFooter(complexcollection_name);
+	
+	
+	for (auto &pmer : free_polys)  {
+	  
+	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	  
+	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	  
+	}
+	
+	for (auto &pmer : single_polys)  {
+	  
+	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	  
+	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	  
+	}
+	
+	
+	for (auto &pmer : double_polys)  {
+	  
+	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	  
+	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	  
+	}
+	
 	
 	
 	throw std::runtime_error(str.c_str());
-
+	
       }
     }
     
