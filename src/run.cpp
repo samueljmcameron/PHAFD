@@ -868,6 +868,50 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
     integrator.ft_phi.running_mod(modulus);
     running_average_count += 1;
+
+
+    if (std::isnan(phi(0,0,0))) {
+
+      if (gp.id == 0) {
+	myfile.close();
+      }
+      
+      psPDE::ioVTK::writeVTKcollectionFooter(collection_name);
+      psPDE::ioVTK::writeVTKcollectionFooter(complexcollection_name);
+      
+      
+      for (auto &pmer : free_polys)  {
+	
+	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	
+	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	
+      }
+      
+      for (auto &pmer : single_polys)  {
+	
+	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	
+	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	
+      }
+      
+      
+      for (auto &pmer : double_polys)  {
+	
+	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	
+	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
+	
+      }
+      
+      
+      
+      throw std::runtime_error("Solution concentration diverged.");
+      
+    }
+    
+    
     
     if (it % gp.solution_dump_every == 0) {
       
