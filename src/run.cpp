@@ -12,21 +12,24 @@
 #include "ps_pde/timestep.hpp"
 
 #include "beadrodpmer/iovtk.hpp"
+#include "beadrodpmer/no_tether.hpp"
+#include "beadrodpmer/single_tether.hpp"
+#include "beadrodpmer/double_tether.hpp"
 
+#include "polymerwrap.hpp"
 
-#include "poly_wrappers.hpp"
 
 #include "run.hpp"
 
 
 void transfer_nucleation_site(std::vector<double> & X_i,
-			 const Eigen::Vector3d & pR,
-			 double Lx, double Ly, double Lz)
+			      const Eigen::Vector3d & pR,
+			      double Lx, double Ly, double Lz)
 {
   X_i[0] = pR(0);
   X_i[1] = pR(1);
   X_i[2] = pR(2);
-
+  
   while (X_i[0] > Lx/2)
     X_i[0] -= Lx;
   while (X_i[0] < -Lx/2)
@@ -53,14 +56,27 @@ void transfer_free_energy(std::vector<double> & dFdX,
 
 }
 
-std::string getLastLine(std::string filename);
-
-void put_in_vectors(std::vector<std::vector<double>> & X_is,
-		    std::string filename, MPI_Comm comm,int mpi_id);
+void overwrite_nucsites(std::vector<std::vector<double>> & X_is,
+			std::string filename, MPI_Comm comm,int mpi_id);
 
 
 
+std::string read_dump_polyname(std::string readdump,std::string pname,int label)
+{
 
+  std::string procstr = "_p" + std::to_string(label);
+  auto tmppos = readdump.find(procstr);
+  if (tmppos != readdump.npos) {
+    readdump.erase(tmppos,procstr.size()-1);
+    readdump.replace(tmppos,1,std::string("_") + pname);
+  }
+
+  tmppos = readdump.find_last_of(".");
+  readdump = readdump.substr(0,tmppos);
+
+  return readdump + std::string(".vtp");
+
+}
 
 
 void split_polymers_across_processors(const std::vector<std::string>
@@ -69,67 +85,87 @@ void split_polymers_across_processors(const std::vector<std::string>
 				      & polymersplitvecs,
 				      std::vector<std::vector<double>> &X_is,
 				      std::vector<int> & beads_per_pmer,
-				      std::vector<std::unique_ptr<NoTetherWrap>>
-				      &free_polys,
-				      std::vector<std::unique_ptr<SingleTetherWrap>> 
-				      &single_polys,
-				      std::vector<std::unique_ptr<DoubleTetherWrap>>
-				      &double_polys,int mpi_size,int id)
+				      std::vector<std::unique_ptr<PolymerWrap>>
+				      & polymers,int mpi_size,int id)
 {
   
   int running_total_beads = 0; 
 
+
+
   for (std::vector<std::string>::size_type i = 0; i < polymertypes.size(); i++) {
 
-    if (polymertypes.at(i) == "no_tether") {
+    std::string ptype = polymertypes.at(i);
+    std::string::size_type start = ptype.find("read_");
+
+    if (start != std::string::npos) {
+      ptype.erase(start,5);
+      std::string::size_type last = ptype.find_last_not_of("0123456789");
+      ptype.erase(last+1);
+    }
       
-      std::unique_ptr<NoTetherWrap>
-	tmpobj(new NoTetherWrap(polymersplitvecs.at(i),i,
-				running_total_beads,
-				polymertypes.at(i)+std::to_string(i)));
+
+
+    if (ptype == "no_tether" ) {
+      
+      std::unique_ptr<BeadRodPmer::NoTether> 
+	tmpobj(new BeadRodPmer::NoTether(polymersplitvecs.at(i)));
+
+
       
       beads_per_pmer.push_back(tmpobj->nuc_beads.size());
 
       if (i % mpi_size == id) {
-	free_polys.push_back( std::move(tmpobj));
-	free_polys.back()->dFdX_is.resize(beads_per_pmer.back());
-	for (auto &dFdX : free_polys.back()->dFdX_is)
+	polymers.push_back( std::unique_ptr<PolymerWrap>
+			    (new PolymerWrap
+			     (std::move(tmpobj),i,running_total_beads,
+			      polymertypes.at(i))));
+	polymers.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : polymers.back()->dFdX_is)
 	  dFdX = {0,0,0};
 	  
       }
 
-    } else if (polymertypes.at(i) == "single_tether") {
+    } else if (ptype == "single_tether") {
 
-      std::unique_ptr<SingleTetherWrap>
-	tmpobj(new SingleTetherWrap(polymersplitvecs.at(i),i,
-				    running_total_beads,
-				    polymertypes.at(i)+std::to_string(i)));
+      std::unique_ptr<BeadRodPmer::SingleTether> 
+	tmpobj(new BeadRodPmer::SingleTether(polymersplitvecs.at(i)));
+
+
       
       beads_per_pmer.push_back(tmpobj->nuc_beads.size());
 
-      
       if (i % mpi_size == id) {
-	single_polys.push_back(std::move(tmpobj) );
-	single_polys.back()->dFdX_is.resize(beads_per_pmer.back());
-	for (auto &dFdX : single_polys.back()->dFdX_is)
+	polymers.push_back( std::unique_ptr<PolymerWrap>
+			    (new PolymerWrap
+			     (std::move(tmpobj),i,running_total_beads,
+			      polymertypes.at(i))));
+	polymers.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : polymers.back()->dFdX_is)
 	  dFdX = {0,0,0};
-	
+	  
       }
 
-    } else if (polymertypes.at(i) == "double_tether") {
 
-      std::unique_ptr<DoubleTetherWrap>
-	tmpobj(new DoubleTetherWrap(polymersplitvecs.at(i),i,
-				    running_total_beads,
-				    polymertypes.at(i)+std::to_string(i)));
+    } else if (ptype == "double_tether") {
+
+
+      std::unique_ptr<BeadRodPmer::DoubleTether> 
+	tmpobj(new BeadRodPmer::DoubleTether(polymersplitvecs.at(i)));
+
+
       
       beads_per_pmer.push_back(tmpobj->nuc_beads.size());
-      
+
       if (i % mpi_size == id) {
-	double_polys.push_back(std::move(tmpobj));
-	double_polys.back()->dFdX_is.resize(beads_per_pmer.back());
-	for (auto &dFdX : double_polys.back()->dFdX_is)
+	polymers.push_back( std::unique_ptr<PolymerWrap>
+			    (new PolymerWrap
+			     (std::move(tmpobj),i,running_total_beads,
+			      polymertypes.at(i))));
+	polymers.back()->dFdX_is.resize(beads_per_pmer.back());
+	for (auto &dFdX : polymers.back()->dFdX_is)
 	  dFdX = {0,0,0};
+	  
       }
 
     } else {
@@ -179,19 +215,16 @@ void broadcast_errorcheck(std::vector<int> &pmer_errs,
 }
 
 
-void run(GlobalParams gp, psPDE::SolutionParams solparams,
+void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 	 const std::vector<std::string> &polymertypes,
 	 const std::vector<std::vector<std::string>> & polymersplitvecs,
-	 std::vector<std::vector<double>> &X_is) {
-
-
+	 std::vector<std::vector<double>> &X_is,
+	 std::vector<double> & radii, std::vector<double> & viscosities) {
   int itermax = 20;
   int numtries = 5;
   bool throw_exception=false;
   
-  std::vector<std::unique_ptr<NoTetherWrap>> free_polys;
-  std::vector<std::unique_ptr<SingleTetherWrap>> single_polys;
-  std::vector<std::unique_ptr<DoubleTetherWrap>> double_polys;
+  std::vector<std::unique_ptr<PolymerWrap>> polymers;
 
   int stationary_nuc_count = X_is.size();
   
@@ -201,10 +234,6 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   std::vector<int> pmer_errs(polymertypes.size(),0);
 
   
-  // split the polymers between the processors.
-  split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
-				   beads_per_pmer,free_polys,single_polys,
-				   double_polys,gp.mpi_size,gp.id);
 
   
   psPDE::fftw_MPI_3Darray<double> phi(gp.comm,"concentration",gp.realspace);
@@ -246,18 +275,14 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 						nonlinear.data(),gp.comm,
 						FFTW_MPI_TRANSPOSED_IN);
   
-
-  integrator.initialize(phi,gp.volFrac,gp.variance);
-
-  
   std::vector<std::vector<double>> free_energy_derivs;
 
-  std::string prefix = gp.solution_dump_file + std::string("_p") + std::to_string(gp.id) ;
+  std::string prefix = gp.dump_file + std::string("_p") + std::to_string(gp.id) ;
   std::string fname_p = prefix + std::string("_") +  std::to_string(gp.startstep) +  std::string(".vti");
 
   std::string collection_name = prefix + std::string(".pvd");
   
-  std::string complexprefix = gp.solution_dump_file + std::string("_complex")
+  std::string complexprefix = gp.dump_file + std::string("_complex")
     + std::string("_p") + std::to_string(gp.id) ;
 
   std::string complexfname_p = complexprefix + std::string("_") +  std::to_string(gp.startstep) +  std::string(".vti");
@@ -276,107 +301,52 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
 
 
+
   
   if (gp.restart_flag) {
+
+    // overwrite stationary nucleation sites to start of the X_is vector
+    overwrite_nucsites(X_is,gp.thermo_file,gp.comm,gp.id);
+
+
+    // split the polymers between the processors and update the number of 
+    //  nucleation sites to include polymer nucleation sites
+    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
+				     beads_per_pmer,polymers,gp.mpi_size,gp.id);
+
+
     if (gp.id == 0) {
       std::cout << "restarting!" << std::endl;
     }
     // load in polymer data.
 
-    for (auto &pmer : free_polys) {
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
+    for (auto &pmer : polymers) {
+      std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name;
       std::string poly_fname = poly_collection + std::string("_") + std::to_string(gp.startstep)
 	+ std::string(".vtp");
 
       BeadRodPmer::ioVTK::restartVTKcollection(poly_collection + std::string(".pvd"));
-      BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
+      BeadRodPmer::ioVTK::readVTKPolyData(pmer->get_polymer(),poly_fname);
 
 
       for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 pmer->get_atoms()[pmer->get_nuc_beads()[index]].R,
 				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 				 gp.realspace.get_Lz());
       }
       
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
+      pmer->setup();
 
-    }
-
-
-    
-    
-    for (auto &pmer : single_polys) {
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      std::string poly_fname = poly_collection + std::string("_") + std::to_string(gp.startstep)
-	+ std::string(".vtp");
-
-      BeadRodPmer::ioVTK::restartVTKcollection(poly_collection + std::string(".pvd"));
-      BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-
-
-
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
-      
-    }
-
-
-    
-    for (auto &pmer : double_polys) {
-      
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      std::string poly_fname = poly_collection + std::string("_") + std::to_string(gp.startstep)
-	+ std::string(".vtp");
-
-
-      BeadRodPmer::ioVTK::restartVTKcollection(poly_collection + std::string(".pvd"));
-      BeadRodPmer::ioVTK::readVTKPolyData(*pmer,poly_fname);
-
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
-      
     }
     
 
     broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
 
     psPDE::ioVTK::restartVTKcollection(collection_name,gp.comm);
-
-    
     psPDE::ioVTK::restartVTKcollection(complexcollection_name,gp.comm);
-
-    
-    
     psPDE::ioVTK::readVTKImageData({&phi},fname_p);
 
-    
-    
     for (int i = 0; i < integrator.ft_phi.axis_size(0); i++) {
       for (int j = 0; j < integrator.ft_phi.axis_size(1); j++) {
 	for (int k = 0; k < integrator.ft_phi.axis_size(2); k++) {
@@ -385,8 +355,6 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       }
     }
 
-
-
     // open thermo data so we can append to it
 
     if (gp.id == 0) {
@@ -394,182 +362,27 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       
     }
 
-
-    
   } else {
-
-    for (auto &pmer : free_polys) {
-      
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      
-      BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-      
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
-      
-    }
-    
-    for (auto &pmer : single_polys) {
-
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      
-      BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
-      
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-      
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
-    }
-    
-    for (auto &pmer : double_polys) {
-
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      
-      BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
-      
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-      
-      pmer->compute_tangents_and_friction();
-      
-      pmer->set_Hhat();
-      pmer->set_dCdlambda();
-      pmer->set_G();
-      
-    }
-
-    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
-
-    // equilibrate polymers before nucleating
-    
-    double teq = 0;
-    for (int it = 1; it <= gp.polymer_equilibration; it++) {
-
-      teq += gp.dt;
-      // update the polymers
-      for (auto &pmer : free_polys)  {
-
-	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
-						       numtries,throw_exception);
-
-	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				   pmer->atoms[pmer->nuc_beads[index]].R,
-				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				   gp.realspace.get_Lz());
-	}
-	
-
-      }
-      for (auto &pmer : single_polys) {
-
-	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
-						       numtries,throw_exception);	
-	
-	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				   pmer->atoms[pmer->nuc_beads[index]].R,
-				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				   gp.realspace.get_Lz());
-	}
-
-      }
-      for (auto &pmer : double_polys) {
-	
-	pmer_errs.at(pmer->number) = pmer->single_step(teq,gp.dt,pmer->dFdX_is,itermax,
-						       numtries,throw_exception);
-
-	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				   pmer->atoms[pmer->nuc_beads[index]].R,
-				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				   gp.realspace.get_Lz());
-	}
-
-	
-      }
-
-      // check if any of the above polymers have not succeeded
-      for (int index = 0; index <  pmer_errs.size(); index ++) {
-	MPI_Bcast(&(pmer_errs[index]),1,MPI_INT,
-		  index % gp.mpi_size,gp.comm);
-      }
-
-
-      for (int index = 0; index < pmer_errs.size(); index ++ ) {
-	if (pmer_errs[index] == -1) {
-	  std::string str = "Polymer " + index + std::string(" failed to equilibrate.\n");
-
-	  throw std::runtime_error(str.c_str());
-	}
-      }
-
-      
-      // and also their nucleation site positions.
-      broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
-      
-    }
-        
-    // write equilibrated state.
-    for (auto &pmer : free_polys) {
-      
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      std::string poly_fname = poly_collection + std::string("_") + std::to_string(0)
-	+ std::string(".vtp");
-      BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-      BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd")
-						   ,poly_fname,gp.starttime);
-    }
-
-
-    // write equilibrated state.
-    for (auto &pmer : single_polys) {
-      
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      std::string poly_fname = poly_collection + std::string("_") + std::to_string(0)
-	+ std::string(".vtp");
-      BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-      BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd")
-						   ,poly_fname,gp.starttime);
-    }
-
-    // write equilibrated state.
-    for (auto &pmer : double_polys) {
-      
-      std::string poly_collection = gp.polymer_dump_file + pmer->name;
-      std::string poly_fname = poly_collection + std::string("_") + std::to_string(0)
-	+ std::string(".vtp");
-      BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-      BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd")
-						   ,poly_fname,gp.starttime);
-    }
-
 
 
     psPDE::ioVTK::writeVTKcollectionHeader(collection_name);
     psPDE::ioVTK::writeVTKcollectionHeader(complexcollection_name);
+
+    if (gp.read_flag) {
+      psPDE::ioVTK::readVTKImageData({&phi},gp.read_dump_file);
+      psPDE::input::read_in_nuclei_properties(radii,viscosities,gp.nucs_to_keep,
+					      gp.all_nucs_flag,gp.read_thermo_file,
+					      gp.comm,gp.id);
+
+
+      // add in the nucleation sites from the read in thermo file      
+      psPDE::input::put_in_vectors(X_is,gp.nucs_to_keep,gp.read_thermo_file,gp.comm,
+				   gp.id,gp.starttime);
+
+	
+    } else { 
+      integrator.initialize(phi,gp.volFrac,gp.variance);
+    }
     
     fftw_execute(forward_phi);
     integrator.ft_phi.mod(modulus);
@@ -597,10 +410,90 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     psPDE::ioVTK::writeVTKcollectionMiddle(collection_name,fname_p,gp.starttime);
     psPDE::ioVTK::writeVTKcollectionMiddle(complexcollection_name,complexfname_p,gp.starttime);
 
+
+    // split the polymers between the processors and update the number of 
+    //  nucleation sites to include polymer nucleation sites
+    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
+				     beads_per_pmer,polymers,gp.mpi_size,gp.id);
+
+
+    for (auto &pmer : polymers) {
+      
+      std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name;
+      BeadRodPmer::ioVTK::writeVTKcollectionHeader(poly_collection + std::string(".pvd"));
+
+      if (pmer->read) {
+
+	std::string poly_fname = read_dump_polyname(gp.read_dump_file,pmer->name,pmer->get_read_index());
+	std::cout << poly_fname << std::endl;
+	BeadRodPmer::ioVTK::readVTKPolyData(pmer->get_polymer(),poly_fname);
+
+      } else {
+
+
+	try {
+	  pmer->initialise_atoms(polymersplitvecs.at(pmer->number));
+	} catch (const std::runtime_error & error) {
+	  pmer_errs.at(pmer->number) = 1;
+	}
+      }
+
+      if (pmer_errs.at(pmer->number) == 0) {
+
+	for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
+	  transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
+				   pmer->get_atoms()[pmer->get_nuc_beads()[index]].R,
+				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
+				   gp.realspace.get_Lz());
+	}
+	
+	pmer->setup();
+	
+      }
+      
+    }
+    
+
+    // check if any of the above polymers have not succeeded
+    for (int index = 0; index <  pmer_errs.size(); index ++) {
+      MPI_Bcast(&(pmer_errs[index]),1,MPI_INT,
+		index % gp.mpi_size,gp.comm);
+    }
+
+
+    for (int index = 0; index < pmer_errs.size(); index ++ ) {
+      if (pmer_errs[index] != 0) {
+	std::string str = "Polymer " + index + std::string(" failed to equilibrate.\n");
+	
+	throw std::runtime_error(str.c_str());
+      }
+    }
     
     
+    // and also their nucleation site positions.
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
+        
+    // write equilibrated state.
+    for (auto &pmer : polymers) {
+      
+      std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name;
+      std::string poly_fname = poly_collection + std::string("_") + std::to_string(0)
+	+ std::string(".vtp");
+      BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,pmer->get_polymer());
+      BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd")
+						   ,poly_fname,gp.starttime);
+    }
+
     if (gp.id == 0) {
       myfile.open(gp.thermo_file);
+
+      myfile << "# nucnum \t radius \t viscosity " << std::endl;
+      for (int index =  0; index < viscosities.size(); index++ ) {
+	myfile << "# " << index << " \t " << radii.at(index) << " \t "
+	       << viscosities.at(index) << std::endl;
+      }
+      
+      
       myfile << "# t ";
       for (unsigned index = 0; index < X_is.size() ; index ++) {
 	myfile << "\t (X_" << index << ")_x " << "(X_" << index << ")_y"
@@ -612,8 +505,8 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	       << "(dF/dX_" << index << ")_z";
       }
       myfile << std::endl;
-      
-    }
+
+    }    
     
     
   }
@@ -685,7 +578,7 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
     
     // update the nucleation sites via the polymers.
     
-    for (auto &pmer : free_polys)  {
+    for (auto &pmer : polymers)  {
 
       current_time = Clock::now();
 
@@ -698,12 +591,12 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       }
 
-      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,
-						     itermax,numtries,throw_exception);
+      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,itermax,numtries,
+						     throw_exception);
 
       for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
 	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
+				 pmer->get_atoms()[pmer->get_nuc_beads()[index]].R,
 				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 				 gp.realspace.get_Lz());
       }
@@ -711,83 +604,11 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 
       tt_free_t += Clock::now() - current_time;      
       
-      if ( it % gp.polymer_dump_every == 0) {
-	std::string poly_collection = gp.polymer_dump_file + pmer->name;
+      if ( it % gp.dump_every == 0) {
+	std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name;
 	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
 	  + std::string(".vtp");
-	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						     poly_fname,t);
-      }
-      
-    }
-    
-
-    for (auto &pmer : single_polys)  {
-      
-      current_time = Clock::now();
-
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_free_energy(pmer->dFdX_is[index],free_energy_derivs,
-			     pmer->nuc_index+index+stationary_nuc_count);
-
-      }
-
-      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,
-						     itermax,numtries,throw_exception);
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-
-      tt_sing_t += Clock::now() - current_time;
-      
-      if ( it % gp.polymer_dump_every == 0) {
-	
-	
-	std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	  + std::string(".vtp");
-	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
-	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
-						     poly_fname,t);
-      }
-      
-    }
-    
-    
-    for (auto &pmer : double_polys)  {
-
-
-      current_time = Clock::now();
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_free_energy(pmer->dFdX_is[index],free_energy_derivs,
-			     pmer->nuc_index+index+stationary_nuc_count);
-
-      }
-
-      pmer_errs.at(pmer->number) = pmer->single_step(t,gp.dt,pmer->dFdX_is,itermax,
-						     numtries,throw_exception);
-
-      for (int index = 0; index < beads_per_pmer.at(pmer->number); index ++) {
-	transfer_nucleation_site(X_is[pmer->nuc_index+index+stationary_nuc_count],
-				 pmer->atoms[pmer->nuc_beads[index]].R,
-				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
-				 gp.realspace.get_Lz());
-      }
-
-      tt_doub_t += Clock::now() - current_time;
-      
-      if ( it % gp.polymer_dump_every == 0) {
-	std::string poly_collection = gp.polymer_dump_file + pmer->name;
-	std::string poly_fname = poly_collection + std::string("_") + std::to_string(it)
-	  + std::string(".vtp");
-	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,*pmer);
+	BeadRodPmer::ioVTK::writeVTKPolyData(poly_fname,pmer->get_polymer());
 	BeadRodPmer::ioVTK::writeVTKcollectionMiddle(poly_collection+ std::string(".pvd"),
 						     poly_fname,t);
       }
@@ -825,32 +646,13 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
 	psPDE::ioVTK::writeVTKcollectionFooter(complexcollection_name);
 	
 	
-	for (auto &pmer : free_polys)  {
+	for (auto &pmer : polymers)  {
 	  
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-	  
-	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-	  
-	}
-	
-	for (auto &pmer : single_polys)  {
-	  
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	  std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name + std::string(".pvd");
 	  
 	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
 	  
 	}
-	
-	
-	for (auto &pmer : double_polys)  {
-	  
-	  std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-	  
-	  BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-	  
-	}
-	
-	
 	
 	throw std::runtime_error(str.c_str());
 	
@@ -880,40 +682,20 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
       psPDE::ioVTK::writeVTKcollectionFooter(complexcollection_name);
       
       
-      for (auto &pmer : free_polys)  {
+      for (auto &pmer : polymers)  {
 	
-	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-	
-	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-	
-      }
-      
-      for (auto &pmer : single_polys)  {
-	
-	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+	std::string poly_collection = gp.dump_file + std::string("_") +  pmer->name + std::string(".pvd");
 	
 	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
 	
       }
-      
-      
-      for (auto &pmer : double_polys)  {
-	
-	std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-	
-	BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-	
-      }
-      
-      
-      
       throw std::runtime_error("Solution concentration diverged.");
       
     }
     
     
     
-    if (it % gp.solution_dump_every == 0) {
+    if (it % gp.dump_every == 0) {
       
       if (gp.id == 0) {
 	std::cout << " saving at t = " << t << std::endl;
@@ -954,31 +736,13 @@ void run(GlobalParams gp, psPDE::SolutionParams solparams,
   psPDE::ioVTK::writeVTKcollectionFooter(complexcollection_name);
   
   
-  for (auto &pmer : free_polys)  {
+  for (auto &pmer : polymers)  {
     
-    std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-    
-    BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-    
-  }
-  
-  for (auto &pmer : single_polys)  {
-    
-    std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
+    std::string poly_collection = gp.dump_file + std::string("_") + pmer->name + std::string(".pvd");
     
     BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
     
   }
-  
-  
-  for (auto &pmer : double_polys)  {
-    
-    std::string poly_collection = gp.polymer_dump_file + pmer->name + std::string(".pvd");
-    
-    BeadRodPmer::ioVTK::writeVTKcollectionFooter(poly_collection);
-    
-  }
-  
   
   
   fftw_destroy_plan(forward_phi);
@@ -1051,8 +815,8 @@ std::string getLastLine(std::string filename)
 }
 
 
-void put_in_vectors(std::vector<std::vector<double>> & X_is,
-		    std::string filename, MPI_Comm comm,int mpi_id)
+void overwrite_nucsites(std::vector<std::vector<double>> & X_is,
+			std::string filename, MPI_Comm comm,int mpi_id)
 {
 
   std::string finalline;

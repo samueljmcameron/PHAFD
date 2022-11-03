@@ -1,3 +1,6 @@
-mkdir -p xvtkfiles
 
-mpiexec -np 4 ../a.out -in input.in -nuc nucleationsites.nuc -var label spread -var seed 2948012 -var solution_seed 84991 -var poly_seed1 418029 -var poly_seed2 668591 -var poly_seed3 74910
+mpiexec -np 8 ~/liqliq_with_polymers/build/src/ll_w_p -in input.in -var solution_seed $RANDOM -var poly_seed1 $RANDOM -var volfrac 0.22 -var nucstrength 6.0 -var run 1 -var chi 4.0
+
+mpiexec -np 8 ~/liqliq_with_polymers/build/src/ll_w_p -in restart.in -var solution_seed $RANDOM -var poly_seed1 $RANDOM -var volfrac 0.22 -var nucstrength 6.0 -var run 1 -var chi 4.0
+
+mpiexec -np 8 ~/liqliq_with_polymers/build/src/ll_w_p -in read.in -var solution_seed $RANDOM -var poly_seed1 $RANDOM -var volfrac 0.22 -var nucstrength 6.0 -var run 1 -var chi 4.0

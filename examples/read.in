@@ -1,0 +1,24 @@
+# set global parameters
+
+# global solution parameters
+boxgrid      64 64 64
+boxdims      100.0 100.0 100.0
+steps        100
+dt	     1e-3
+dump_every   10
+dump_file    vtkfiles/run${run}_volfrac${volfrac}_chi${chi}_read
+volFrac	     ${volfrac} 0.01
+seed	 ${solution_seed}
+thermo_every 10
+thermo_file  thermo/run${run}_volfrac${volfrac}_chi${chi}_read_free_energy.txt
+
+
+read 0.1 vtkfiles/run${run}_volfrac${volfrac}_chi${chi}_p%_100.vti thermo/run${run}_volfrac${volfrac}_chi${chi}_free_energy.txt all
+
+# set local polymer parameters
+
+read_no_tether 0 beads 100 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 temp 4.114 bending 206 x0 -5.0 -5.0 -5.0 xN 5.0 5.0 5.0 seed ${poly_seed1} nuc_beads 2 0 99 init_ends 10 5e-4 0.1 1000 nuc_strengths 2 1.0 1.0 nuc_maxs 2 0.9 0.9 nuc_widths 2 1.0 1.0
+
+# set local solution parameters
+
+build_solution mobility 0.003 volFH 0.01 gamma 10.0 chi ${chi} temp 4.114 chi_LP 1.0 chi_LL 1.0 nucmax 0.9 nucwidth 1.0

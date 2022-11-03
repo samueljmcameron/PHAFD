@@ -10,7 +10,6 @@
 #include "ps_pde/solutionparams.hpp"
 #include "ps_pde/input.hpp"
 #include "beadrodpmer/input.hpp"
-#include "globalparams.hpp"
 
 #include "run.hpp"
 
@@ -84,17 +83,6 @@ int main(int argc, char **argv)
   }
 
   
-  std::vector<std::vector<double>> X_is;
-  
-  if (not nucfile.is_open()) {
-    std::cerr << "Warning, no nucleation file provided, assuming no stationary nucleation." << std::endl;
-  } else {
-    double X_x,X_y,X_z;
-    while(nucfile >> X_x >> X_y >> X_z) {
-      X_is.push_back({X_x,X_y,X_z});
-    }
-  }
-
 
   std::string line;
   std::vector<std::string> splitvec;
@@ -104,12 +92,16 @@ int main(int argc, char **argv)
 
     
   // store global parameters
-  GlobalParams gp(comm,id,mpi_size,infile,variables,line);
-
+  psPDE::GlobalParams gp(comm,id,mpi_size,infile,variables,line,
+			 {"build_solution","no_tether","single_tether","double_tether",
+			     "read_no_tether","read_single_tether",
+			     "read_double_tether"});
+  
   // but still need to get the local parameters for both the 
 
 
   std::vector<std::string> polymertypes;
+
   psPDE::SolutionParams solparams;
 
   do {
@@ -142,20 +134,42 @@ int main(int argc, char **argv)
 
       
       polymertypes.push_back(splitvec.at(0));
-
       
+	  
       splitvec.erase(splitvec.begin());
-
+      
       for (auto &c : splitvec) {
       	BeadRodPmer::input::convertVariable(c,variables);
 	
       }
 
+      polymersplitvecs.push_back(splitvec);
 
-      polymersplitvecs.push_back( splitvec);
 
-    } else {
+    } else if (splitvec[0] == "read_single_tether" ||
+	       splitvec[0] == "read_double_tether" ||
+	       splitvec[0] == "read_no_tether") {
 
+      if (!gp.read_flag) 
+	throw std::runtime_error("Cannot read polymer when not reading in data from" 
+				 " previous simulation.");
+
+
+
+      
+      for (auto &c : splitvec) {
+      	BeadRodPmer::input::convertVariable(c,variables);
+      }
+
+      polymertypes.push_back(splitvec.at(0)+splitvec.at(1));
+      
+      splitvec.erase(splitvec.begin());
+      splitvec.erase(splitvec.begin());
+
+
+      polymersplitvecs.push_back(splitvec);
+
+      
     }
       
       
@@ -166,13 +180,33 @@ int main(int argc, char **argv)
     solparams.printall();
   }
 
+  std::vector<std::vector<double>> X_is;
+  
+
+  std::vector<double> radii;
+  std::vector<double> viscosities;
+  
+  if (not nucfile.is_open() && not gp.read_flag && not gp.restart_flag) {
+    std::cerr << "Warning! No nucleation file specified, so no nucleation sites will be generated."
+	      << std::endl;
+  } else {
+
+    double X_x,X_y,X_z;
+    double viscosity,radius;
+    while(nucfile >> X_x >> X_y >> X_z >> radius >> viscosity) {
+      X_is.push_back({X_x,X_y,X_z});
+      radii.push_back(radius);
+      viscosities.push_back(viscosity);      
+    }
+
+  }
 
   // now, give the solution parameters the list of polymers to include, and the
   // nucleation sites, run the simulation
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-  run(gp,solparams,polymertypes,polymersplitvecs,X_is);
+  run(gp,solparams,polymertypes,polymersplitvecs,X_is,radii,viscosities);
 
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   std::cout << "Run time = "
@@ -185,5 +219,3 @@ int main(int argc, char **argv)
   
   return 0;
 }
-
-

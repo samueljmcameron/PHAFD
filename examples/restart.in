@@ -13,10 +13,14 @@ thermo_every 10
 thermo_file  thermo/run${run}_volfrac${volfrac}_chi${chi}_free_energy.txt
 
 
+# global polymer parameters
+
+
+restart 100 0.1
 
 # set local polymer parameters
 
-no_tether beads 100 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 temp 4.114 bending 206 x0 -5.0 -5.0 -5.0 xN 5.0 5.0 5.0 seed ${poly_seed1} nuc_beads 2 0 99 init_ends 100 5e-5 0.1 1000 nuc_strengths 2 1.0 1.0 nuc_maxs 2 0.9 0.9 nuc_widths 2 1.0 1.0
+no_tether beads 100 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 temp 4.114 bending 206 x0 -5.0 -5.0 -5.0 xN 5.0 5.0 5.0 seed ${poly_seed1} nuc_beads 2 0 99 init_ends 10 5e-4 0.1 1000 nuc_strengths 2 1.0 1.0 nuc_maxs 2 0.9 0.9 nuc_widths 2 1.0 1.0
 
 # set local solution parameters
 
