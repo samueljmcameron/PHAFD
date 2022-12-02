@@ -38,6 +38,8 @@ public:
     
   };
 
+
+  const std::vector<double> & get_nuc_maxs() { return polymer->nuc_maxs; };
   int get_read_index() {
     if (!read)
       throw std::runtime_error("trying to access read index for polymer which doesn't read in data.");

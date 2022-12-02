@@ -84,6 +84,7 @@ void split_polymers_across_processors(const std::vector<std::string>
 				      const std::vector<std::vector<std::string>>
 				      & polymersplitvecs,
 				      std::vector<std::vector<double>> &X_is,
+				      std::vector<double> & nucmaxs,
 				      std::vector<int> & beads_per_pmer,
 				      std::vector<std::unique_ptr<PolymerWrap>>
 				      & polymers,int mpi_size,int id)
@@ -105,12 +106,11 @@ void split_polymers_across_processors(const std::vector<std::string>
     }
       
 
-
     if (ptype == "no_tether" ) {
+
       
       std::unique_ptr<BeadRodPmer::NoTether> 
 	tmpobj(new BeadRodPmer::NoTether(polymersplitvecs.at(i)));
-
 
       
       beads_per_pmer.push_back(tmpobj->nuc_beads.size());
@@ -123,8 +123,10 @@ void split_polymers_across_processors(const std::vector<std::string>
 	polymers.back()->dFdX_is.resize(beads_per_pmer.back());
 	for (auto &dFdX : polymers.back()->dFdX_is)
 	  dFdX = {0,0,0};
+
 	  
       }
+
 
     } else if (ptype == "single_tether") {
 
@@ -173,10 +175,12 @@ void split_polymers_across_processors(const std::vector<std::string>
     }
     running_total_beads += beads_per_pmer.back();
   }
-
   
-  for (int index = 0; index < running_total_beads; index ++) 
+  for (int index = 0; index < running_total_beads; index ++) {
     X_is.push_back({0,0,0});
+    nucmaxs.push_back(0);
+  }
+ 
       
 
 
@@ -184,7 +188,8 @@ void split_polymers_across_processors(const std::vector<std::string>
 }
 
 void broadcast_X_is(int stationary_nuc_count, const std::vector<int> &beads_per_pmer,
-		    std::vector<std::vector<double>> &X_is,int mpi_size,
+		    std::vector<std::vector<double>> &X_is,
+		    std::vector<double> & nucmaxs, int mpi_size,
 		    MPI_Comm comm)
 {
   int startpoint = stationary_nuc_count;    
@@ -195,12 +200,16 @@ void broadcast_X_is(int stationary_nuc_count, const std::vector<int> &beads_per_
     }
     int ni = beads_per_pmer.at(index);
     
-    for (int ipos = 0; ipos < ni; ipos ++)
+    for (int ipos = 0; ipos < ni; ipos ++) {
       MPI_Bcast(X_is[startpoint + ipos].data(),3,MPI_DOUBLE,
 		index % mpi_size,comm);
+      MPI_Bcast(&nucmaxs[startpoint+ipos],1,MPI_DOUBLE,
+		index % mpi_size,comm);
+    }
   }
   return;
 }
+
 
 
 
@@ -219,6 +228,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 	 const std::vector<std::string> &polymertypes,
 	 const std::vector<std::vector<std::string>> & polymersplitvecs,
 	 std::vector<std::vector<double>> &X_is,
+	 std::vector<double> & nucmaxs,
 	 std::vector<double> & radii, std::vector<double> & viscosities) {
   int itermax = 20;
   int numtries = 5;
@@ -311,7 +321,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 
     // split the polymers between the processors and update the number of 
     //  nucleation sites to include polymer nucleation sites
-    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
+    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,nucmaxs,
 				     beads_per_pmer,polymers,gp.mpi_size,gp.id);
 
 
@@ -334,6 +344,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 				 pmer->get_atoms()[pmer->get_nuc_beads()[index]].R,
 				 gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 				 gp.realspace.get_Lz());
+	nucmaxs[pmer->nuc_index+index+stationary_nuc_count] = pmer->get_nuc_maxs()[index];
       }
       
       pmer->setup();
@@ -341,7 +352,8 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
     }
     
 
-    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,nucmaxs,
+		   gp.mpi_size,gp.comm);
 
     psPDE::ioVTK::restartVTKcollection(collection_name,gp.comm);
     psPDE::ioVTK::restartVTKcollection(complexcollection_name,gp.comm);
@@ -370,7 +382,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 
     if (gp.read_flag) {
       psPDE::ioVTK::readVTKImageData({&phi},gp.read_dump_file);
-      psPDE::input::read_in_nuclei_properties(radii,viscosities,gp.nucs_to_keep,
+      psPDE::input::read_in_nuclei_properties(nucmaxs,radii,viscosities,gp.nucs_to_keep,
 					      gp.all_nucs_flag,gp.read_thermo_file,
 					      gp.comm,gp.id);
 
@@ -413,7 +425,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 
     // split the polymers between the processors and update the number of 
     //  nucleation sites to include polymer nucleation sites
-    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,
+    split_polymers_across_processors(polymertypes,polymersplitvecs,X_is,nucmaxs,
 				     beads_per_pmer,polymers,gp.mpi_size,gp.id);
 
 
@@ -445,6 +457,8 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 				   pmer->get_atoms()[pmer->get_nuc_beads()[index]].R,
 				   gp.realspace.get_Lx(),gp.realspace.get_Ly(),
 				   gp.realspace.get_Lz());
+	  nucmaxs[pmer->nuc_index+index+stationary_nuc_count] = pmer->get_nuc_maxs()[index];
+
 	}
 	
 	pmer->setup();
@@ -471,7 +485,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
     
     
     // and also their nucleation site positions.
-    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,nucmaxs,gp.mpi_size,gp.comm);
         
     // write equilibrated state.
     for (auto &pmer : polymers) {
@@ -487,9 +501,10 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
     if (gp.id == 0) {
       myfile.open(gp.thermo_file);
 
-      myfile << "# nucnum \t radius \t viscosity " << std::endl;
+      myfile << "# nucnum \t nucmax \t radius \t viscosity " << std::endl;
       for (int index =  0; index < viscosities.size(); index++ ) {
-	myfile << "# " << index << " \t " << radii.at(index) << " \t "
+	myfile << "# " << index << " \t " << nucmaxs.at(index) << " \t "
+	       << radii.at(index) << " \t "
 	       << viscosities.at(index) << std::endl;
       }
       
@@ -538,7 +553,6 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
   duration tt_freeenergy = 0s;
 
   
-  
   for (int it = 1+gp.startstep; it <= gp.steps+gp.startstep; it ++) {
     
     // compute nl(t) given phi(t), and also free energy derivatives for the different
@@ -546,7 +560,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
 
     auto current_time = Clock::now();
     
-    free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,free_energy); 
+    free_energy_derivs = integrator.nonlinear(nonlinear,phi,X_is,nucmaxs,free_energy); 
 
     tt_freeenergy += Clock::now() - current_time;
     
@@ -724,7 +738,7 @@ void run(psPDE::GlobalParams gp, psPDE::SolutionParams solparams,
     }
     
     // broadcast the new nucleation sites across the processes
-    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,gp.mpi_size,gp.comm);
+    broadcast_X_is(stationary_nuc_count,beads_per_pmer,X_is,nucmaxs,gp.mpi_size,gp.comm);
     
   }
     

@@ -9,7 +9,7 @@
 void run(psPDE::GlobalParams,psPDE::SolutionParams,const std::vector<std::string> &,
 	 const std::vector<std::vector<std::string>> &,
 	 std::vector<std::vector<double>> &,std::vector<double> &,
-	 std::vector<double> &);
+	 std::vector<double> &,std::vector<double> &);
 
 
 
