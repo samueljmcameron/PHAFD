@@ -1,0 +1,22 @@
+# set global parameters
+
+
+domain boxdims 100.0 100.0 100.0 boxorigin -50.0 -50.0 -50.0
+
+
+read_atoms hybridpython_p%.data
+
+grid_style 64 64 64 concentration
+
+# can either use grid_setup to read in old data or create new grid data	
+grid_populate constant concentration 0.2 0.2 349810
+# or
+#grid_populate read concentration vtkfiles/read_nucd_p%_100000.vti
+
+
+group points molecule <> 5 149
+group nt_pmers molecule 0 2
+group st_pmers molecule 3 4
+group dt_pmers molecule 1
+
+
