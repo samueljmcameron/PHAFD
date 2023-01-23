@@ -17,14 +17,13 @@ p   Steve Plimpton, sjplimp@sandia.gov
 #include <set>
 #include <vector>
 
-#include "domain.hpp"
-#include "atom.hpp"
+#include "pointers.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class Neighbor;
   
-class NBin {
+class NBin : protected Pointers {
  public:
   int last_bin;         // last timestep atoms were binned
 
@@ -45,11 +44,11 @@ class NBin {
   std::vector<int> bins;        // index of next atom in same bin (size is ngathered)
   std::vector<int> atom2bin;    // bin assignment for each atom (local+ghost) (size is ngathered)
 
-  NBin();;
+  NBin(PHAFD *);
   virtual void copy_neighbor_info(const Neighbor *);
 
-  virtual void setup_bins(const psPDE::Domain &, double) = 0;
-  virtual void bin_atoms(const Atom &, int) = 0;
+  virtual void setup_bins(double) = 0;
+  virtual void bin_atoms(int) = 0;
 
   
 

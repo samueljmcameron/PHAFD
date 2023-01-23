@@ -5,12 +5,12 @@
 #include <vector>
 #include <array>
 #include <string>
-#include <mpi.h>
 
+#include "pointers.hpp"
 
-namespace PHAFD {
-class Domain;
-class Atom {
+namespace PHAFD_NS {
+
+class Atom : protected Pointers {
 public:
   static inline int OWNED = 0;
   static inline int LOCAL = 1;
@@ -19,7 +19,9 @@ public:
   static inline int MAX_ATOM = 100000;
 
 
-  Atom(int Natoms,std::vector<std::string> styles = {""});
+  Atom(PHAFD *);
+
+  void setup(int,std::vector<std::string> styles = {""});
 
   
   int nowned; // atoms which are owned by this processor (as they are in a polymer)
@@ -48,10 +50,10 @@ public:
   std::vector<double> radius;
 
 
-  void final_init(MPI_Comm,int, int);
+  void check_tags_and_types();
 
-  int add_polymer( std::vector<std::string> ,int , const Domain *);
-  int add_sphere( std::vector<std::string>  , int ,const Domain *);
+  int add_polymer( std::vector<std::string> ,int);
+  int add_sphere( std::vector<std::string>  , int);
     
   
 

@@ -5,15 +5,14 @@
 
 #include "npair.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
   
 class NPairGridBin : public NPair {
  public:
-  NPairGridBin();
-  void build(class NeighList *, const Atom &) override;
-  void build(class NeighList *, const Atom &,
-	     const psPDE::Grid &) override;
+  NPairGridBin(PHAFD *);
+
+  void build(class NeighList *) override;
   
 };
 

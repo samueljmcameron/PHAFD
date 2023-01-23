@@ -1,133 +1,107 @@
-#include <iostream>
-
 #include "input.hpp"
 
 
-std::vector<std::string> PHAFD::input::split_line(std::string& line)
-/*
-  Given an input string, split it into words (separated by whitespace) and
-  return the vector of these words - removing any training comments (starting with
-  '#').
+#include "utility.hpp"
 
- */
+
+#include "domain.hpp"
+#include "grid.hpp"
+#include "group.hpp"
+#include "comm_brick.hpp"
+#include "read_atoms.hpp"
+#include "atom.hpp"
+
+
+
+
+#include <iostream>
+#include <string>
+#include <set>
+
+using namespace PHAFD_NS;
+
+Input::Input(PHAFD *phafd) : Pointers(phafd) {}
+
+Input::~Input() = default;
+
+void Input::read()
 {
-  // remove any trailing comments
-  line = line.substr(0,line.find("#",0));
+  std::vector<std::string> v_line;
+  std::string line;
+
+  line = "boxdims 100.0 100.0 100.0 boxorigin -50.0 -50.0 -50.0";
+  v_line = utility::split_line(line);
+  domain->set_box(v_line);
+
+
+  line = "64 64 64 concentration";
+  v_line = utility::split_line(line);
+
+  grid->create(v_line);
+  domain->set_subbox();
+
+  line = "constant concentration 0.2 0.2 891409";
+  v_line = utility::split_line(line);
+  grid->populate(v_line);
+
+
+  std::string atom_data_fname = "read_p%.data";
+
+  utility::replacePercentages(atom_data_fname,commbrick->me);
+
+
   
-  std::vector<std::string> out;
+
+  ReadAtoms read_atoms(phafd);
+
+  read_atoms.read_file(atom_data_fname);
+
+  atoms->check_tags_and_types();
+
   
-  std::string tmp;
-  
-  
-  std::size_t index;
-  
-  index = 0;
-  while(index < line.size()) {
-    
-    for (; index != line.size()
-	   && !isspace(line[index]); ++index)
-      tmp += line[index];
-    
-    if (tmp != "") {
-      out.push_back(tmp);
-    }
-    tmp = "";
-    
-    index += 1;
+  groups.push_back(std::make_unique<Group>(phafd));
+  groups[0]->create_all();
+
+
+
+  groups.push_back(std::make_unique<Group>(phafd));
+  line = "nt_pmer0 molecule 0";
+  v_line = utility::split_line(line);    
+  groups[1]->create_group(v_line);
+
+
+  groups.push_back(std::make_unique<Group>(phafd));
+  line = "nt_pmer1 molecule 1";
+  v_line = utility::split_line(line);    
+  groups[2]->create_group(v_line);
+
+  groups.push_back(std::make_unique<Group>(phafd));
+  line = "nt_pmer2 molecule 2";
+  v_line = utility::split_line(line);    
+  groups[3]->create_group(v_line);
+
+  groups.push_back(std::make_unique<Group>(phafd));
+  line = "nt_pmer3 molecule 3";
+  v_line = utility::split_line(line);    
+  groups[4]->create_group(v_line);
+
+  std::set<std::string> gnames;
+  for (auto &group : groups) {
+    gnames.insert(group->name);
   }
-  
-  return out;
-}
 
-
-void PHAFD::input::replacePercentages(std::string &raw,int id)
-/*
-  Given a string which has "%" in its name, replace this with the
-  the integer id.   E.g. if id = 4 and raw is
-
-  "fname_p%.txt"
-
-  the output would be
-
-  "fname_p4.txt"
-  
- */
-{
-
-  std::string::size_type vstart;
-
-  while (true) {
+  if (gnames.size() != groups.size())
+    throw std::runtime_error("Cannot have two groups with same name.");
     
-    vstart = raw.find("%");
-    
-    if (vstart != std::string::npos) 
-      raw.replace(vstart,1,std::to_string(id));
-    else break;
-  }
-  
-  return;
-}
-  
-void PHAFD::input::convertVariables(std::string &raw,
-				    std::map<std::string, std::string> const& varMap)
-/*
 
-  Given a string, replace any set of characters with the form ${var} to the
-  value of var, where var and its value must be in the map varMap. E.g. for
-  a var map {"name" : "Jim"}, the string
-
-  "Hello my name is ${name}othy - well actually it's just ${name}."
+  line = "bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114 seed "
+      + std::to_string(seed0);
+  fixes.push_back(std::make_unique<Fix>(phafd));
+  fixes[0].init()
   
-  would convert to
-  
-  "Hello my name is Jimothy - well actually it's just Jim."
 
   
- */
-{
+  if (commbrick->me == 0)
+    std::cout << groups[0]->name << std::endl;
   
-  
-  
-  std::string::size_type vstart,vend;
-  
-  vend = 0;
-  while (vend != raw.size()) {
-    
-    vstart = raw.find("${");
-    
-    if (vstart != std::string::npos) {
-      
-      vend = raw.find("}",vstart+2);
-      
-      if (vend != std::string::npos) {
-	std::string tmp = raw.substr(vstart+2,vend-vstart-2);
-	if (tmp == "")
-	  throw std::runtime_error("No content ('${}') in input file.");
-	bool found_key = false;
-	
-	for (const auto &xm: varMap) {
-	  if (xm.first == tmp) {
-	    found_key = true;
-	    raw.erase(vstart,vend - vstart+1);
-	    raw.insert(vstart,xm.second);
-	  }
-	}
-	if (!found_key) {
-	  std::string errorMessage
-	    = std::string("No such command line variable ") + tmp;
-	  throw std::runtime_error(errorMessage);
-	}
-	
-	
-	
-      } else {
-	throw::std::runtime_error("Missing '}' in input script.");
-      }
-      
-    } else {
-      vend = raw.size();
-    }
-  }
-  
-  return;
 }

@@ -23,13 +23,13 @@
 #define MIN(A,B) ((A) < (B) ? (A) : (B))
 
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 
 
 /* ---------------------------------------------------------------------- */
 
-NPair::NPair()
+NPair::NPair(PHAFD *phafd) : Pointers(phafd)
 {
   last_build = -1;
 
@@ -48,8 +48,8 @@ void NPair::copy_neighbor_info(const Neighbor *neighbor)
   skin = neighbor->skin;
   double cutneigh = neighbor->cutneigh;
   cutneighsq = cutneigh*cutneigh;
-  bboxlo = neighbor->bboxlo.data();
-  bboxhi = neighbor->bboxhi.data();
+  bboxlo = neighbor->bboxlo;
+  bboxhi = neighbor->bboxhi;
 
 
 }

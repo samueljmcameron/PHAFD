@@ -1,30 +1,33 @@
 #include "group.hpp"
 
-#include "input.hpp"
 #include <stdexcept>
 #include <set>
 
-using namespace PHAFD;
+#include "atom.hpp"
+
+using namespace PHAFD_NS;
 
 
-Group::Group(Atom &atoms)
+Group::Group(PHAFD *phafd) : Pointers(phafd)
+{};
+
+void Group::create_all()
 {
   name = "all";
   style = "atom";
 
   start_indices.push_back(0);
-  end_indices.push_back(atoms.nowned);
-
+  end_indices.push_back(atoms->nowned);
 
 }
 
-Group::Group(std::string line, Atom &atoms)
+
+void Group::create_group(const  std::vector<std::string> &v_line)
 {
 
 
   std::set<int> group_set;
 
-  std::vector<std::string> v_line = input::split_line(line);
 
   name = v_line[0];
 
@@ -70,7 +73,7 @@ Group::Group(std::string line, Atom &atoms)
   if (style == "molecule") {
 
     for (auto imol : group_set)
-      group_molecule(imol,atoms);
+      group_molecule(imol);
     
 
   } else if (style == "atom") {
@@ -78,7 +81,7 @@ Group::Group(std::string line, Atom &atoms)
     if (v_line[2] != "<>")
       throw std::invalid_argument("Group atom requires '<>' style parameters.");
 
-    group_atoms(*group_set.begin(),*group_set.rbegin(),atoms);
+    group_atoms(*group_set.begin(),*group_set.rbegin());
 
 
   } else {
@@ -88,7 +91,7 @@ Group::Group(std::string line, Atom &atoms)
 }
 
 
-void Group::group_atoms(int tagstart, int tagend, const Atom &atoms)
+void Group::group_atoms(int tagstart, int tagend)
 {
 
 
@@ -100,7 +103,7 @@ void Group::group_atoms(int tagstart, int tagend, const Atom &atoms)
   int startatom = 0;
 
   // loop through atoms to see if the first element of the set is in the atoms
-  while (startatom < atoms.nowned && atoms.tags[startatom] < tagstart) {
+  while (startatom < atoms->nowned && atoms->tags[startatom] < tagstart) {
     startatom ++;
 
   }
@@ -112,7 +115,7 @@ void Group::group_atoms(int tagstart, int tagend, const Atom &atoms)
 
   // if the very first atom ID is larger than (or equal to) the first ID of the group
 
-  while (tag <= tagend && atoms.tags[startatom] != tag) tag ++;
+  while (tag <= tagend && atoms->tags[startatom] != tag) tag ++;
 
     
   if (tag <= tagend)     // if this is true, then atom is part of the group
@@ -124,8 +127,8 @@ void Group::group_atoms(int tagstart, int tagend, const Atom &atoms)
   
   int iatom = startatom;
 
-  while (iatom < atoms.nowned && tag <= tagend) {
-    if (atoms.tags[iatom] != tag) 
+  while (iatom < atoms->nowned && tag <= tagend) {
+    if (atoms->tags[iatom] != tag) 
       throw std::invalid_argument("atoms of the same group must be adjacently owned.");
 
     iatom ++;
@@ -139,7 +142,7 @@ void Group::group_atoms(int tagstart, int tagend, const Atom &atoms)
 
 }
 
-void Group::group_molecule(int imol, const Atom &atoms)
+void Group::group_molecule(int imol)
 {
 
   int iatom = 0;
@@ -148,9 +151,9 @@ void Group::group_molecule(int imol, const Atom &atoms)
 
 
   // loop over all atoms, see whether atoms are stored correctly and if molecule is on processor.
-  while (iatom < atoms.nowned) {
+  while (iatom < atoms->nowned) {
     
-    if (atoms.moltags[iatom] == imol ) {
+    if (atoms->moltags[iatom] == imol ) {
       
       if (count == 0)
 	start_indices.push_back(iatom);

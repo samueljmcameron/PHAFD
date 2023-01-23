@@ -18,7 +18,7 @@
 #include <memory>
 #include <vector>
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
   
 class NeighList {

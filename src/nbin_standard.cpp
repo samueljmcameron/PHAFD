@@ -15,17 +15,19 @@
 #include <algorithm>
 #include <iostream>
 
+#include "atom.hpp"
+#include "domain.hpp"
 #include "nbin_standard.hpp"
 #include "neighbor.hpp"
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 #define SMALL 1.0e-6
 #define CUT2BIN_RATIO 100
 
 /* ---------------------------------------------------------------------- */
 
-NBinStandard::NBinStandard() : NBin() {}
+NBinStandard::NBinStandard(PHAFD *phafd) : NBin(phafd) {}
 
 /* ----------------------------------------------------------------------
    setup neighbor binning geometry
@@ -48,7 +50,7 @@ NBinStandard::NBinStandard() : NBin() {}
    mbin = number of bins I need in a dimension
 ------------------------------------------------------------------------- */
 
-void NBinStandard::setup_bins(const psPDE::Domain &domain,double cutoff)
+void NBinStandard::setup_bins(double cutoff)
 {
   // bbox = size of bbox of entire domain
   // bsubbox lo/hi = bounding box of my subdomain extended by comm->cutghost
@@ -62,12 +64,12 @@ void NBinStandard::setup_bins(const psPDE::Domain &domain,double cutoff)
   double cutghost = cutoff;
 
 
-  bsubboxlo = domain.sublo;
+  bsubboxlo = {domain->sublo[0],domain->sublo[1],domain->sublo[2]};
   bsubboxlo[0] -= cutghost;
   bsubboxlo[1] -= cutghost;
   bsubboxlo[2] -= cutghost;
 
-  bsubboxhi = domain.subhi;
+  bsubboxhi = {domain->subhi[0],domain->subhi[1],domain->subhi[2]};
   bsubboxhi[0] += cutghost;
   bsubboxhi[1] += cutghost;
   bsubboxhi[2] += cutghost;
@@ -176,7 +178,7 @@ void NBinStandard::setup_bins(const psPDE::Domain &domain,double cutoff)
    bin owned and ghost atoms
 ------------------------------------------------------------------------- */
 
-void NBinStandard::bin_atoms(const Atom & atoms,int step)
+void NBinStandard::bin_atoms(int step)
 {
   int ibin;
 
@@ -192,8 +194,8 @@ void NBinStandard::bin_atoms(const Atom & atoms,int step)
   // bin in reverse order so linked list will be in forward order
   // also puts ghost atoms at end of list, which is necessary
 
-  int nstart = atoms.nowned;
-  int nall = atoms.nowned + atoms.ngathered;
+  int nstart = atoms->nowned;
+  int nall = atoms->nowned + atoms->ngathered;
 
   atom2bin.resize(nall-nstart);
   bins.resize(nall-nstart);
@@ -201,8 +203,8 @@ void NBinStandard::bin_atoms(const Atom & atoms,int step)
   // loop through ghost atoms first, storing local atom indices in an (ordered) set
   //  to use for later
   for (int i = nall-1; i >= nstart; i--) {
-    if (atoms.labels[i] == Atom::GHOST) {
-      ibin = coord2bin(&(atoms.xs(0,i)));
+    if (atoms->labels[i] == Atom::GHOST) {
+      ibin = coord2bin(&(atoms->xs(0,i)));
       atom2bin[i-nstart] = ibin;
       bins[i-nstart] = binhead[ibin];
       binhead[ibin] = i;
@@ -216,7 +218,7 @@ void NBinStandard::bin_atoms(const Atom & atoms,int step)
   std::set<int>::reverse_iterator rit;
 
   for (rit=local_atom_indices.rbegin(); rit != local_atom_indices.rend(); ++rit) {
-    ibin = coord2bin(&(atoms.xs(0,*rit)));
+    ibin = coord2bin(&(atoms->xs(0,*rit)));
     atom2bin[*rit-nstart] = ibin;
     bins[*rit-nstart] = binhead[ibin];
     binhead[ibin] = *rit;

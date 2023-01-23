@@ -1,6 +1,13 @@
 
 #include "domain.hpp"
-#include "input.hpp"
+#include "atom.hpp"
+#include "grid.hpp"
+#include <iostream>
+
+#include "ps_pde/domain.hpp"
+#include "ps_pde/fftw_mpi_3darray.hpp"
+
+#include "comm_brick.hpp"
 
 #define IMGMASK 1023
 #define IMGMAX 512
@@ -8,91 +15,113 @@
 #define IMG2BITS 20
 
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
-Domain::Domain(int id, int mpi_size,std::string line)
-  : psPDE::Domain(id,mpi_size,input::split_line(line))
-{};
+Domain::Domain(PHAFD *phafd)
+  : Pointers(phafd)
+{
+  period = nullptr;
+  boxlo = nullptr;
+  boxhi = nullptr;
+  ps_domain = nullptr;
+  
+};
 
+Domain::~Domain() = default;
 
-
-void Domain::partition(const psPDE::Grid &grid)
+void Domain::set_box(const std::vector<std::string> &v_line)
 {
 
-  double dz = period[2]/grid.boxgrid[2];
+
+  ps_domain = std::make_unique<psPDE::Domain>(commbrick->me,commbrick->nprocs,v_line);
+
+  period = ps_domain->period.data();
+  boxlo = ps_domain->boxlo.data();
+  boxhi = ps_domain->boxhi.data();
+
+
+}
+
+void Domain::set_subbox()
+{
+
+  if (grid->boxgrid == nullptr)
+    throw std::runtime_error("Cannot create subdomains before grid is created.");
   
-  if (grid.phi) {
+  double dz = period[2]/grid->boxgrid[2];
+  
+  if (grid->phi) {
     sublo[0] = boxlo[0];
     sublo[1] = boxlo[1];
-    sublo[2] = dz*grid.phi->get_local0start() + boxlo[2];
+    sublo[2] = dz*grid->phi->get_local0start() + boxlo[2];
     
     subhi[0] = boxhi[0];
     subhi[1] = boxhi[1];
-    subhi[2] = dz*(grid.phi->get_local0start()+grid.phi->Nz()) + boxlo[2];
+    subhi[2] = dz*(grid->phi->get_local0start()+grid->phi->Nz()) + boxlo[2];
   } else
     throw std::runtime_error("Cannot create subdomains (incompatible grid style).");
   return;
 }
 
 
-void Domain::pbc(Atom & atoms) const
+void Domain::pbc() const
 {
 
   int idim,otherdims;
-  for (int i = 0; i < atoms.nowned; i++) {
-    if (atoms.xs(0,i) < boxlo[0]) {
-      atoms.xs(0,i) += period[0];
-      idim = atoms.images[i] & IMGMASK;
-      otherdims = atoms.images[i] ^ idim;
+  for (int i = 0; i < atoms->nowned; i++) {
+    if (atoms->xs(0,i) < boxlo[0]) {
+      atoms->xs(0,i) += period[0];
+      idim = atoms->images[i] & IMGMASK;
+      otherdims = atoms->images[i] ^ idim;
       idim --;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | idim;
+      atoms->images[i] = otherdims | idim;
     }
-    if (atoms.xs(0,i) >= boxhi[0]) {
-      atoms.xs(0,i) -= period[0];
-      atoms.xs(0,i) = (atoms.xs(0,i) > boxlo[0] ? atoms.xs(0,i) : boxlo[0]);
-      idim = atoms.images[i] & IMGMASK;
-      otherdims = atoms.images[i] ^ idim;
+    if (atoms->xs(0,i) >= boxhi[0]) {
+      atoms->xs(0,i) -= period[0];
+      atoms->xs(0,i) = (atoms->xs(0,i) > boxlo[0] ? atoms->xs(0,i) : boxlo[0]);
+      idim = atoms->images[i] & IMGMASK;
+      otherdims = atoms->images[i] ^ idim;
       idim ++;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | idim;
+      atoms->images[i] = otherdims | idim;
     }
-    if (atoms.xs(1,i) < boxlo[1]) {
-      atoms.xs(1,i) += period[1];
-      idim = (atoms.images[i] >> IMGBITS) & IMGMASK;
-      otherdims = atoms.images[i] ^ (idim << IMGBITS);
+    if (atoms->xs(1,i) < boxlo[1]) {
+      atoms->xs(1,i) += period[1];
+      idim = (atoms->images[i] >> IMGBITS) & IMGMASK;
+      otherdims = atoms->images[i] ^ (idim << IMGBITS);
       idim--;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | (idim << IMGBITS);
+      atoms->images[i] = otherdims | (idim << IMGBITS);
     }
-    if (atoms.xs(1,i) >= boxhi[1]) {
-      atoms.xs(1,i) -= period[1];
-      atoms.xs(1,i) = (atoms.xs(1,i) > boxlo[1] ? atoms.xs(1,i) : boxlo[1]);
-      idim = (atoms.images[i]  >> IMGBITS) & IMGMASK;
-      otherdims = atoms.images[i] ^ (idim << IMGBITS);
+    if (atoms->xs(1,i) >= boxhi[1]) {
+      atoms->xs(1,i) -= period[1];
+      atoms->xs(1,i) = (atoms->xs(1,i) > boxlo[1] ? atoms->xs(1,i) : boxlo[1]);
+      idim = (atoms->images[i]  >> IMGBITS) & IMGMASK;
+      otherdims = atoms->images[i] ^ (idim << IMGBITS);
       idim ++;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | (idim << IMGBITS);
+      atoms->images[i] = otherdims | (idim << IMGBITS);
     }
-    if (atoms.xs(2,i) < boxlo[2]) {
-      atoms.xs(2,i) += period[2];
-      idim = atoms.images[i] >> IMG2BITS;
-      otherdims = atoms.images[i] ^ (idim << IMG2BITS);
+    if (atoms->xs(2,i) < boxlo[2]) {
+      atoms->xs(2,i) += period[2];
+      idim = atoms->images[i] >> IMG2BITS;
+      otherdims = atoms->images[i] ^ (idim << IMG2BITS);
       idim--;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | (idim << IMG2BITS);
+      atoms->images[i] = otherdims | (idim << IMG2BITS);
     }
-    if (atoms.xs(2,i) >= boxhi[2]) {
-      atoms.xs(2,i) -= period[2];
-      atoms.xs(2,i) = (atoms.xs(2,i) > boxlo[2] ? atoms.xs(2,i) : boxlo[2]);
-      idim = atoms.images[i]  >> IMG2BITS;
-      otherdims = atoms.images[i] ^ (idim << IMG2BITS);
+    if (atoms->xs(2,i) >= boxhi[2]) {
+      atoms->xs(2,i) -= period[2];
+      atoms->xs(2,i) = (atoms->xs(2,i) > boxlo[2] ? atoms->xs(2,i) : boxlo[2]);
+      idim = atoms->images[i]  >> IMG2BITS;
+      otherdims = atoms->images[i] ^ (idim << IMG2BITS);
       idim ++;
       idim &= IMGMASK;
-      atoms.images[i] = otherdims | (idim << IMG2BITS);
+      atoms->images[i] = otherdims | (idim << IMG2BITS);
     }
     // store atom in unwrapped coords (needed for polymer updates).
-    unmap(atoms.uxs.col(i),atoms.xs.col(i),atoms.images[i]);
+    unmap(atoms->uxs.col(i),atoms->xs.col(i),atoms->images[i]);
   }
 
   return;

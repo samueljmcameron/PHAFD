@@ -13,7 +13,7 @@
 
 #include "nstencil_half_bin_3d.hpp"
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 

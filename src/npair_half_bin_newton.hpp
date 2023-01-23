@@ -16,13 +16,13 @@
 
 #include "npair.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class NPairHalfBinNewton : public NPair {
  public:
-  NPairHalfBinNewton();
-  void build(class NeighList *,const Atom &) override;
-  void build(class NeighList *,const Atom &,const psPDE::Grid &) override;
+  NPairHalfBinNewton(PHAFD *);
+  void build(class NeighList *) override;
+
   
 };
 

@@ -16,7 +16,7 @@
 #include "my_page.hpp"
 
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 #define PGDELTA 1
 

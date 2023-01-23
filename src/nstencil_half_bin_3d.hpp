@@ -17,7 +17,7 @@
 
 #include "nstencil.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class NStencilHalfBin3d : public NStencil {
  public:

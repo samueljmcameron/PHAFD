@@ -14,27 +14,42 @@
 using namespace PHAFD;
 
 template <typename T>
-FixAtomSemiFlexible<T>::FixAtomSemiFlexible(const Group &group,std::string line,
-					    Atom &atoms,Domain &domain)
-  : FixAtom(group,line,atoms,domain)
+FixAtomSemiFlexible<T>::FixAtomSemiFlexible(PHAFD *phafd) : Pointers(phafd) {};
+
+
+
+void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
 {
 
-  std::string tmpline;
-  std::vector<std::string> v_line;
 
-  
+
+  FixAtom::init(v_line);
+
+  // need to reconvert to a single string (removing the fix name and the group name)
+  std::string line;
+  for (std::vector<std::string>::iterator it = v_line.begin()+2; it !=v_line.end(); it++)
+    line += *it + std::string(" ");
+
+
+
+  // then add in number of beads from group
+
+  std::string tmpline;
+  std::vector<std::string> new_v_line;
+
   for (int i = 0; i < start_indices.size(); i++) {
     nbeads.push_back(end_indices[i]-start_indices[i]);
     
     tmpline = std::string("beads ") + std::to_string(nbeads[i])
       + std::string(" ") +  line;
-    v_line = input::split_line(tmpline);
-    
-    pmers.push_back(std::make_unique<T>(v_line));
+    new_v_line = input::split_line(tmpline);
+    replace_with_new_seed(new_v_line);
+
+    pmers.push_back(std::make_unique<T>(new_v_line));
   }
   
-}
 
+}
 
 
 
@@ -121,6 +136,35 @@ void FixAtomSemiFlexible<T>::final_integrate()
 
   return;
 }
+
+
+/* given a vector like {"alpha", "beta", "seed", "8492109"}, generate
+   a new seed from "8492109" which is unique to the current MPI process.*/
+void FixAtomSemiFlexible::replace_with_new_seed(std::string &v_line)
+{
+
+
+  auto pos = std::find(v_line.begin(),v_line.end(),"seed");
+
+  if (pos == v_line.end())
+    throw std::runtime_error("No seed variable present in fix/semiflexible.");
+
+  pos ++;
+
+  if (pos == v_line.size())
+    throw std::runtime_error("Invalid seed argument in fix/semiflexible.");
+
+
+  int seed = std::stod(v_line[pos]);
+
+  psPDE::RandomPll rpll(world,commbrick->me,seed,commbrick->nprocs);
+
+  seed = rpll.get_processor_seed();
+
+  v_line[pos] = std::to_string(seed);
+
+}
+
 
 
 template class FixAtomSemiFlexible<BeadRodPmer::NoTether>;

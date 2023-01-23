@@ -1,35 +1,34 @@
 #ifndef PHAFD_COMM_BRICK_HPP
 #define PHAFD_COMM_BRICK_HPP
 
-#include <mpi.h>
 #include <vector>
+#include <array>
 
-#include "atom.hpp"
-#include "domain.hpp"
+#include "pointers.hpp"
 
 /*==================================================================
   Structure expected is a 3D system where the x and y only have one
   processor, but z is split into nproc processors
   ==================================================================*/
 
-namespace PHAFD {
-class CommBrick {
+namespace PHAFD_NS {
+class CommBrick : protected Pointers {
 public:
 
-  CommBrick(MPI_Comm);
-  void borders(Atom &);
-  void forward_comm(Atom &);
-  void reverse_comm(Atom &);
+  CommBrick(PHAFD *);
+  ~CommBrick();
+  void borders();
+  void forward_comm();
+  void reverse_comm();
   
-  void setup(const psPDE::Domain &,double);
+  void setup(double);
 
   std::vector<double> buf_send,buf_recv; // flat vector of size 3*numatoms to send/recv
+  int me,nprocs;
   
 private:
 
   double zprd,zinterval,zlo,cutghost;
-  int me,nprocs;
-  const MPI_Comm world;
   const int xyswaps;
 
   std::vector<double> subloz,subhiz;

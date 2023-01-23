@@ -19,7 +19,7 @@
 #define PHAFD_MY_PAGE_H
 
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 
 template <class T> class MyPage {

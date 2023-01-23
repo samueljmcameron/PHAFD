@@ -5,11 +5,23 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
+#include <map>
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
-  void check_MPI_duplicates(const std::vector<int> &,MPI_Comm ,int ,int ,
-  			    std::string);
+  namespace utility {
+    std::vector<std::string> split_line(std::string&);
+    void replacePercentages(std::string &, int);
+    
+    void convertVariables(std::string &,
+			  std::map<std::string, std::string> const&);
+
+  
+    void check_MPI_duplicates(const std::vector<int> &,MPI_Comm ,int ,int ,
+			      std::string);
+
+  }
+
 union ubuf {
   double d;
   int64_t i;

@@ -2,16 +2,19 @@
 #include <algorithm>
 #include <set>
 
+#include "utility.hpp"
+#include "atom.hpp"
+
 #include "read_atoms.hpp"
-#include "input.hpp"
 
 
 
-using namespace PHAFD;
 
+using namespace PHAFD_NS;
 
-int ReadAtoms::read_file(const std::string & fname,std::unique_ptr<Atom> &atoms,
-			 MPI_Comm comm,const Domain &domain)
+ReadAtoms::ReadAtoms(PHAFD *phafd) : Pointers(phafd) {};
+
+int ReadAtoms::read_file(const std::string & fname)
 {
 
 
@@ -30,7 +33,7 @@ int ReadAtoms::read_file(const std::string & fname,std::unique_ptr<Atom> &atoms,
   if (errflag != SUCCESS) errflag = 1;
   else errflag = 0;
 
-  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_MAX,comm);
+  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_MAX,world);
   
   if (total_errflag) return NOFILE;
 
@@ -43,7 +46,7 @@ int ReadAtoms::read_file(const std::string & fname,std::unique_ptr<Atom> &atoms,
   if (errflag != SUCCESS) errflag = 1;
   else errflag = 0;
 
-  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,comm);
+  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
   
   if (total_errflag) return FORMAT_ERROR;
 
@@ -57,14 +60,14 @@ int ReadAtoms::read_file(const std::string & fname,std::unique_ptr<Atom> &atoms,
     totalatoms += num;
 
     
-  atoms = std::make_unique<Atom>(totalatoms,styles);
+  atoms->setup(totalatoms,styles);
 
 
   // create the atoms from the file info
   
-  errflag = create_atoms(atoms.get(),domain);
+  errflag = create_atoms();
   
-  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,comm);
+  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
 
   if (total_errflag) return FORMAT_ERROR;
 
@@ -112,7 +115,7 @@ int ReadAtoms::read_perStyle()
 
 
 
-int ReadAtoms::create_atoms(Atom *atoms,const Domain &domain)
+int ReadAtoms::create_atoms()
 /* Construct atoms from the lines of the data file. */
 {
 
@@ -137,13 +140,13 @@ int ReadAtoms::create_atoms(Atom *atoms,const Domain &domain)
       
       if (line == "" || line[0] == '#') continue;
 
-      v_line = input::split_line(line);
+      v_line = utility::split_line(line);
     
       if (styles[istyle] == "polymer") {
 
 	try {
 	  
-	  created_atoms = atoms->add_polymer(v_line,iatom,&domain);
+	  created_atoms = atoms->add_polymer(v_line,iatom);
 	  
 	} catch (std::invalid_argument &inv) {
 	  
@@ -156,7 +159,7 @@ int ReadAtoms::create_atoms(Atom *atoms,const Domain &domain)
 
 	try {
 	  
-	  created_atoms = atoms->add_sphere(v_line,iatom,&domain);
+	  created_atoms = atoms->add_sphere(v_line,iatom);
 	  
 	} catch (std::invalid_argument &inv) {
 	  
@@ -184,6 +187,8 @@ int ReadAtoms::create_atoms(Atom *atoms,const Domain &domain)
     
   }
 
+  atoms->check_tags_and_types();
+
   return SUCCESS;
 }
 
@@ -207,7 +212,7 @@ int ReadAtoms::reset_styles() {
     
     if (line == "" || line[0] == '#') continue;
     
-    v_line = input::split_line(line);
+    v_line = utility::split_line(line);
     
     
     if (v_line.size() < 2 || v_line[0] != "particle_style")
@@ -271,7 +276,7 @@ int ReadAtoms::reset_particlesPerStyle()
     break;
   }
 
-  v_line = input::split_line(line);
+  v_line = utility::split_line(line);
   
   if (v_line.size() != 1 + styles.size()
       || v_line[0] != "particlesperstyle" )
@@ -321,7 +326,7 @@ int ReadAtoms::reset_atomsPerStyle()
 	break;
       }
       
-      v_line = input::split_line(line);
+      v_line = utility::split_line(line);
       
       if (v_line[0] != "atomsperpolymer")
 	return FORMAT_ERROR;

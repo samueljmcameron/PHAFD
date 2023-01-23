@@ -20,11 +20,11 @@
 
 #define MIN(A,B) ((A) < (B) ? (A) : (B))
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-NBin::NBin() 
+NBin::NBin(PHAFD *phafd) : Pointers(phafd)
 {
   last_bin = -1;
   mbins =  0;
@@ -40,8 +40,8 @@ void NBin::copy_neighbor_info(const Neighbor * neighbor)
   cutneigh = neighbor->cutneigh;
   binsizeflag = neighbor->binsizeflag;
   binsize_user = neighbor->binsize_user;
-  bboxlo = neighbor->bboxlo.data();
-  bboxhi = neighbor->bboxhi.data();
+  bboxlo = neighbor->bboxlo;
+  bboxhi = neighbor->bboxhi;
 }
 
 

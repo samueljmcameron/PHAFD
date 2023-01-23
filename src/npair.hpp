@@ -15,10 +15,10 @@
 #define PHAFD_NPAIR_H
 
 #include <set>
-#include "atom.hpp"
-#include "ps_pde/grid.hpp"
 
-namespace PHAFD {
+#include "pointers.hpp"
+
+namespace PHAFD_NS {
   
 class Neighbor;
 class NBin;
@@ -27,18 +27,16 @@ class NeighList;
 
 
   
-class NPair {
+class NPair : protected Pointers {
  public:
 
 
   int last_build;     // last timestep build performed
 
-  NPair();
+  NPair(PHAFD *);
   virtual void copy_neighbor_info(const Neighbor *);
   void build_setup(const NBin *, const NStencil *, int);
-  virtual void build(class NeighList *,const  Atom &) = 0;
-  virtual void build(class NeighList *, const Atom &,
-		     const psPDE::Grid &) = 0;
+  virtual void build(class NeighList *) = 0;
 
  protected:
 

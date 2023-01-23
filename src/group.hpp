@@ -3,18 +3,17 @@
 
 #include <vector>
 #include <string>
-#include <mpi.h>
 
-#include "atom.hpp"
+#include "pointers.hpp"
 
+namespace PHAFD_NS {
 
-namespace PHAFD {
-
-class Group {
+class Group : protected Pointers {
 public:
-  Group(Atom &);
+  Group(PHAFD *);
   
-  Group(std::string ,Atom &);
+  void create_all();
+  void create_group(const std::vector<std::string> &);
 
   // iterate from start_indices[i] to end_indices[i]
   //  - length of these two vectors will be 1 if atom group,
@@ -29,8 +28,8 @@ public:
 private:
   // group properties, all groups must be in chunks
 
-  void group_atoms(int,int,const Atom &);
-  void group_molecule(int,const Atom &);
+  void group_atoms(int,int);
+  void group_molecule(int);
 
   
 };

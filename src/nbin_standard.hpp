@@ -17,14 +17,14 @@
 
 #include "nbin.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class NBinStandard : public NBin {
  public:
-  NBinStandard();
+  NBinStandard(PHAFD *);
 
-  void setup_bins(const psPDE::Domain &, double) override;
-  void bin_atoms(const Atom &, int) override;
+  void setup_bins(double) override;
+  void bin_atoms(int) override;
 
 };
 

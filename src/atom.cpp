@@ -5,15 +5,29 @@
 #include "atom.hpp"
 #include "utility.hpp"
 #include "domain.hpp"
+#include "comm_brick.hpp"
 
 #include "beadrodpmer/iovtk.hpp"
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
-Atom::Atom(int Natoms,std::vector<std::string> styles)
-  : size_forward(3), size_reverse(3),size_border(6) {
+Atom::Atom(PHAFD *phafd)
+  : Pointers(phafd),size_forward(3), size_reverse(3),size_border(6) {};
+
+
+
+//void Atom::init() {};
+
+void Atom::setup(int Natoms,std::vector<std::string> styles) {
 
   molecule_flag = sphere_flag = false;
+
+  nowned = 0;
+  ngathered = 0;
+  nlocal = 0;
+  nghost = 0;
+
+  nmols = 0;
   
   xs.resize(3,Natoms); 
   uxs.resize(3,Natoms); 
@@ -33,17 +47,9 @@ Atom::Atom(int Natoms,std::vector<std::string> styles)
     radius.resize(Natoms);
   }
   
-  
-  nowned = 0;
-  ngathered = 0;
-  nlocal = 0;
-  nghost = 0;
+}
 
-  nmols = 0;
-  
-};
-
-void Atom::final_init(MPI_Comm comm,int id, int mpi_size)
+void Atom::check_tags_and_types()
 /*
   Call this function after all atoms are created to check that things are as expected.
 
@@ -59,38 +65,38 @@ void Atom::final_init(MPI_Comm comm,int id, int mpi_size)
   int totalerr;
   
   if (tags.size() != nowned) {
-    std::cerr << "number of atom allocated on processor " << id
+    std::cerr << "number of atom allocated on processor " << commbrick->me
 	      << " doesn't match number of atoms created." << std::endl;
     errflag = 1;
   }
 
-  MPI_Allreduce(&errflag,&totalerr,1,MPI_INT,MPI_MAX,comm);
+  MPI_Allreduce(&errflag,&totalerr,1,MPI_INT,MPI_MAX,world);
   if (totalerr)
     throw std::runtime_error("Incorrect atoms allocated on processor(s).");
 
 
 
   if (tset.size() != tags.size()) {
-    std::cout << "duplicate IDs on processor " << id << "." << std::endl;
+    std::cout << "duplicate IDs on processor " << commbrick->me << "." << std::endl;
     errflag = 1;
   }
 
-  MPI_Allreduce(&errflag,&totalerr,1,MPI_INT,MPI_MAX,comm);
+  MPI_Allreduce(&errflag,&totalerr,1,MPI_INT,MPI_MAX,world);
   if (totalerr)
     throw std::runtime_error("duplicate IDs found on processor(s).");
 
 
   // check if any IDs are the same across all processors
-  check_MPI_duplicates(tags,comm,id,mpi_size,"IDs");
+  utility::check_MPI_duplicates(tags,world,commbrick->me,commbrick->nprocs,"IDs");
 
   // check if any molIDs are the same across processors
-  check_MPI_duplicates(mtmp,comm,id,mpi_size,"molIDs");
+  utility::check_MPI_duplicates(mtmp,world,commbrick->me,commbrick->nprocs,"molIDs");
 
   int typemax = *(std::max_element(types.begin(),types.end()));
 
   int all_typemax; 
 
-  MPI_Allreduce(&typemax,&all_typemax,1,MPI_INT,MPI_MAX,comm);
+  MPI_Allreduce(&typemax,&all_typemax,1,MPI_INT,MPI_MAX,world);
 
   ntypes = all_typemax + 1;
 
@@ -98,8 +104,7 @@ void Atom::final_init(MPI_Comm comm,int id, int mpi_size)
 
 
 
-int Atom::add_polymer(std::vector<std::string> v_line,int startatom,
-		      const Domain * domain)
+int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
 /* 
    Input line should have the form "idstart-idend mol t1*l1 t2*l2 ... tn*ln" where
    idstart is the id of the first atom in the polymer, idend-1 is the id of the last atom
@@ -200,8 +205,7 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom,
 }
 
 
-int Atom::add_sphere(std::vector<std::string> v_line, int iatom,
-		     const Domain * domain)
+int Atom::add_sphere(std::vector<std::string> v_line, int iatom)
 /*
   Create a single sphere at index iatom. Input should have format id type x 
 

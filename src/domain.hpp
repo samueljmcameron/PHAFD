@@ -1,30 +1,44 @@
 #ifndef PHAFD_DOMAIN_HPP
+
 #define PHAFD_DOMAIN_HPP
 
 
-#include "atom.hpp"
 #include <array>
 #include <Eigen/Core>
 
+#include "pointers.hpp"
 
-#include "ps_pde/domain.hpp"
-#include "ps_pde/grid.hpp"
+namespace psPDE {
+  class Domain;
 
-namespace PHAFD {
-class Domain : public psPDE::Domain
+}
+namespace PHAFD_NS {
+
+  
+class Domain : protected Pointers
 {
 public:
-  Domain(int,int, std::string);
+  Domain(PHAFD *);
+  ~Domain();
+  std::unique_ptr<psPDE::Domain> ps_domain;
+
   
-  void partition(const psPDE::Grid &);
-  void pbc (Atom &) const;
+  void set_box(const std::vector<std::string> &);
+  void set_subbox();
+  void pbc () const;
   int set_image() const;
 
+
+  
+  // addresses of data from psPDE arrays (of size 3)
+  double *period,*boxlo,*boxhi;
+  std::array<double,3> sublo,subhi;
 
   void map(Eigen::Ref<Eigen::Vector3d>,
   	   const Eigen::Ref<const Eigen::Vector3d> &,int ) const;
 
 private:
+
   void unmap(Eigen::Ref<Eigen::Vector3d>,
   	     const Eigen::Ref<const Eigen::Vector3d> &,int image) const;
 

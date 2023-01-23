@@ -6,33 +6,29 @@
 
 #include <Eigen/Core>
 
-#include "domain.hpp"
-#include "atom.hpp"
-#include "ps_pde/grid.hpp"
-
 #include <memory>
 #include <array>
-#include <mpi.h>
 
+#include "pointers.hpp"
 
-
-namespace PHAFD {
+namespace PHAFD_NS {
 class NBin;
 class NStencil;
 class NeighList;
 class NPair;
   
-class Neighbor {
+class Neighbor : protected Pointers {
   
   int delay,every,ago,ncalls,lastcall;
   bool dist_check;
   double triggersq;
 
-  bool check_distance(Atom &, MPI_Comm);
+  bool check_distance();
   
   
 public:
-  Neighbor();
+  Neighbor(PHAFD *);
+  ~Neighbor();
   Eigen::Matrix3Xd xholds;
 
   int ndanger;
@@ -45,10 +41,10 @@ public:
   std::vector<std::unique_ptr<NStencil>> neigh_stencils;
   std::vector<std::unique_ptr<NeighList>> neigh_lists;
   std::vector<std::unique_ptr<NPair>> neigh_pairs;
-  std::array<double,3> bboxlo,bboxhi;
-  void setup(const psPDE::Domain &, double,double);
-  void build(const Atom &,const psPDE::Grid &,int);
-  bool decide(Atom &, MPI_Comm);
+  const double *bboxlo,*bboxhi;
+  void setup(double,double);
+  void build(int);
+  bool decide();
 
   int get_ncalls() {return ncalls;};
 

@@ -14,7 +14,7 @@
 #include "my_page.hpp"
 #include <cstdlib>
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 /** \class LAMMPS_NS::MyPage
  * \brief Templated class for storing chunks of datums in pages.

@@ -6,22 +6,11 @@
 #include <mpi.h>
 #include <chrono>
 
-#include "beadrodpmer/no_tether.hpp"
-#include "beadrodpmer/single_tether.hpp"
-#include "beadrodpmer/double_tether.hpp"
-
-#include "ps_pde/grid.hpp"
-#include "ps_pde/iovtk.hpp"
-#include "ps_pde/conjugate_volfrac.hpp"
-#include "ps_pde/fixgrid_floryhuggins.hpp"
-
 #include "input.hpp"
 #include "atom.hpp"
 #include "comm_brick.hpp"
 #include "domain.hpp"
-#include "read_atoms.hpp"
 #include "group.hpp"
-#include "fixatom_semiflexible.hpp"
 #include "neighbor.hpp"
 #include "nbin.hpp"
 #include "nstencil.hpp"

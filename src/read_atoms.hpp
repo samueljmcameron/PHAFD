@@ -3,23 +3,23 @@
 
 #include <string>
 #include <fstream>
-#include <memory>
-#include <mpi.h>
-
-#include "atom.hpp"
-#include "domain.hpp"
-namespace PHAFD {
 
 
-class ReadAtoms {
+#include "pointers.hpp"
+
+namespace PHAFD_NS {
+
+
+class ReadAtoms : protected Pointers {
 public:
 
   static inline int SUCCESS = 0;
   static inline int FORMAT_ERROR = 1;
   static inline int NOFILE = 2;
 
-  int read_file(const std::string &,std::unique_ptr<Atom> &,
-		MPI_Comm ,const Domain &);
+  ReadAtoms(PHAFD *);
+
+  int read_file(const std::string &);
 
 
 private:
@@ -55,7 +55,7 @@ private:
   int reset_particlesPerStyle();
   int reset_atomsPerStyle();
   
-  int create_atoms(Atom *,const Domain &);
+  int create_atoms();
 
   
 

@@ -15,16 +15,17 @@
 #include "npair_half_bin_newton.hpp"
 #include "neigh_list.hpp"
 #include "my_page.hpp"
+#include "atom.hpp"
 
 #include <iostream>
 
 
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-NPairHalfBinNewton::NPairHalfBinNewton() : NPair() {}
+NPairHalfBinNewton::NPairHalfBinNewton(PHAFD *phafd) : NPair(phafd) {}
 
 /* ----------------------------------------------------------------------
    binned neighbor list construction with full Newton's 3rd law
@@ -32,14 +33,8 @@ NPairHalfBinNewton::NPairHalfBinNewton() : NPair() {}
    every pair stored exactly once by some processor
 ------------------------------------------------------------------------- */
 
-void NPairHalfBinNewton::build(NeighList *list,const Atom &atoms,
-			       const psPDE::Grid & grid)
-{
-  std::cerr << " Cannot build with grid for npair half pair bin!" << std::endl;
-  return;
-}
 
-void NPairHalfBinNewton::build(NeighList *list,const Atom &atoms)
+void NPairHalfBinNewton::build(NeighList *list)
 {
   int n,ibin;
   double xtmp,ytmp,ztmp,delx,dely,delz,rsq;
@@ -62,16 +57,16 @@ void NPairHalfBinNewton::build(NeighList *list,const Atom &atoms)
 
 
 
-  int nstart = atoms.nowned;
+  int nstart = atoms->nowned;
   
   for (auto i : local_atom_indices) {
 
     n = 0;
     neighptr = ipage->vget();
     
-    xtmp = atoms.xs(0,i);
-    ytmp = atoms.xs(1,i);
-    ztmp = atoms.xs(2,i);
+    xtmp = atoms->xs(0,i);
+    ytmp = atoms->xs(1,i);
+    ztmp = atoms->xs(2,i);
     
     // loop over rest of atoms in i's bin, ghosts are at end of linked list
     // if j is owned atom, store it, since j is beyond i in linked list
@@ -79,17 +74,17 @@ void NPairHalfBinNewton::build(NeighList *list,const Atom &atoms)
     
     for (int j = bins[i-nstart]; j >= 0; j = bins[j-nstart]) {
       if (!local_atom_indices.count(j)) {
-        if (atoms.xs(2,j) < ztmp) continue;
-        if (atoms.xs(2,j) == ztmp) {
-          if (atoms.xs(1,j) < ytmp) continue;
-          if (atoms.xs(1,j) == ytmp && atoms.xs(0,j) < xtmp) continue;
+        if (atoms->xs(2,j) < ztmp) continue;
+        if (atoms->xs(2,j) == ztmp) {
+          if (atoms->xs(1,j) < ytmp) continue;
+          if (atoms->xs(1,j) == ytmp && atoms->xs(0,j) < xtmp) continue;
         }
       }
 
 
-      delx = xtmp - atoms.xs(0,j);
-      dely = ytmp - atoms.xs(1,j);
-      delz = ztmp - atoms.xs(2,j);
+      delx = xtmp - atoms->xs(0,j);
+      dely = ytmp - atoms->xs(1,j);
+      delz = ztmp - atoms->xs(2,j);
       rsq = delx*delx + dely*dely + delz*delz;
 
       if (rsq <= cutneighsq) {
@@ -104,9 +99,9 @@ void NPairHalfBinNewton::build(NeighList *list,const Atom &atoms)
       for (int j = binhead[ibin+stencil[k]]; j >= 0; j = bins[j-nstart]) {
       
       
-        delx = xtmp - atoms.xs(0,j);
-        dely = ytmp - atoms.xs(1,j);
-        delz = ztmp - atoms.xs(2,j);
+        delx = xtmp - atoms->xs(0,j);
+        dely = ytmp - atoms->xs(1,j);
+        delz = ztmp - atoms->xs(2,j);
         rsq = delx*delx + dely*dely + delz*delz;
 
         if (rsq <= cutneighsq) {

@@ -4,24 +4,22 @@
 #include "neigh_list.hpp"
 #include "my_page.hpp"
 
+#include "atom.hpp"
+#include "grid.hpp"
+
+#include "ps_pde/fftw_mpi_3darray.hpp"
+
 #include <iostream>
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
-NPairGridBin::NPairGridBin() : NPair() {}
+NPairGridBin::NPairGridBin(PHAFD *phafd) : NPair(phafd) {}
 
 /* ----------------------------------------------------------------------
    binned neighbor list construction for all neighbors of every grid point
 ------------------------------------------------------------------------- */
 
-void NPairGridBin::build(NeighList *list,const Atom &atoms)
-{
-  std::cerr << "Cannot build without grid for npair grid bin!" << std::endl;
-  return;
-}
-
-void NPairGridBin::build(NeighList *list,const Atom &atoms,
-			 const psPDE::Grid & grid)
+void NPairGridBin::build(NeighList *list)
 {
   int n,ibin;
   double xtmp,ytmp,ztmp,delx,dely,delz,rsq;
@@ -43,9 +41,9 @@ void NPairGridBin::build(NeighList *list,const Atom &atoms,
   firstneigh.clear();
   ipage->reset();
 
-  int nstart = atoms.nowned;
+  int nstart = atoms->nowned;
   
-  int totalgridbins = grid.phi->Nx()*grid.phi->Ny()*grid.phi->Nz();
+  int totalgridbins = grid->phi->Nx()*grid->phi->Ny()*grid->phi->Nz();
   
 
   /*
@@ -72,22 +70,22 @@ void NPairGridBin::build(NeighList *list,const Atom &atoms,
 
   int gridindex = 0;
 
-  int local0start = grid.phi->get_local0start();
-  for (int k = 0; k < grid.phi->Nz(); k++) {
+  int local0start = grid->phi->get_local0start();
+  for (int k = 0; k < grid->phi->Nz(); k++) {
 
-    ztmp = (k+local0start)*grid.dz()+bboxlo[2];
+    ztmp = (k+local0start)*grid->dz()+bboxlo[2];
 
-    for (int j = 0; j < grid.phi->Ny(); j++) {
+    for (int j = 0; j < grid->phi->Ny(); j++) {
 
-      ytmp = j*grid.dy()+bboxlo[1];
+      ytmp = j*grid->dy()+bboxlo[1];
       
-      for (int i = 0; i < grid.phi->Nx(); i++) {
+      for (int i = 0; i < grid->phi->Nx(); i++) {
 
 	n = 0;
 	neighptr = ipage->vget();
 
 
-	xtmp = i*grid.dx()+bboxlo[0];
+	xtmp = i*grid->dx()+bboxlo[0];
 
 	
 	ibin = coord2bin(xtmp,ytmp,ztmp);
@@ -96,9 +94,9 @@ void NPairGridBin::build(NeighList *list,const Atom &atoms,
 	for (int m = 0; m < nstencil; m++) {
 	  for (int ai = binhead[ibin + stencil[m]]; ai >= 0; ai = bins[ai-nstart]) {
 	    
-	    delx = xtmp - atoms.xs(0,ai);
-	    dely = ytmp - atoms.xs(1,ai);
-	    delz = ztmp - atoms.xs(2,ai);
+	    delx = xtmp - atoms->xs(0,ai);
+	    dely = ytmp - atoms->xs(1,ai);
+	    delz = ztmp - atoms->xs(2,ai);
 	    
 	    rsq = delx*delx + dely*dely + delz*delz;
 	    

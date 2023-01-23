@@ -1,19 +1,18 @@
 #ifndef PHAFD_INPUT_HPP
 #define PHAFD_INPUT_HPP
 
-#include <string>
-#include <vector>
-#include <map>
+#include "pointers.hpp"
 
+namespace PHAFD_NS {
 
-namespace PHAFD {
-  namespace input {
-  std::vector<std::string> split_line(std::string&);
-  void replacePercentages(std::string &, int);
+class Input : protected Pointers {
+public:
+  Input(PHAFD *);
 
-  void convertVariables(std::string &,
-			std::map<std::string, std::string> const&);
-  }
-  
+  ~Input();
+
+  void read();
 };
+  
+}
 #endif

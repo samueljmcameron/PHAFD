@@ -16,7 +16,7 @@
 #include "neighbor.hpp"
 #include "nbin.hpp"
 
-using namespace PHAFD;
+using namespace PHAFD_NS;
 
 /* ----------------------------------------------------------------------
    NStencil classes
