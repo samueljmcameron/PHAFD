@@ -28,7 +28,10 @@ class NeighList;
 
   
 class NPair : protected Pointers {
- public:
+public:
+
+  static inline int HALFBINNEWTON = 0;
+  static inline int GRIDBIN = 1;
 
 
   int last_build;     // last timestep build performed

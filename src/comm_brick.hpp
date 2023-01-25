@@ -21,7 +21,7 @@ public:
   void forward_comm();
   void reverse_comm();
   
-  void setup(double);
+  void setup();
 
   std::vector<double> buf_send,buf_recv; // flat vector of size 3*numatoms to send/recv
   int me,nprocs;

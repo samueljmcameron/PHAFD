@@ -18,6 +18,7 @@
 #include "pair_lj_cut.hpp"
 
 #include "neigh_list.hpp"
+#include "npair.hpp"
 
 #include <cmath>
 
@@ -35,7 +36,8 @@ using namespace PHAFD_NS;
 /* ---------------------------------------------------------------------- */
 
 PairLJCut::PairLJCut(PHAFD *phafd) : Pair(phafd) {
-
+  list_type = NeighList::HALF;
+  list_style = NPair::HALFBINNEWTON;
 };
 /* ---------------------------------------------------------------------- */
 
@@ -105,10 +107,14 @@ void PairLJCut::settings(const std::vector<std::string>& params)
   double cut = std::stod(params.at(0));
   double epsilon = std::stod(params.at(1));
   double sigma = std::stod(params.at(2));
+
+  maxcut = cut;
   
   lj1 = 48*epsilon*pow(sigma,12.0);
   lj2 = 24*epsilon*pow(sigma,6.0);
   cutsq = cut*cut;
+
+
 
 }
 

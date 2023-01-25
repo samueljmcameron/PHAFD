@@ -3,6 +3,7 @@
 #include "atom.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
+#include "neighbor.hpp"
 
 #define BIG 1e20
 
@@ -91,13 +92,13 @@ CommBrick::CommBrick(PHAFD *phafd)
 
 CommBrick::~CommBrick() = default;
 
-/* must be called after domain subbox is created */
-void CommBrick::setup(double cutoff)
+/* must be called after domain subbox is created, and after neighbor setup is called. */
+void CommBrick::setup()
 {
 
   const int zdim = 2;
 
-  cutghost = cutoff;
+  cutghost = neighbor->cutneigh;
   zprd = domain->period[2];
   zinterval = domain->subhi[2]-domain->sublo[2];
   zlo = domain->boxlo[2];

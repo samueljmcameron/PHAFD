@@ -26,7 +26,7 @@ class Neighbor : protected Pointers {
   double triggersq;
 
   bool check_distance();
-  
+  void construct_lists();
   
 public:
   Neighbor(PHAFD *);

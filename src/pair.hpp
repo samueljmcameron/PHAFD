@@ -30,9 +30,6 @@ public:
 
   Pair(PHAFD *);
 
-
-
-
   // general child-class methods
 
   virtual void compute() = 0;
@@ -42,6 +39,10 @@ public:
   virtual void coeff(const std::vector<std::string> &) = 0;
 
   virtual void settings(const std::vector<std::string> &) = 0;
+
+  double maxcut;
+
+  int list_type,list_style;
 
 protected:
 

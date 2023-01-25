@@ -24,7 +24,10 @@ using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-Pair::Pair(PHAFD *phafd) : Pointers(phafd) {};
+Pair::Pair(PHAFD *phafd) : Pointers(phafd) {
+  list_type = -1;
+  list_style = -1;
+};
 
 
 /* ----------------------------------------------------------------------

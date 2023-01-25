@@ -18,6 +18,7 @@
 #include "pair_gridatom_gaussian.hpp"
 
 #include "neigh_list.hpp"
+#include "npair.hpp"
 
 #include <cmath>
 
@@ -34,7 +35,9 @@ using namespace PHAFD_NS;
 /* ---------------------------------------------------------------------- */
 
 PairGridAtomGaussian::PairGridAtomGaussian(PHAFD *phafd) : Pair(phafd) {
-
+  list_type = NeighList::FULL;
+  list_style = NPair::GRIDBIN;
+  
 };
 
 void PairGridAtomGaussian::compute()
@@ -119,7 +122,8 @@ void PairGridAtomGaussian::settings(const std::vector<std::string> &params)
 {
 
   double cut = std::stod(params.at(0));
-
+  
+  maxcut = cut;
   
   cutsq.resize(atoms->ntypes);
   epsilonstrength.resize(atoms->ntypes);

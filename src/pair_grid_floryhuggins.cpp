@@ -18,6 +18,7 @@
 #include "pair_grid_floryhuggins.hpp"
 
 #include "neigh_list.hpp"
+#include "npair.hpp"
 
 #include <cmath>
 
@@ -34,6 +35,7 @@ using namespace PHAFD_NS;
 
 PairGridFloryHuggins::PairGridFloryHuggins(PHAFD *phafd) : Pair(phafd) {
 
+  list_type = NeighList::NONE;
   ps_flory = std::make_unique<psPDE::FixGridFloryHuggins>();
   
 };
@@ -50,6 +52,7 @@ void PairGridFloryHuggins::compute()
 void PairGridFloryHuggins::settings(const std::vector<std::string> &params)
 {
 
+  maxcut = 0;
   ps_flory->readCoeffs(params);
 
 }

@@ -58,18 +58,6 @@ void Input::read()
 
   // grid is now completely set.
 
-  
-  commbrick->setup(4.0);
-
-
-
-  line = "2.0";
-  v_line = utility::split_line(line);
-  
-  neighbor->setup(v_line);
-
-  
-
 
   std::string atom_data_fname = "read_p%.data";
 
@@ -80,6 +68,55 @@ void Input::read()
 
   read_atoms.read_file(atom_data_fname);
 
+  // atoms are now completely set.
+
+
+
+  // need to figure out force cutoffs before neighbor and commbrick
+  line = "4.0";
+  pairs.push_back(std::make_unique<PairGridAtomGaussian>(phafd));
+  v_line = utility::split_line(line);
+  pairs.at(0)->settings(v_line);
+  
+  line = "0 phi 0.9 epsilon 4.0";
+  v_line = utility::split_line(line);
+  pairs.at(0)->coeff(v_line);
+
+  line = "1 phi 0.1 epsilon 4.0";
+  v_line = utility::split_line(line);
+  pairs.at(0)->coeff(v_line);
+
+
+  line = "2.0 1.0 1.781794";
+  pairs.push_back(std::make_unique<PairLJCut>(phafd));
+  v_line = utility::split_line(line);
+  pairs.at(1)->settings(v_line);
+
+
+  
+  line = "temp 1.0 chi 3.0 volFH 0.01";
+  pairs.push_back(std::make_unique<PairGridFloryHuggins>(phafd));
+  v_line = utility::split_line(line);
+  pairs.at(2)->settings(v_line);
+
+
+  
+  
+
+  // set neighbor skin , infer cutoff from force cutoffs,
+  //  and give pairs correct neigh_lists
+  line = "2.0";
+  v_line = utility::split_line(line);
+  neighbor->setup(v_line);
+
+
+  
+  // can set commbrick now that neighbor cutoff is set
+  commbrick->setup();
+
+
+
+  // could set fixes and groups before or after neighbor and commbrick
   groups.push_back(std::make_unique<Group>(phafd));
   groups.at(0)->create_all();
 
@@ -115,39 +152,12 @@ void Input::read()
   v_line = utility::split_line(line);
   gridfixes.at(0)->init(v_line);
   
-  line = "4.0";
-  pairs.push_back(std::make_unique<PairGridAtomGaussian>(phafd));
-  v_line = utility::split_line(line);
-  pairs.at(0)->settings(v_line);
-  pairs.at(0)->init_list(neighbor->neigh_lists.at(0).get());
-  
-  line = "0 phi 0.9 epsilon 4.0";
-  v_line = utility::split_line(line);
-  pairs.at(0)->coeff(v_line);
-
-  line = "1 phi 0.1 epsilon 4.0";
-  v_line = utility::split_line(line);
-  pairs.at(0)->coeff(v_line);
-
-
-  line = "2.0 1.0 1.781794";
-  pairs.push_back(std::make_unique<PairLJCut>(phafd));
-  v_line = utility::split_line(line);
-  pairs.at(1)->settings(v_line);
-  pairs.at(1)->init_list(neighbor->neigh_lists.at(1).get());
-
-  
-  line = "temp 1.0 chi 3.0 volFH 0.01";
-  pairs.push_back(std::make_unique<PairGridFloryHuggins>(phafd));
-  v_line = utility::split_line(line);
-  pairs.at(2)->settings(v_line);
-  pairs.at(2)->init_list(nullptr);
 
   
   // need to run things now?
 
   int step = 0;
-  int Nsteps = 200000;
+  int Nsteps = 10000;
   double t = 0;
   double dt = 1e-3;
 

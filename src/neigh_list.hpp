@@ -24,6 +24,9 @@ namespace PHAFD_NS {
 class NeighList {
  public:
 
+  static inline int HALF = 0;
+  static inline int FULL = 1;
+  static inline int NONE = 0;
 
   // data structs to store neighbor pairs I,J and associated values
 
@@ -35,7 +38,7 @@ class NeighList {
   int oneatom;           // max size for one atom
   std::unique_ptr<MyPage<int>> ipage;    // page of neighbor indices
 
-
+  int list_type,list_style;
   // methods
 
   NeighList();
