@@ -24,6 +24,8 @@ public:
   std::vector<int> end_indices; // last index + 1 in chunk
 
   std::string name,style;
+
+  inline static std::vector<std::string> NAMES;
   
 private:
   // group properties, all groups must be in chunks

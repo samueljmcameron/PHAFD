@@ -50,7 +50,9 @@ void Domain::set_subbox()
   
   double dz = period[2]/grid->boxgrid[2];
   
-  if (grid->phi) {
+  if (grid->phi == nullptr) {
+    throw std::runtime_error("Cannot create subdomains (incompatible grid style).");
+  } else {
     sublo[0] = boxlo[0];
     sublo[1] = boxlo[1];
     sublo[2] = dz*grid->phi->get_local0start() + boxlo[2];
@@ -58,8 +60,8 @@ void Domain::set_subbox()
     subhi[0] = boxhi[0];
     subhi[1] = boxhi[1];
     subhi[2] = dz*(grid->phi->get_local0start()+grid->phi->Nz()) + boxlo[2];
-  } else
-    throw std::runtime_error("Cannot create subdomains (incompatible grid style).");
+  }
+
   return;
 }
 

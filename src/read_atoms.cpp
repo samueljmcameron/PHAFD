@@ -215,10 +215,10 @@ int ReadAtoms::reset_styles() {
     v_line = utility::split_line(line);
     
     
-    if (v_line.size() < 2 || v_line[0] != "particle_style")
+    if (v_line.size() < 2 || v_line.at(0) != "particle_style")
       return FORMAT_ERROR;
     
-    if (v_line[1] == "hybrid") {
+    if (v_line.at(1) == "hybrid") {
       if (v_line.size() < 3)
 	return FORMAT_ERROR;
       
@@ -279,7 +279,7 @@ int ReadAtoms::reset_particlesPerStyle()
   v_line = utility::split_line(line);
   
   if (v_line.size() != 1 + styles.size()
-      || v_line[0] != "particlesperstyle" )
+      || v_line.at(0) != "particlesperstyle" )
     return FORMAT_ERROR;
   
   
@@ -328,7 +328,7 @@ int ReadAtoms::reset_atomsPerStyle()
       
       v_line = utility::split_line(line);
       
-      if (v_line[0] != "atomsperpolymer")
+      if (v_line.at(0) != "atomsperpolymer")
 	return FORMAT_ERROR;
       
       v_line.erase(v_line.begin());

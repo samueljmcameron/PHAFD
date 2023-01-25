@@ -1,6 +1,8 @@
 
 #include "utility.hpp"
+#include "ps_pde/randompll.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <set>
 
@@ -131,6 +133,36 @@ void PHAFD_NS::utility::convertVariables(std::string &raw,
   }
   
   return;
+}
+
+
+/* given a vector like {"alpha", "beta", "seed", "8492109"}, generate
+   a new seed from "8492109" which is unique to the current MPI process.*/
+
+void PHAFD_NS::utility::replace_with_new_seed(std::vector<std::string> &v_line,
+					      const std::string &specifier,int id,
+					      int mpi_size,MPI_Comm comm)
+{
+
+  auto it = std::find(v_line.begin(),v_line.end(),"seed");
+
+  if (it == v_line.end())
+    throw std::runtime_error("No seed variable present in " + specifier + std::string("."));
+
+  it ++;
+
+  if (it == v_line.end())
+    throw std::runtime_error("Invalid seed argument in " + specifier + std::string("."));
+
+
+  int seed = std::stod(*it);
+
+  psPDE::RandomPll rpll(comm,id,seed,mpi_size);
+
+  int newseed = rpll.get_processor_seed();
+
+  *it = std::to_string(newseed);
+
 }
 
 

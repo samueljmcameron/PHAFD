@@ -20,22 +20,28 @@
 #include "neigh_list.hpp"
 
 #include <cmath>
-#include <iostream>
 
-using namespace PHAFD;
+
+#include "atom.hpp"
+#include "comm_brick.hpp"
+#include "grid.hpp"
+#include "domain.hpp"
+
+
+#include "ps_pde/fftw_mpi_3darray.hpp"
+
+using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairLJCut::PairLJCut(Atom *atoms, psPDE::Grid *grid) : Pair(atoms,grid)
-{
+PairLJCut::PairLJCut(PHAFD *phafd) : Pair(phafd) {
 
-  if (grid)  std::cerr << "Cannot compute grid+atom pair style for lj/cut." << std::endl;
-}
+};
 /* ---------------------------------------------------------------------- */
 
 
 
-void PairLJCut::compute(const Domain &)
+void PairLJCut::compute()
 {
   int i,j, jnum;
   double xtmp, ytmp, ztmp, delx, dely, delz, fpair;
@@ -92,13 +98,13 @@ void PairLJCut::compute(const Domain &)
 
 }
 
-void PairLJCut::settings(std::vector<std::string> params)
+void PairLJCut::settings(const std::vector<std::string>& params)
 {
 
-  double cut = std::stod(params[0]);
-  double epsilon = std::stod(params[1]);
-  double sigma = std::stod(params[2]);
 
+  double cut = std::stod(params.at(0));
+  double epsilon = std::stod(params.at(1));
+  double sigma = std::stod(params.at(2));
   
   lj1 = 48*epsilon*pow(sigma,12.0);
   lj2 = 24*epsilon*pow(sigma,6.0);
@@ -107,12 +113,7 @@ void PairLJCut::settings(std::vector<std::string> params)
 }
 
 
-
-/* ----------------------------------------------------------------------
-   set coeffs for one or more type pairs
-------------------------------------------------------------------------- */
-
-void PairLJCut::coeff(std::vector<std::string> params)
+void PairLJCut::coeff(const std::vector<std::string> & params)
 {
 
 

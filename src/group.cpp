@@ -16,6 +16,13 @@ void Group::create_all()
   name = "all";
   style = "atom";
 
+
+  for (auto &gname : NAMES)
+    if (gname == name)
+      throw std::runtime_error("Error: Duplicate of group " + name + std::string("."));
+
+  NAMES.push_back(name);
+  
   start_indices.push_back(0);
   end_indices.push_back(atoms->nowned);
 
@@ -29,20 +36,28 @@ void Group::create_group(const  std::vector<std::string> &v_line)
   std::set<int> group_set;
 
 
-  name = v_line[0];
+  name = v_line.at(0);
+
+  for (auto &gname : NAMES)
+    if (gname == name)
+      throw std::runtime_error("Error: Duplicate of group " + name + std::string("."));
+
+  NAMES.push_back(name);
+
+  
 
   if (name == "all")
     throw std::invalid_argument("Cannot call group reserved word 'all'.");
   
-  style = v_line[1];
+  style = v_line.at(1);
   
-  if (v_line[2] == "<>") {
+  if (v_line.at(2) == "<>") {
 
     if (v_line.size() != 5)
       throw std::invalid_argument("need start and end point for group using '<>' argument.");
 
-    int nstart = std::stoi(v_line[3]);
-    int nend = std::stoi(v_line[4]);
+    int nstart = std::stoi(v_line.at(3));
+    int nend = std::stoi(v_line.at(4));
 
     if (nend < nstart)
       throw std::invalid_argument("end point for group larger than start point when using '<>'.");
@@ -60,7 +75,7 @@ void Group::create_group(const  std::vector<std::string> &v_line)
 
     int tag;
     for (std::string::size_type i = 2; i < v_line.size(); i++) {
-      tag = std::stoi(v_line[i]);
+      tag = std::stoi(v_line.at(i));
       if (tag < 0)
 	throw std::invalid_argument("Group atom/molecule IDs must be greater than zero.");
       group_set.insert(tag);
@@ -78,7 +93,7 @@ void Group::create_group(const  std::vector<std::string> &v_line)
 
   } else if (style == "atom") {
 
-    if (v_line[2] != "<>")
+    if (v_line.at(2) != "<>")
       throw std::invalid_argument("Group atom requires '<>' style parameters.");
 
     group_atoms(*group_set.begin(),*group_set.rbegin());

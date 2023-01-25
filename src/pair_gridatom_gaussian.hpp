@@ -16,16 +16,15 @@
 
 #include "pair.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class PairGridAtomGaussian : public Pair {
 public:
-  PairGridAtomGaussian(Atom *,psPDE::Grid *);
-  void compute(const Domain &) override;
+  PairGridAtomGaussian(PHAFD *);
+  virtual void compute() override;
 
-  
-  void settings(std::vector<std::string> ) override;
-  void coeff(std::vector<std::string>) override;
+  virtual void settings(const std::vector<std::string> &) override;
+  virtual void coeff(const std::vector<std::string> &) override;
 
 private:
   std::vector<double> epsilonstrength,nucwidth,phi,cutsq;

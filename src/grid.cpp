@@ -1,7 +1,8 @@
 #include "grid.hpp"
+#include "comm_brick.hpp"
 
+#include "utility.hpp"
 #include "domain.hpp"
-
 #include "ps_pde/grid.hpp"
 
 using namespace PHAFD_NS;
@@ -47,14 +48,15 @@ void Grid::create(const std::vector<std::string> &v_line)
   
 }
 
+/* need to call after commbrick->setup() */
 void Grid::populate(const std::vector<std::string> &v_line)
 {
-  if (domain->ps_domain == nullptr)
-    throw std::runtime_error("Cannot populate grid before domain is created.");
 
-    
+  std::vector<std::string> new_v_line = v_line;
   
-  ps_grid->populate(v_line,*(domain->ps_domain));
+  utility::replace_with_new_seed(new_v_line,"grid populate",commbrick->me,commbrick->nprocs,world);
+  
+  ps_grid->populate(new_v_line);
 }
 
 

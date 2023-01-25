@@ -14,7 +14,9 @@ public:
   Pointers(PHAFD *ptr) : phafd(ptr), atoms(ptr->atoms),domain(ptr->domain),
 			 grid(ptr->grid),commbrick(ptr->commbrick),
 			 neighbor(ptr->neighbor),groups(ptr->groups),
-			 input(ptr->input),fixes(ptr->fixes),world(ptr->world)  {};
+			 input(ptr->input),atomfixes(ptr->atomfixes),
+			 gridfixes(ptr->gridfixes),pairs(ptr->pairs),
+			 world(ptr->world)  {};
   
 protected:
 
@@ -30,7 +32,9 @@ protected:
   std::unique_ptr<Neighbor> &neighbor;
   std::vector<std::unique_ptr<Group>> &groups;
   std::unique_ptr<Input> &input;
-  std::vector<std::unique_ptr<Fix>> &fixes;
+  std::vector<std::unique_ptr<FixAtom>> &atomfixes;
+  std::vector<std::unique_ptr<FixGrid>> &gridfixes;
+  std::vector<std::unique_ptr<Pair>> &pairs;
 
   MPI_Comm &world;
 };

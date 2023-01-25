@@ -117,7 +117,8 @@ void NPairGridBin::build(NeighList *list)
 	ipage->vgot(n);
 	
 	if (ipage->status())
-	  std::cout << "Neighbor list overflow, boost neigh_modify one" << std::endl;
+	  std::cerr << "Neighbor list overflow, terrible things are going to happen."
+		    << std::endl;
 
       }
     }

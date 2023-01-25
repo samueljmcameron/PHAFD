@@ -16,6 +16,7 @@
 #include "neigh_list.hpp"
 #include "my_page.hpp"
 #include "atom.hpp"
+#include "comm_brick.hpp"
 
 #include <iostream>
 
@@ -115,7 +116,9 @@ void NPairHalfBinNewton::build(NeighList *list)
     numneigh.push_back(n);
     ipage->vgot(n);
     if (ipage->status())
-      std::cerr << "Neighbor list overflow, boost neigh_modify one" << std::endl;
+      std::cerr << "Neighbor list overflow, terrible things are going to happen." << std::endl;
   }
 
+
+  
 }

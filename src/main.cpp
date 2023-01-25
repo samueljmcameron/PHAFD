@@ -304,7 +304,9 @@ int main(int argc, char **argv)
     
     for (int step = 1; step <= Nsteps; step++) {
 
-
+      if (commbrick->me == 0)
+	std::cout << "on step " << step << std::endl;
+      
       if (neighbor.decide(*atoms,comm)) {
 	domain.pbc(*atoms);
 	commbrick.borders(*atoms);

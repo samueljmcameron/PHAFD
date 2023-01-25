@@ -6,6 +6,11 @@
 #include "comm_brick.hpp"
 #include "neighbor.hpp"
 #include "input.hpp"
+#include "group.hpp"
+#include "fixatom.hpp"
+#include "fixgrid.hpp"
+#include "pair.hpp"
+
 
 
 using namespace PHAFD_NS;

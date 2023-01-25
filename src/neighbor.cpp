@@ -8,8 +8,8 @@
 
 #include "domain.hpp"
 #include "atom.hpp"
+#include "comm_brick.hpp"
 
-#include <iostream>
 
 #define MAX(A,B) ((A) > (B) ? (A) : (B))
 
@@ -33,8 +33,13 @@ Neighbor::Neighbor(PHAFD *phafd) : Pointers(phafd)
 
 Neighbor::~Neighbor() = default;
 
-void Neighbor::setup(double cutoff, double skintmp)
+
+/* must be called after commbrick setup is called. */
+void Neighbor::setup(const std::vector<std::string> &v_line)
 {
+  double cutoff = commbrick->cutghost;
+  double skintmp = std::stod(v_line.at(0));
+  
   skin = skintmp;
   triggersq = 0.25*skin*skin;
   

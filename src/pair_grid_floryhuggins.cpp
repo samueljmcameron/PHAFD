@@ -1,4 +1,3 @@
-// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -16,24 +15,47 @@
    Contributing author: Paul Crozier (SNL)
 ------------------------------------------------------------------------- */
 
-#include "pair.hpp"
+#include "pair_grid_floryhuggins.hpp"
+
 #include "neigh_list.hpp"
 
+#include <cmath>
+
+#include "atom.hpp"
+#include "comm_brick.hpp"
+#include "grid.hpp"
+#include "domain.hpp"
+
+#include "ps_pde/fixgrid_floryhuggins.hpp"
 
 using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-Pair::Pair(PHAFD *phafd) : Pointers(phafd) {};
+PairGridFloryHuggins::PairGridFloryHuggins(PHAFD *phafd) : Pair(phafd) {
 
+  ps_flory = std::make_unique<psPDE::FixGridFloryHuggins>();
+  
+};
 
-/* ----------------------------------------------------------------------
-   neighbor callback to inform pair style of neighbor list to use
-   specific pair style can override this function
-------------------------------------------------------------------------- */
-
-void Pair::init_list(NeighList *ptr)
+void PairGridFloryHuggins::compute()
 {
-  list = ptr;
+
+
+  ps_flory->compute(*(grid->ps_grid));
+  
 }
 
+
+void PairGridFloryHuggins::settings(const std::vector<std::string> &params)
+{
+
+  ps_flory->readCoeffs(params);
+
+}
+
+
+void PairGridFloryHuggins::coeff(const std::vector<std::string> &params)
+{
+
+}

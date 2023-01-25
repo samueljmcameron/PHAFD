@@ -25,10 +25,11 @@ public:
 
   std::vector<double> buf_send,buf_recv; // flat vector of size 3*numatoms to send/recv
   int me,nprocs;
+  double cutghost;
   
 private:
 
-  double zprd,zinterval,zlo,cutghost;
+  double zprd,zinterval,zlo;
   const int xyswaps;
 
   std::vector<double> subloz,subhiz;

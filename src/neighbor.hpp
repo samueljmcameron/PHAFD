@@ -8,6 +8,8 @@
 
 #include <memory>
 #include <array>
+#include <string>
+
 
 #include "pointers.hpp"
 
@@ -42,7 +44,7 @@ public:
   std::vector<std::unique_ptr<NeighList>> neigh_lists;
   std::vector<std::unique_ptr<NPair>> neigh_pairs;
   const double *bboxlo,*bboxhi;
-  void setup(double,double);
+  void setup(const std::vector<std::string> &);
   void build(int);
   bool decide();
 

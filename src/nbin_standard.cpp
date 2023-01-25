@@ -13,11 +13,10 @@
 ------------------------------------------------------------------------- */
 
 #include <algorithm>
-#include <iostream>
 
 #include "atom.hpp"
-#include "domain.hpp"
 #include "nbin_standard.hpp"
+#include "domain.hpp"
 #include "neighbor.hpp"
 
 using namespace PHAFD_NS;
@@ -122,7 +121,7 @@ void NBinStandard::setup_bins(double cutoff)
   if (binsize_optimal*bininvx > CUT2BIN_RATIO ||
       binsize_optimal*bininvy > CUT2BIN_RATIO ||
       binsize_optimal*bininvz > CUT2BIN_RATIO)
-    std::cerr << "Cannot use neighbor bins - box size << cutoff" << std::endl;
+    throw std::runtime_error("Cannot use neighbor bins - box size << cutoff");
 
   // mbinlo/hi = lowest and highest global bins my ghost atoms could be in
   // coord = lowest and highest values of coords for my ghost atoms

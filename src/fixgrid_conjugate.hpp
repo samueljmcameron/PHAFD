@@ -1,18 +1,18 @@
 
-#ifndef PHAFD_FIXATOM_SEMIFLEXIBLE_HPP
-#define PHAFD_FIXATOM_SEMIFLEXIBLE_HPP
+#ifndef PHAFD_FIXGRID_CONJUGATE_HPP
+#define PHAFD_FIXGRID_CONJUGATE_HPP
 
 
-#include "fixatom.hpp"
+#include "fixgrid.hpp"
 
 #include <memory>
 
 namespace PHAFD_NS {
 
 template <typename T>
-class FixAtomSemiFlexible : public FixAtom {
+class FixGridConjugate : public FixGrid {
 public:
-  FixAtomSemiFlexible(PHAFD *);
+  FixGridConjugate(PHAFD *);
 
   virtual void init(const std::vector<std::string> &) override;
   
@@ -20,12 +20,12 @@ public:
 
   virtual void initial_integrate() override;
   virtual void final_integrate() override;
+
+  virtual void reset_dt(double) override;
 private:
 
-  std::vector<std::unique_ptr<T>> pmers;
-  std::vector<int> nbeads;
+  std::unique_ptr<T> conjugate;
 
-  void check_bonds();
   
 };
 

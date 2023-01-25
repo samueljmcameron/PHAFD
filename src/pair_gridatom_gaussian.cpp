@@ -1,26 +1,44 @@
+/* ----------------------------------------------------------------------
+   LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
+   https://www.lammps.org/, Sandia National Laboratories
+   Steve Plimpton, sjplimp@sandia.gov
+
+   Copyright (2003) Sandia Corporation.  Under the terms of Contract
+   DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
+   certain rights in this software.  This software is distributed under
+   the GNU General Public License.
+
+   See the README file in the top-level LAMMPS directory.
+------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------
+   Contributing author: Paul Crozier (SNL)
+------------------------------------------------------------------------- */
+
 #include "pair_gridatom_gaussian.hpp"
 
 #include "neigh_list.hpp"
-#include <cmath>
-#include <iostream>
 
-using namespace PHAFD;
+#include <cmath>
+
+#include "atom.hpp"
+#include "comm_brick.hpp"
+#include "grid.hpp"
+#include "domain.hpp"
+
+
+#include "ps_pde/fftw_mpi_3darray.hpp"
+
+using namespace PHAFD_NS;
 
 /* ---------------------------------------------------------------------- */
 
-PairGridAtomGaussian::PairGridAtomGaussian(Atom *atoms,psPDE::Grid *grid)
-  : Pair(atoms,grid)
-{}
+PairGridAtomGaussian::PairGridAtomGaussian(PHAFD *phafd) : Pair(phafd) {
 
+};
 
-
-// interaction between field and polymer
-// goes in a pair_*.cpp file
-
-void PairGridAtomGaussian::compute(const Domain & domain)
+void PairGridAtomGaussian::compute()
 {
-
-
 
   double xtmp,ytmp,ztmp,delx,dely,delz;
   int *jlist;
@@ -29,9 +47,9 @@ void PairGridAtomGaussian::compute(const Domain & domain)
   std::vector<int> &numneigh = list->numneigh;
   std::vector<int*> &firstneigh = list->firstneigh;
 
-  const double Ox = domain.sublo[0];
-  const double Oy = domain.sublo[1];
-  const double Oz = domain.sublo[2];
+  const double Ox = domain->sublo[0];
+  const double Oy = domain->sublo[1];
+  const double Oz = domain->sublo[2];
 
   const double dv = grid->dx()*grid->dy()*grid->dz();
   double expfac, delphi,rsq;
@@ -97,12 +115,12 @@ void PairGridAtomGaussian::compute(const Domain & domain)
 }
 
 
-/* set global cutoff  and default parameters */
-void PairGridAtomGaussian::settings(std::vector<std::string> params)
+void PairGridAtomGaussian::settings(const std::vector<std::string> &params)
 {
 
-  double cut = std::stod(params[0]);
+  double cut = std::stod(params.at(0));
 
+  
   cutsq.resize(atoms->ntypes);
   epsilonstrength.resize(atoms->ntypes);
   nucwidth.resize(atoms->ntypes);
@@ -119,36 +137,34 @@ void PairGridAtomGaussian::settings(std::vector<std::string> params)
   
 }
 
-/* ----------------------------------------------------------------------
-   set coeffs for one or more type pairs
-------------------------------------------------------------------------- */
 
-void PairGridAtomGaussian::coeff(std::vector<std::string> params)
+void PairGridAtomGaussian::coeff(const std::vector<std::string> &params)
 {
 
-  int type = std::stoi(params[0]);
+  std::vector<std::string> v_line = params;
+  int type = std::stoi(v_line.at(0));
   
   if (type > epsilonstrength.size() || type < 0)
     throw std::runtime_error("Pair grid/atom/gaussian atom type out of range.");
   
   
 
-  params.erase(params.begin());
+  v_line.erase(v_line.begin());
 
-  if (params.size() > 6) 
+  if (v_line.size() > 6) 
     throw std::runtime_error("Pair grid/atom/gaussian invalid coeffs.");  
   
   int iarg = 0;
-  while (iarg < params.size()) {
+  while (iarg < v_line.size()) {
 
-    if (params[iarg] == "epsilon") {
-      epsilonstrength[type] = std::stod(params[iarg+1]);
+    if (v_line.at(iarg) == "epsilon") {
+      epsilonstrength.at(type) = std::stod(v_line.at(iarg+1));
       iarg += 2;
-    } else if (params[iarg] == "nucwidth") {
-      nucwidth[type] = std::stod(params[iarg+1]);
+    } else if (v_line.at(iarg) == "nucwidth") {
+      nucwidth.at(type) = std::stod(v_line.at(iarg+1));
       iarg += 2;
-    } else if (params[iarg] == "phi") {
-      phi[type] = std::stod(params[iarg+1]);
+    } else if (v_line.at(iarg) == "phi") {
+      phi.at(type) = std::stod(v_line.at(iarg+1));
       iarg += 2;
     } else
       throw std::runtime_error("Pair grid/atom/gaussian invalid coeffs.");

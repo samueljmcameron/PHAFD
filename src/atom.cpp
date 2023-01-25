@@ -77,7 +77,7 @@ void Atom::check_tags_and_types()
 
 
   if (tset.size() != tags.size()) {
-    std::cout << "duplicate IDs on processor " << commbrick->me << "." << std::endl;
+    std::cerr << "duplicate IDs on processor " << commbrick->me << "." << std::endl;
     errflag = 1;
   }
 
@@ -120,7 +120,7 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
   if (v_line.size() < 3)
     throw std::invalid_argument("Invalid arguments for creating polymer.");    
 
-  std::size_t pos = v_line[0].find("-");
+  std::size_t pos = v_line.at(0).find("-");
 
   if (pos == std::string::npos)
     throw std::invalid_argument("Invalid ID specification when creating polymer.");
@@ -129,11 +129,11 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
   int idstart,idend,molid;
 
 
-  idstart = std::stoi(v_line[0].substr(0,pos));
+  idstart = std::stoi(v_line.at(0).substr(0,pos));
 
-  idend = std::stoi(v_line[0].substr(pos+1));
+  idend = std::stoi(v_line.at(0).substr(pos+1));
 
-  molid = std::stoi(v_line[1]);
+  molid = std::stoi(v_line.at(1));
 
   
   v_line.erase(v_line.begin(),v_line.begin()+2);
@@ -165,7 +165,7 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
 				"atoms in creating polymer.");
 
   int lt_index = 0;
-  lt_sum = lengthtypes[0];
+  lt_sum = lengthtypes.at(0);
 
 
 
@@ -215,19 +215,19 @@ int Atom::add_sphere(std::vector<std::string> v_line, int iatom)
 
   int l_index = 0;
 
-  tags[iatom] = std::stoi(v_line[l_index++]);
+  tags[iatom] = std::stoi(v_line.at(l_index++));
 
   if (molecule_flag) {
-    moltags[iatom] = std::stoi(v_line[l_index++]);
+    moltags[iatom] = std::stoi(v_line.at(l_index++));
     nmols += 1;
   }
 
   
-  types[iatom] = std::stoi(v_line[l_index++]);
-  xs(0,iatom) = std::stod(v_line[l_index++]);
-  xs(1,iatom) = std::stod(v_line[l_index++]);
-  xs(2,iatom) = std::stod(v_line[l_index++]);
-  radius[iatom] = std::stod(v_line[l_index++]);
+  types[iatom] = std::stoi(v_line.at(l_index++));
+  xs(0,iatom) = std::stod(v_line.at(l_index++));
+  xs(1,iatom) = std::stod(v_line.at(l_index++));
+  xs(2,iatom) = std::stod(v_line.at(l_index++));
+  radius[iatom] = std::stod(v_line.at(l_index++));
   labels[iatom] = Atom::OWNED;
   images[iatom] = domain->set_image();
 

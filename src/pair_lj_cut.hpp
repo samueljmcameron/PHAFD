@@ -16,15 +16,15 @@
 
 #include "pair.hpp"
 
-namespace PHAFD {
+namespace PHAFD_NS {
 
 class PairLJCut : public Pair {
 public:
-  PairLJCut(Atom *, psPDE::Grid *);
-  void compute(const Domain &) override;
+  PairLJCut(PHAFD *);
+  void compute() override;
 
-  void settings( std::vector<std::string> ) override;
-  void coeff( std::vector<std::string> ) override;
+  void settings(const std::vector<std::string> &) override;
+  void coeff(const std::vector<std::string> &) override;
 
 private:
   double lj1,lj2;
