@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "grid.hpp"
 #include "comm_brick.hpp"
 
@@ -53,8 +55,20 @@ void Grid::populate(const std::vector<std::string> &v_line)
 {
 
   std::vector<std::string> new_v_line = v_line;
+
+
+  if (new_v_line[0] == "constant" && new_v_line[1] == "concentration") {
+    int seed = std::stoi(new_v_line.back());
+
+
+    seed = utility::make_unique_seed(seed,world,commbrick->me,commbrick->nprocs);
+
+    new_v_line.back() = std::to_string(seed);
+    
+  } else if (new_v_line[0] != "read")
+    
+    throw std::runtime_error("Invalid options for grid_populate.");
   
-  utility::replace_with_new_seed(new_v_line,"grid populate",commbrick->me,commbrick->nprocs,world);
   
   ps_grid->populate(new_v_line);
 }

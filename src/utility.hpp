@@ -20,10 +20,7 @@ namespace PHAFD_NS {
     void check_MPI_duplicates(const std::vector<int> &,MPI_Comm ,int ,int ,
 			      std::string);
 
-    void replace_with_new_seed(std::vector<std::string> &v_line,
-			       const std::string &specifier,int ,
-			       int,MPI_Comm );
-
+    int make_unique_seed(int,const MPI_Comm &, int, int);
 
   }
 

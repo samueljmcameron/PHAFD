@@ -26,7 +26,7 @@ private:
 
 
 
-
+  std::string fname;
   std::ifstream datafile;
 
 

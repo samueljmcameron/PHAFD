@@ -89,7 +89,6 @@ void Group::create_group(const  std::vector<std::string> &v_line)
 
     for (auto imol : group_set)
       group_molecule(imol);
-    
 
   } else if (style == "atom") {
 
@@ -126,33 +125,42 @@ void Group::group_atoms(int tagstart, int tagend)
 
 
   int tag = tagstart;
-
+  int foundatoms = 0;
 
   // if the very first atom ID is larger than (or equal to) the first ID of the group
 
   while (tag <= tagend && atoms->tags[startatom] != tag) tag ++;
 
     
-  if (tag <= tagend)     // if this is true, then atom is part of the group
+  if (tag <= tagend) {     // if this is true, then atom is part of the group
+    foundatoms = 1;
     start_indices.push_back(startatom);
-  else // otherwise, the atom IDs are all bigger than all members of the group
-    return;
 
+    
 
   
-  int iatom = startatom;
-
-  while (iatom < atoms->nowned && tag <= tagend) {
-    if (atoms->tags[iatom] != tag) 
-      throw std::invalid_argument("atoms of the same group must be adjacently owned.");
-
-    iatom ++;
-    tag ++;
+    int iatom = startatom;
     
+    while (iatom < atoms->nowned && tag <= tagend) {
+      if (atoms->tags[iatom] != tag) 
+	throw std::invalid_argument("atoms of the same group must be adjacently owned.");
+      
+      iatom ++;
+      tag ++;
+      
+    }
+    end_indices.push_back(iatom);
   }
-  end_indices.push_back(iatom);
     
-  
+  int all_foundatoms;
+
+  MPI_Allreduce(&foundatoms,&all_foundatoms,1,MPI_INT,MPI_SUM,world);
+
+  if (all_foundatoms == 0)
+    throw std::runtime_error("atoms " + std::to_string(tagstart) + std::string(" to ")
+			     + std::to_string(tagend) 
+			     + std::string(" do not exist on any processor." ));
+
   return;
 
 }
@@ -186,6 +194,12 @@ void Group::group_molecule(int imol)
   if (count != 0)
     end_indices.push_back(lastindex+1);
 
-  
+  int totalcount;
+
+  MPI_Allreduce(&count,&totalcount,1,MPI_INT,MPI_SUM,world);
+
+  if (totalcount == 0)
+    throw std::runtime_error("Group error: Molecule " + std::to_string(imol)
+			     + std::string(" does not exist on any processor." ));
   
 }

@@ -15,6 +15,7 @@ public:
   
   virtual void setup() = 0;
   virtual void initial_integrate() = 0;
+  virtual void pre_final_integrate() = 0;
   virtual void final_integrate() = 0;
   
 

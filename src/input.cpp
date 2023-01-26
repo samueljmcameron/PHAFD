@@ -13,11 +13,12 @@
 #include "neighbor.hpp"
 #include "fixatom_semiflexible.hpp"
 #include "fixgrid_conjugate.hpp"
+#include "fixgrid_floryhuggins.hpp"
 #include "beadrodpmer/no_tether.hpp"
 #include "ps_pde/conjugate_volfrac.hpp"
 #include "pair_lj_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
-#include "pair_grid_floryhuggins.hpp"
+
 #include "ps_pde/fixgrid_floryhuggins.hpp"
 
 #include "ps_pde/iovtk.hpp"
@@ -52,21 +53,30 @@ void Input::read()
   // domain is now completely set.
 
   
-  line = "constant concentration 0.2 0.2 seed 891409";
+  line = "constant concentration 0.2 0.2 891409";
   v_line = utility::split_line(line);
   grid->populate(v_line);
 
   // grid is now completely set.
 
 
-  std::string atom_data_fname = "read_p%.data";
+  std::string atom_data_fname = "atoms_p%.data";
 
   utility::replacePercentages(atom_data_fname,commbrick->me);
   
 
   ReadAtoms read_atoms(phafd);
 
-  read_atoms.read_file(atom_data_fname);
+  int errflag = read_atoms.read_file(atom_data_fname);
+  if (errflag != ReadAtoms::SUCCESS) errflag = 1;
+  else errflag = 0;
+  int total_errflag;
+  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
+  if (total_errflag)
+    throw std::runtime_error("Could not read atom file. ");
+
+
+
 
   // atoms are now completely set.
 
@@ -94,10 +104,10 @@ void Input::read()
 
 
   
-  line = "temp 1.0 chi 3.0 volFH 0.01";
-  pairs.push_back(std::make_unique<PairGridFloryHuggins>(phafd));
-  v_line = utility::split_line(line);
-  pairs.at(2)->settings(v_line);
+  //  line = "temp 1.0 chi 3.0 volFH 0.01";
+  //  pairs.push_back(std::make_unique<PairGridFloryHuggins>(phafd));
+  //  v_line = utility::split_line(line);
+  //  pairs.at(2)->settings(v_line);
 
 
   
@@ -121,45 +131,40 @@ void Input::read()
   groups.at(0)->create_all();
 
   groups.push_back(std::make_unique<Group>(phafd));
-  line = "nt_pmer0 molecule 0 1 2 3";
+  line = "nt_pmer0 molecule 0 1 2";
   v_line = utility::split_line(line);    
   groups.at(1)->create_group(v_line);
 
 
-  groups.push_back(std::make_unique<Group>(phafd));
-  line = "nt_pmer1 molecule 1";
-  v_line = utility::split_line(line);    
-  groups[2]->create_group(v_line);
-
-  groups.push_back(std::make_unique<Group>(phafd));
-  line = "nt_pmer2 molecule 2";
-  v_line = utility::split_line(line);    
-  groups[3]->create_group(v_line);
-
-  groups.push_back(std::make_unique<Group>(phafd));
-  line = "nt_pmer3 molecule 3";
-  v_line = utility::split_line(line);    
-  groups[4]->create_group(v_line);
-
   
-  line = "fix_nt_pmer0 nt_pmer0 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114 seed 489210";
+  line = "fix_nt_pmer0 nt_pmer0 489210 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114";
   atomfixes.push_back(std::make_unique<FixAtomSemiFlexible<BeadRodPmer::NoTether>>(phafd));
   v_line = utility::split_line(line);
   atomfixes.at(0)->init(v_line);
 
-  line = "fix_volfrac mobility 0.01 temp 1.0 volFH 0.01 gamma 10.0 seed 491240";
+  
+  line = "fix_volfrac 491240 mobility 0.01 temp 1.0 volFH 0.01 gamma 10.0";
   gridfixes.push_back(std::make_unique<FixGridConjugate<psPDE::ConjugateVolFrac>>(phafd));
   v_line = utility::split_line(line);
   gridfixes.at(0)->init(v_line);
+
+
   
+
+  line = "fix_chempot temp 1.0 chi 3.0 volFH 0.01";
+  gridfixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));
+  v_line = utility::split_line(line);
+  gridfixes.at(1)->init(v_line);
+
 
   
   // need to run things now?
 
   int step = 0;
-  int Nsteps = 10000;
+  int Nsteps = 20;
   double t = 0;
   double dt = 1e-3;
+
 
   
   domain->pbc();
@@ -216,8 +221,8 @@ void Input::read()
     std::cout << "Running simulation of solution." << std::endl;
 
 
-  int errflag = 0;
-  int total_errflag;
+  errflag = 0;
+  total_errflag = 0;
 
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -255,6 +260,10 @@ void Input::read()
     for (auto &fix : atomfixes)
       fix->final_integrate();
 
+    // additional terms from e.g. chemical potential, which are added to grid->nonlinear
+    for (auto &fix : gridfixes)
+      fix->pre_final_integrate();
+    
     for (auto &fix : gridfixes)
       fix->final_integrate();
 
@@ -269,10 +278,7 @@ void Input::read()
     t += dt;
 
 
-
-
-
-    if (step % 1000 == 0) {
+    if (step % 10 == 0) {
       
       if (commbrick->me == 0)
 	  std::cout << "Saving polymer on step " << step << std::endl;
@@ -285,7 +291,7 @@ void Input::read()
       writeVTKAtomData(atom_fname,"owned");
       psPDE::ioVTK::writeVTKcollectionMiddle(atom_cname,atom_fname,t);
     }
-    if (step % 1000 == 0) {
+    if (step % 10 == 0) {
       if (commbrick->me == 0)
 	std::cout << "Saving phi on step " << step << std::endl;
       

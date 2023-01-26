@@ -24,12 +24,19 @@ void FixGridConjugate<T>::init(const std::vector<std::string> &v_line)
 
   std::vector<std::string> new_v_line(v_line);
 
-  new_v_line.erase(new_v_line.begin());
+
+  int seed = std::stoi(new_v_line[1]);
+
+  seed = utility::make_unique_seed(seed,world,commbrick->me,commbrick->nprocs);
+  
+  new_v_line.erase(new_v_line.begin(),new_v_line.begin()+2);
+
+  new_v_line.push_back("seed");
+  new_v_line.push_back(std::to_string(seed));
+
 
   conjugate = std::make_unique<T>(*(domain->ps_domain),*(grid->ps_grid));
 
-  utility::replace_with_new_seed(new_v_line,"fixatom/semiflexible",commbrick->me,
-				 commbrick->nprocs,world);
 
   
   conjugate->readCoeffs(new_v_line);

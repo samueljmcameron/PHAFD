@@ -14,10 +14,11 @@ using namespace PHAFD_NS;
 
 ReadAtoms::ReadAtoms(PHAFD *phafd) : Pointers(phafd) {};
 
-int ReadAtoms::read_file(const std::string & fname)
+int ReadAtoms::read_file(const std::string & fname_in)
 {
 
 
+  fname = fname_in;
   int errflag = SUCCESS;
   int total_errflag;
 
@@ -70,7 +71,7 @@ int ReadAtoms::read_file(const std::string & fname)
   MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
 
   if (total_errflag) return FORMAT_ERROR;
-
+  
   datafile.close();
   datafile.clear();
   
@@ -93,7 +94,7 @@ int ReadAtoms::read_perStyle()
   // set styles from "particle_style" command
   errflag = reset_styles(); 
   
-  if (errflag == FORMAT_ERROR)
+  if (errflag == FORMAT_ERROR) 
     return errflag;
   
   // set # of particles per style from "particlesperstyle" command
@@ -107,6 +108,7 @@ int ReadAtoms::read_perStyle()
   errflag = reset_atomsPerStyle(); 
   
   if (errflag == FORMAT_ERROR)
+
     return errflag;
 
   return SUCCESS;
@@ -187,6 +189,7 @@ int ReadAtoms::create_atoms()
     
   }
 
+
   atoms->check_tags_and_types();
 
   return SUCCESS;
@@ -215,17 +218,27 @@ int ReadAtoms::reset_styles() {
     v_line = utility::split_line(line);
     
     
-    if (v_line.size() < 2 || v_line.at(0) != "particle_style")
+    if (v_line.size() < 2 || v_line.at(0) != "particle_style") {
+      std::cerr << "first line of " << fname << "must 'particle_style (hybrid) style(1) ...'"
+		<< std::endl;
+	  
       return FORMAT_ERROR;
+    }
     
     if (v_line.at(1) == "hybrid") {
-      if (v_line.size() < 3)
+      if (v_line.size() < 3) {
+	std::cerr << "hybrid style needs multiple substyles in " << fname 
+		  << std::endl;
 	return FORMAT_ERROR;
+      }
       
       v_line.erase(v_line.begin(),v_line.begin()+2);
     } else {
-      if (v_line.size() != 2)
+      if (v_line.size() != 2) {
+	std::cerr << "only one style permitted (if you need multiple styles, use hybrid keyword)"
+		  << fname << std::endl;
 	return FORMAT_ERROR;
+      }
       
       v_line.erase(v_line.begin(),v_line.begin()+1);
     }
@@ -233,15 +246,18 @@ int ReadAtoms::reset_styles() {
     std::set<std::string> tmpstyles;
     for (auto pstyle : v_line) {
       
-      if (pstyle != "point" && pstyle != "sphere" && pstyle != "polymer")
+      if (pstyle != "point" && pstyle != "sphere" && pstyle != "polymer") {
+	std::cerr << "invalid style name in " << fname << std::endl;
+
 	return FORMAT_ERROR;
+      }
       
       styles.push_back(pstyle);
       tmpstyles.insert(pstyle);
     }
     
     if (tmpstyles.size() != styles.size()) {
-      std::cerr << "Cannot have duplicate particle styles." << std::endl;
+      std::cerr << "Cannot have duplicate particle styles in " << fname << std::endl;
       return FORMAT_ERROR;
     }
     
@@ -279,8 +295,10 @@ int ReadAtoms::reset_particlesPerStyle()
   v_line = utility::split_line(line);
   
   if (v_line.size() != 1 + styles.size()
-      || v_line.at(0) != "particlesperstyle" )
+      || v_line.at(0) != "particlesperstyle" ) {
+    std::cerr << "must specify 'particlesperstyle' in " << fname << std::endl;
     return FORMAT_ERROR;
+  }
   
   
   v_line.erase(v_line.begin());
@@ -290,6 +308,7 @@ int ReadAtoms::reset_particlesPerStyle()
     try {
       particlesPerStyle.push_back(std::stoi(elem));
     } catch (std::invalid_argument &err) {
+      std::cerr << "'particlesperstyle' requires integer values in " << fname << std::endl;
       return FORMAT_ERROR;
     }
     
@@ -328,19 +347,27 @@ int ReadAtoms::reset_atomsPerStyle()
       
       v_line = utility::split_line(line);
       
-      if (v_line.at(0) != "atomsperpolymer")
+      if (v_line.at(0) != "atomsperpolymer") {
+	std::cerr << "'polymer' style requires atomsperpolymer to be specified in "
+		  << fname << std::endl;	
 	return FORMAT_ERROR;
+      }
       
       v_line.erase(v_line.begin());
       
-      if (v_line.size() != particlesPerStyle[istyle]) 
+      if (v_line.size() != particlesPerStyle[istyle]) {
+	std::cerr << "'atomsperpolymer' must be specified for each polymer in "
+		  << fname << std::endl;	
 	return FORMAT_ERROR;
+      }
 
       for (auto snum : v_line) {
 	try {
 
 	  atomsPerPolymer.push_back(std::stoi(snum));
 	} catch (std::invalid_argument &inv) {
+	  std::cerr << "'atomsperpolymer' requires integer values in "
+		    << fname << std::endl;	
 	  return FORMAT_ERROR;
 	}
 	atomsPerStyle[istyle] += atomsPerPolymer.back();

@@ -1,15 +1,14 @@
 #include <algorithm>
 #include <iostream>
+#include <random>
 
 #include "utility.hpp"
 
-#include "ps_pde/randompll.hpp"
 
 #include "beadrodpmer/initialise.hpp"
 #include "beadrodpmer/no_tether.hpp"
 #include "beadrodpmer/single_tether.hpp"
 #include "beadrodpmer/double_tether.hpp"
-
 
 #include "atom.hpp"
 #include "domain.hpp"
@@ -28,24 +27,38 @@ template <typename T>
 void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
 {
 
-
-
   FixAtom::init(v_line);
 
 
-
+  // v_line contains a seed in the argument, so need to extract that and initialise
+  //  a new RNG with it.
   // need to reconvert to a single string (removing the fix name and the group name)
   std::string line = "";
 
   std::vector<std::string> new_v_line(v_line);
 
-  new_v_line.erase(new_v_line.begin(),new_v_line.begin()+2);
+
+
+  int seed = std::stoi(new_v_line[2]);
+
+  seed = utility::make_unique_seed(seed,world,commbrick->me,commbrick->nprocs);
+  
+  std::mt19937 gen;
+  std::uniform_int_distribution<int> integer_dist;
+  
+  gen.seed(seed);
+
+  new_v_line.erase(new_v_line.begin(),new_v_line.begin()+3);
   
   for (auto &word : new_v_line)
     line += word + std::string(" ");
 
+  line += "seed ";
 
 
+  
+  
+  
   // then add in number of beads from group
 
   std::string tmpline;
@@ -55,11 +68,10 @@ void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
     nbeads.push_back(end_indices[i]-start_indices[i]);
     
     tmpline = std::string("beads ") + std::to_string(nbeads[i])
-      + std::string(" ") +  line;
+      + std::string(" ") +  line + std::to_string(integer_dist(gen));
     new_v_line = utility::split_line(tmpline);
-    utility::replace_with_new_seed(new_v_line,"fixatom/semiflexible",commbrick->me,
-				   commbrick->nprocs,world);
-
+    
+    
     pmers.push_back(std::make_unique<T>(new_v_line));
   }
   

@@ -3,6 +3,7 @@
 
 #include "fixatom.hpp"
 
+
 using namespace PHAFD_NS;
 
 
@@ -26,7 +27,6 @@ void FixAtom::init(const std::vector<std::string> &v_line)
 
   // sets start_indices and end_indices
   find_group(v_line.at(1));
-
 }
 
 

@@ -2,7 +2,6 @@
 #include "domain.hpp"
 #include "atom.hpp"
 #include "grid.hpp"
-#include <iostream>
 
 #include "ps_pde/domain.hpp"
 #include "ps_pde/fftw_mpi_3darray.hpp"

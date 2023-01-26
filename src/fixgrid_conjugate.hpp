@@ -19,6 +19,8 @@ public:
   virtual void setup() override;
 
   virtual void initial_integrate() override;
+
+  virtual void pre_final_integrate() override {};
   virtual void final_integrate() override;
 
   virtual void reset_dt(double) override;

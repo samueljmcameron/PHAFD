@@ -55,6 +55,8 @@ void Atom::check_tags_and_types()
 
 */
 {
+
+  
   std::set<int> mset (moltags.begin(),moltags.end());
   std::set<int> tset(tags.begin(),tags.end());
 
@@ -86,19 +88,31 @@ void Atom::check_tags_and_types()
     throw std::runtime_error("duplicate IDs found on processor(s).");
 
 
+
   // check if any IDs are the same across all processors
   utility::check_MPI_duplicates(tags,world,commbrick->me,commbrick->nprocs,"IDs");
 
   // check if any molIDs are the same across processors
   utility::check_MPI_duplicates(mtmp,world,commbrick->me,commbrick->nprocs,"molIDs");
 
-  int typemax = *(std::max_element(types.begin(),types.end()));
+
+  
+  int typemax;
+
+  if (types.size() == 0)
+    typemax = -1;
+  else
+    typemax = *(std::max_element(types.begin(),types.end()));
+
+
 
   int all_typemax; 
 
   MPI_Allreduce(&typemax,&all_typemax,1,MPI_INT,MPI_MAX,world);
 
   ntypes = all_typemax + 1;
+
+  ntypes = 2;
 
 }
 

@@ -1,10 +1,13 @@
 
 #include "utility.hpp"
-#include "ps_pde/randompll.hpp"
+
+#include <random>
 
 #include <algorithm>
 #include <exception>
 #include <set>
+
+#include <iostream>
 
 std::vector<std::string> PHAFD_NS::utility::split_line(std::string& line)
 /*
@@ -136,36 +139,6 @@ void PHAFD_NS::utility::convertVariables(std::string &raw,
 }
 
 
-/* given a vector like {"alpha", "beta", "seed", "8492109"}, generate
-   a new seed from "8492109" which is unique to the current MPI process.*/
-
-void PHAFD_NS::utility::replace_with_new_seed(std::vector<std::string> &v_line,
-					      const std::string &specifier,int id,
-					      int mpi_size,MPI_Comm comm)
-{
-
-  auto it = std::find(v_line.begin(),v_line.end(),"seed");
-
-  if (it == v_line.end())
-    throw std::runtime_error("No seed variable present in " + specifier + std::string("."));
-
-  it ++;
-
-  if (it == v_line.end())
-    throw std::runtime_error("Invalid seed argument in " + specifier + std::string("."));
-
-
-  int seed = std::stod(*it);
-
-  psPDE::RandomPll rpll(comm,id,seed,mpi_size);
-
-  int newseed = rpll.get_processor_seed();
-
-  *it = std::to_string(newseed);
-
-}
-
-
 void PHAFD_NS::utility::check_MPI_duplicates(const std::vector<int> & vec,
 					     MPI_Comm comm,int id,int mpi_size,
 					     std::string vecname)
@@ -177,7 +150,6 @@ void PHAFD_NS::utility::check_MPI_duplicates(const std::vector<int> & vec,
 {
 
   
-
   std::vector<int> number_to_check;
 
   if (id == 0)
@@ -186,13 +158,14 @@ void PHAFD_NS::utility::check_MPI_duplicates(const std::vector<int> & vec,
   
   int sendsize = vec.size();
   
-  // gather all sendsizes to root
+  // gather all sendsizes to process 0
   MPI_Gather(&sendsize,1,MPI_INT,number_to_check.data(),1,MPI_INT,0,comm);
-  
+  // so now process 0 has number_to_check = [x,y,z,...] where x is size of vector on p0,
+  //  y is size of vector on p1, ... etc.
 
   
-  std::vector<int> vec_to_check;
-  std::vector<int> displs;
+  std::vector<int> vec_to_check; // vector to be checked for duplicates (only filled on process 0)
+  std::vector<int> displs; // vector which specifies the offsets required for MPI_Gatherv
 
 
   
@@ -210,29 +183,53 @@ void PHAFD_NS::utility::check_MPI_duplicates(const std::vector<int> & vec,
     vec_to_check.resize(totalsize);
   }
 
-  MPI_Gatherv(vec.data(),sendsize,MPI_INT,vec_to_check.data(),number_to_check.data(),
-	      displs.data(),MPI_INT,0,comm);
-  
+
+
+  MPI_Gatherv(&vec[0],sendsize,MPI_INT,vec_to_check.data(),number_to_check.data(),
+	      displs.data(),MPI_INT,0,comm);  
 
   int intersections = 0;
   
   if (id == 0) {
 
-    // check that there are no duplicates
 
     std::set<int> vec_set(vec_to_check.begin(),vec_to_check.end());
 
     intersections = vec_to_check.size()-vec_set.size();
-
-    
-
   }
-  
+
   MPI_Bcast(&intersections,1,MPI_INT,0,comm);
+
+
   
   if (intersections) throw std::runtime_error(std::to_string(intersections)
 					      + std::string(" duplicate ") + vecname
 					      + std::string(" across processors."));
   
   return;  
+}
+
+
+int PHAFD_NS::utility::make_unique_seed(int baseseed,const MPI_Comm &comm,
+					int id, int nprocs)
+{
+
+  std::mt19937 gen;
+  std::uniform_int_distribution<int> integer_dist;
+
+  std::vector<int> processor_seeds(nprocs);
+
+  
+  gen.seed(baseseed);
+
+  if (id == 0) {
+    for (auto & num : processor_seeds)
+      num = integer_dist(gen);
+  }
+
+  MPI_Bcast(processor_seeds.data(),nprocs,MPI_INT,0,comm);
+
+
+  return processor_seeds.at(id);
+
 }
