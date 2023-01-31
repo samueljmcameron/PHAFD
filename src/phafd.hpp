@@ -32,10 +32,11 @@ public:
   std::unique_ptr<class Neighbor> neighbor;
   std::vector<std::unique_ptr<class Group>> groups;
   std::unique_ptr<class Input> input;
-  std::vector<std::unique_ptr<class FixAtom>> atomfixes;
-  std::vector<std::unique_ptr<class FixGrid>> gridfixes;
+  std::vector<std::unique_ptr<class Fix>> fixes;
   std::vector<std::unique_ptr<class Pair>> pairs;
-
+  std::vector<std::unique_ptr<class Compute>> computes;
+  std::vector<std::unique_ptr<class Dump>> dumps;
+  
   
   MPI_Comm world;
   

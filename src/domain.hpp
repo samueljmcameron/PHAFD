@@ -37,6 +37,10 @@ public:
   void map(Eigen::Ref<Eigen::Vector3d>,
   	   const Eigen::Ref<const Eigen::Vector3d> &,int ) const;
 
+  double dqx();
+  double dqy();
+  double dqz();
+  
 private:
 
   void unmap(Eigen::Ref<Eigen::Vector3d>,

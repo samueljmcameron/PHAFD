@@ -28,10 +28,6 @@ public:
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_phi;
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_nonlinear;
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_noise;
-
-  psPDE::fftw_MPI_3Darray<double> *ft_phi_modulus;
-  psPDE::fftw_MPI_3Darray<double> *ft_nonlinear_modulus;
-  psPDE::fftw_MPI_3Darray<double> *ft_noise_modulus;
   
   std::unique_ptr<psPDE::Grid> ps_grid;  
 

@@ -168,3 +168,7 @@ int Domain::set_image() const
   return i1 | i2 | i3;
 
 }
+
+double Domain::dqx() { return ps_domain->dqx();};
+double Domain::dqy() { return ps_domain->dqy();};
+double Domain::dqz() { return ps_domain->dqz();};

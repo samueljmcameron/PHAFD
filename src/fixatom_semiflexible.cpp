@@ -19,7 +19,7 @@
 using namespace PHAFD_NS;
 
 template <typename T>
-FixAtomSemiFlexible<T>::FixAtomSemiFlexible(PHAFD *phafd) : FixAtom(phafd) {
+FixAtomSemiFlexible<T>::FixAtomSemiFlexible(PHAFD *phafd) : Fix(phafd) {
 };
 
 
@@ -27,7 +27,9 @@ template <typename T>
 void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
 {
 
-  FixAtom::init(v_line);
+  Fix::init(v_line);
+
+  find_group(v_line.at(1));
 
 
   // v_line contains a seed in the argument, so need to extract that and initialise

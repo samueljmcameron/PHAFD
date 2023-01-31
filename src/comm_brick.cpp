@@ -164,28 +164,6 @@ void CommBrick::setup()
     }
   }
 
-  /*
-  int dum = 1;
-
-
-  for (int id = 0; id < nprocs; id++) {
-
-    if (id == me) {
-      std::cout << "printing stuff on proc " << me << std::endl;
-      for (int i = 0; i < iswap; i++) {
-	std::cout << "iswap = " << i << ", "
-		  << "sendproc = " << sendproc[i] << ", "
-		  << "recvproc = " << recvproc[i] << ", "
-		  << "slablo = " << slablo[i] << ", "
-		  << "slabhi = " << slabhi[i] << std::endl;
-      }
-
-    }
-	
-    MPI_Bcast(&dum,1,MPI_INT,id,world);
-  }
-  */
-  
   return;
 }
 

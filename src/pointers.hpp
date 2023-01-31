@@ -6,17 +6,17 @@
 #include "phafd.hpp"
 
 namespace PHAFD_NS {
-
+  
 
 class Pointers {
 public:
-
+  
   Pointers(PHAFD *ptr) : phafd(ptr), atoms(ptr->atoms),domain(ptr->domain),
 			 grid(ptr->grid),commbrick(ptr->commbrick),
 			 neighbor(ptr->neighbor),groups(ptr->groups),
-			 input(ptr->input),atomfixes(ptr->atomfixes),
-			 gridfixes(ptr->gridfixes),pairs(ptr->pairs),
-			 world(ptr->world)  {};
+			 input(ptr->input),fixes(ptr->fixes),
+			 pairs(ptr->pairs),computes(ptr->computes),
+			 dumps(ptr->dumps),world(ptr->world)  {};
   
 protected:
 
@@ -32,9 +32,10 @@ protected:
   std::unique_ptr<Neighbor> &neighbor;
   std::vector<std::unique_ptr<Group>> &groups;
   std::unique_ptr<Input> &input;
-  std::vector<std::unique_ptr<FixAtom>> &atomfixes;
-  std::vector<std::unique_ptr<FixGrid>> &gridfixes;
+  std::vector<std::unique_ptr<Fix>> &fixes;
   std::vector<std::unique_ptr<Pair>> &pairs;
+  std::vector<std::unique_ptr<Compute>> &computes;
+  std::vector<std::unique_ptr<Dump>> &dumps;
 
   MPI_Comm &world;
 };

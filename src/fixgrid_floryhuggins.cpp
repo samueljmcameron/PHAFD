@@ -13,7 +13,7 @@
 using namespace PHAFD_NS;
 
 
-FixGridFloryHuggins::FixGridFloryHuggins(PHAFD *phafd) : FixGrid(phafd) {
+FixGridFloryHuggins::FixGridFloryHuggins(PHAFD *phafd) : Fix(phafd) {
 
   ps_flory = std::make_unique<psPDE::FixGridFloryHuggins>();
 };
@@ -24,7 +24,7 @@ void FixGridFloryHuggins::init(const std::vector<std::string> &v_line)
 {
 
 
-  FixGrid::init(v_line);
+  Fix::init(v_line);
 
   std::vector<std::string> new_v_line(v_line);
 
@@ -41,7 +41,7 @@ void FixGridFloryHuggins::setup()
 }
 
   
-void FixGridFloryHuggins::pre_final_integrate()
+void FixGridFloryHuggins::post_force()
 {
 
   ps_flory->compute(*(grid->ps_grid));

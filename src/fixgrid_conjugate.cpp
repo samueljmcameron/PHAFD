@@ -13,14 +13,14 @@
 using namespace PHAFD_NS;
 
 template <typename T>
-FixGridConjugate<T>::FixGridConjugate(PHAFD *phafd) : FixGrid(phafd) {};
+FixGridConjugate<T>::FixGridConjugate(PHAFD *phafd) : Fix(phafd) {};
 
 
 template <typename T>
 void FixGridConjugate<T>::init(const std::vector<std::string> &v_line)
 {
 
-  FixGrid::init(v_line);
+  Fix::init(v_line);
 
   std::vector<std::string> new_v_line(v_line);
 
@@ -59,19 +59,32 @@ void FixGridConjugate<T>::reset_dt(double timestep)
   
 }
 
-template <typename T>  
-void FixGridConjugate<T>::initial_integrate()
-{
-  
-}
+
 template <typename T>
-void FixGridConjugate<T>::final_integrate()
+void FixGridConjugate<T>::pre_final_integrate()
 {
 
   fftw_execute(grid->ps_grid->forward_phi);
   fftw_execute(grid->ps_grid->forward_nonlinear);
 
+  
+  return;
+}
+
+template <typename T>
+void FixGridConjugate<T>::final_integrate()
+{
+
+
   conjugate->update();
+
+  
+  return;
+}
+
+template <typename T>
+void FixGridConjugate<T>::post_final_integrate()
+{
 
   fftw_execute(grid->ps_grid->backward_phi);
   

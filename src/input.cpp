@@ -22,7 +22,10 @@
 #include "ps_pde/fixgrid_floryhuggins.hpp"
 
 #include "ps_pde/iovtk.hpp"
+#include "dump.hpp"
 
+#include "compute_complex.hpp"
+#include "fixgrid_ave.hpp"
 
 #include <iostream>
 #include <string>
@@ -60,14 +63,14 @@ void Input::read()
   // grid is now completely set.
 
 
-  std::string atom_data_fname = "atoms_p%.data";
+  line = "atoms_p%.data";
 
-  utility::replacePercentages(atom_data_fname,commbrick->me);
+  utility::replacePercentages(line,commbrick->me);
   
 
   ReadAtoms read_atoms(phafd);
 
-  int errflag = read_atoms.read_file(atom_data_fname);
+  int errflag = read_atoms.read_file(line);
   if (errflag != ReadAtoms::SUCCESS) errflag = 1;
   else errflag = 0;
   int total_errflag;
@@ -77,7 +80,7 @@ void Input::read()
 
 
 
-
+  atoms->Fs.setZero();
   // atoms are now completely set.
 
 
@@ -102,17 +105,6 @@ void Input::read()
   v_line = utility::split_line(line);
   pairs.at(1)->settings(v_line);
 
-
-  
-  //  line = "temp 1.0 chi 3.0 volFH 0.01";
-  //  pairs.push_back(std::make_unique<PairGridFloryHuggins>(phafd));
-  //  v_line = utility::split_line(line);
-  //  pairs.at(2)->settings(v_line);
-
-
-  
-  
-
   // set neighbor skin , infer cutoff from force cutoffs,
   //  and give pairs correct neigh_lists
   line = "2.0";
@@ -131,105 +123,126 @@ void Input::read()
   groups.at(0)->create_all();
 
   groups.push_back(std::make_unique<Group>(phafd));
-  line = "nt_pmer0 molecule 0 1 2";
+  line = "nt_pmers molecule 0 1 2";
   v_line = utility::split_line(line);    
   groups.at(1)->create_group(v_line);
 
 
   
-  line = "fix_nt_pmer0 nt_pmer0 489210 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114";
-  atomfixes.push_back(std::make_unique<FixAtomSemiFlexible<BeadRodPmer::NoTether>>(phafd));
+  line = "fix_nt_pmers nt_pmers 489210 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114";
+  fixes.push_back(std::make_unique<FixAtomSemiFlexible<BeadRodPmer::NoTether>>(phafd));
   v_line = utility::split_line(line);
-  atomfixes.at(0)->init(v_line);
+  fixes.at(0)->init(v_line);
 
   
   line = "fix_volfrac 491240 mobility 0.01 temp 1.0 volFH 0.01 gamma 10.0";
-  gridfixes.push_back(std::make_unique<FixGridConjugate<psPDE::ConjugateVolFrac>>(phafd));
+  fixes.push_back(std::make_unique<FixGridConjugate<psPDE::ConjugateVolFrac>>(phafd));
   v_line = utility::split_line(line);
-  gridfixes.at(0)->init(v_line);
+  fixes.at(1)->init(v_line);
 
 
   
 
   line = "fix_chempot temp 1.0 chi 3.0 volFH 0.01";
-  gridfixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));
+  fixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));
   v_line = utility::split_line(line);
-  gridfixes.at(1)->init(v_line);
+  fixes.at(2)->init(v_line);
 
 
   
-  // need to run things now?
+
+
+
+
+  line = "atoms atom/owned vtkfiles/atom_p% 1000 attributes 4 x ux ix F";
+  utility::replacePercentages(line,commbrick->me);
+
+  dumps.push_back(std::make_unique<Dump>(phafd));
+  v_line = utility::split_line(line);
+  dumps.back()->init(v_line);
+
+
+
+  line = "realgrid grid vtkfiles/field_p% 1000 attributes 2 phi nonlinear";
+  utility::replacePercentages(line,commbrick->me);
+
+  dumps.push_back(std::make_unique<Dump>(phafd));
+  v_line = utility::split_line(line);
+  dumps.back()->init(v_line);
+
+
+
+
+  line = "fouriergrid ftgrid vtkfiles/ft_field_p% 1000 attributes 1 f_averagenorm";
+  utility::replacePercentages(line,commbrick->me);
+
+  dumps.push_back(std::make_unique<Dump>(phafd));
+  v_line = utility::split_line(line);
+  dumps.back()->init(v_line);
+
+  
+  line = "norm ft_phi norm";
+
+  computes.push_back(std::make_unique<ComputeComplex>(phafd));
+  v_line = utility::split_line(line);
+  computes.back()->init(v_line);
+  
+  line = "averagenorm 100 10 1000 c_norm";
+  fixes.push_back(std::make_unique<FixGridAve>(phafd));
+  v_line = utility::split_line(line);
+  fixes.back()->init(v_line);
 
   int step = 0;
-  int Nsteps = 20;
+  int Nsteps = 10000;
   double t = 0;
   double dt = 1e-3;
-
-
   
+
+  // need to run things now?
   domain->pbc();
   commbrick->borders();
   neighbor->build(step);
 
+  
+  for (auto &dump : dumps) {
+    dump->setup();
+    dump->write_collection_header();
+  }
 
   
-  // and save it
-  std::string atom_prefix = "vtkfiles/atom_p%";
-    
-  utility::replacePercentages(atom_prefix,commbrick->me);
-
-  std::string atom_fname = atom_prefix + std::string("_0.vtp");
-  std::string atom_cname = atom_prefix + std::string(".pvd");
-
-  atoms->Fs.setZero();
-  psPDE::ioVTK::writeVTKcollectionHeader(atom_cname);
-  writeVTKAtomData(atom_fname,"owned");
-  psPDE::ioVTK::writeVTKcollectionMiddle(atom_cname,atom_fname,t);
-
-
-  // and save it
-  std::string field_prefix = "vtkfiles/field_p%";
-  
-  utility::replacePercentages(field_prefix,commbrick->me);
-  
-  std::string field_fname = field_prefix + std::string("_0.vti");
-  std::string field_cname = field_prefix + std::string(".pvd");
-  
-  
-  psPDE::ioVTK::writeVTKcollectionHeader(field_cname);
-  psPDE::ioVTK::writeVTKImageData(field_fname,{grid->phi},domain->ps_domain->boxlo,
-				  {grid->dx(),grid->dy(),grid->dz()});
-  
-  psPDE::ioVTK::writeVTKcollectionMiddle(field_cname,field_fname,0.0);
-  
-
-
-  for (auto &fix : atomfixes)
+  for (auto &fix : fixes)
     fix->reset_dt(dt);
 
-  for (auto &fix : atomfixes)
+  for (auto &fix : fixes)
     fix->setup();
 
-
-  for (auto &fix : gridfixes)
-    fix->reset_dt(dt);
-
-  for (auto &fix : gridfixes)
-    fix->setup();
 
   if (commbrick->me == 0) 
     std::cout << "Running simulation of solution." << std::endl;
-
-
+  
+    
+  
   errflag = 0;
   total_errflag = 0;
 
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-  
+
+
   for (step = 1; step <= Nsteps; step++) {
 
+    for (auto &compute: computes)
+      compute->start_of_step();
+    
+    for (auto &fix: fixes)
+      fix->start_of_step();
+
+
+    for (auto &dump : dumps)
+      dump->start_of_step(step);
+
+    
     if (neighbor->decide()) {
       domain->pbc();
       commbrick->borders();
@@ -246,7 +259,7 @@ void Input::read()
 
     commbrick->reverse_comm();
 
-    for (auto &fix : atomfixes)
+    for (auto &fix : fixes)
       fix->initial_integrate();
 
     grid->nonlinear->setZero();
@@ -257,63 +270,68 @@ void Input::read()
 
     commbrick->reverse_comm();
 
-    for (auto &fix : atomfixes)
-      fix->final_integrate();
-
     // additional terms from e.g. chemical potential, which are added to grid->nonlinear
-    for (auto &fix : gridfixes)
+    for (auto &fix: fixes)
+      fix->post_force();
+
+
+    // mainly just fourier transforming phi and nonlinear
+    for (auto &fix : fixes)
       fix->pre_final_integrate();
+
+
+    // computes which act on fourier space grids
+    for (auto &compute : computes)
+      compute->in_fourier();
+
     
-    for (auto &fix : gridfixes)
+    // updating stuff (including fourier transformed phi and nonlinear
+    for (auto &fix : fixes)
       fix->final_integrate();
 
+
+    // mainly just inverse fourier transforming
+    for (auto &fix : fixes)
+      fix->post_final_integrate();
+
+    for (auto &fix : fixes)
+      fix->end_of_step();
+    
+
+    t += dt;
+
+    
+    for (auto &dump :dumps)
+      if (step % dump->every == 0) {
+	if (commbrick->me == 0)
+	  std::cout << "Saving on step " << step << std::endl;
+
+
+	dump->write_collection_middle(step);
+
+      
+      }
+    
     if (std::isnan((*grid->phi)(0,0,0)))
       errflag = 1;
 	
     MPI_Allreduce(&errflag, &total_errflag,1,MPI_INT,MPI_SUM,world);
 
-    if (total_errflag)
+    if (total_errflag) {
+
+      for (auto &dump : dumps)
+	dump->write_collection_footer();
+      
       throw std::runtime_error("NAN encountered in phi.");
-
-    t += dt;
-
-
-    if (step % 10 == 0) {
-      
-      if (commbrick->me == 0)
-	  std::cout << "Saving polymer on step " << step << std::endl;
-      atoms->Fs.setZero();
-      pairs.at(0)->compute();
-      commbrick->reverse_comm();
-      
-      atom_fname = atom_prefix + std::string("_") + std::to_string(step) + std::string(".vtp");
-      
-      writeVTKAtomData(atom_fname,"owned");
-      psPDE::ioVTK::writeVTKcollectionMiddle(atom_cname,atom_fname,t);
-    }
-    if (step % 10 == 0) {
-      if (commbrick->me == 0)
-	std::cout << "Saving phi on step " << step << std::endl;
-      
-      field_fname = field_prefix + std::string("_") + std::to_string(step) + std::string(".vti");
-      
-      psPDE::ioVTK::writeVTKImageData(field_fname,{grid->phi},domain->ps_domain->boxlo,
-				      {grid->dx(),grid->dy(),grid->dz()});
-      
-      psPDE::ioVTK::writeVTKcollectionMiddle(field_cname,field_fname,t);
-      
-    }	
-    
-    
+    }    
     
   }
 
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+  for (auto &dump :dumps)
+    dump->write_collection_footer();
   
-  psPDE::ioVTK::writeVTKcollectionFooter(atom_cname);    
-  psPDE::ioVTK::writeVTKcollectionFooter(field_cname);
-
   if (commbrick->me == 0) {
     std::cout << "number of neighbor calls = " << neighbor->get_ncalls() << std::endl;
     
@@ -323,126 +341,4 @@ void Input::read()
   }
 
 
-}
-
-
-void Input::writeVTKAtomData(std::string fname,
-			     std::string which_atoms)
-/*============================================================================*/
-/*
-  Write scalar image data to a vtk (and paraview) compatible file
-  (extension .vti).
-
-  Parameters
-  ----------
-
-  fname : string
-      Name of file to save with extension (either ".vtp" or ".pvtp").
-
-  xs : beads to save
-*/
-/*============================================================================*/
-
-{
-  
-  auto myfile = std::fstream(fname, std::ios::out);
-
-  if (not myfile.is_open()) {
-    throw std::runtime_error(std::string("Cannot open file ") + fname);
-  }
-
-
-  int numpoints;
-  if (which_atoms == "all")
-    numpoints = atoms->xs.cols();
-  else if (which_atoms == "owned")
-    numpoints = atoms->nowned;
-  else if (which_atoms == "local")
-    numpoints = atoms->nlocal;
-  else if (which_atoms == "ghost")
-    numpoints = atoms->nghost;
-  else
-    throw std::runtime_error("need which_atoms to be either all, owned, local, or ghost");
-    
-  
-  myfile << "<?xml version=\"1.0\"?>" << std::endl
-	 << "<VTKFile type=\"PolyData\"  version=\"1.0\""
-	 << " byte_order=\"LittleEndian\">" << std::endl
-	 << "<PolyData>" << std::endl
-	 << "<Piece NumberOfPoints=\"" << numpoints
-	 << "\" NumberOfLines=\"1\">" << std::endl;
-  
-  myfile << "<PointData Vectors=\"Force\">" << std::endl
-	 << "<DataArray Name=\"Force\" "
-	 << "type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">" << std::endl;
-  
-  if (which_atoms == "all") {
-    for (int i = 0; i < atoms->Fs.cols(); i++) {
-      myfile << atoms->Fs.col(i)(0) << " " << atoms->Fs.col(i)(1) << " "
-	     << atoms->Fs.col(i)(2) << " ";
-      
-    }
-  } else if (which_atoms == "owned") {
-    for (int i = 0; i < atoms->nowned; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
-	myfile << atoms->Fs.col(i)(0) << " " << atoms->Fs.col(i)(1) << " "
-	       << atoms->Fs.col(i)(2) << " ";
-      else std::cout << "error?!" << std::endl;
-    }
-  } else if (which_atoms == "local") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
-	myfile << atoms->Fs.col(i)(0) << " " << atoms->Fs.col(i)(1) << " "
-	       << atoms->Fs.col(i)(2) << " ";
-    }
-  } else if (which_atoms == "ghost") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
-	myfile << atoms->Fs.col(i)(0) << " " << atoms->Fs.col(i)(1) << " "
-	       << atoms->Fs.col(i)(2) << " ";
-    } 
-  }
-  
-  myfile << std::endl << "</DataArray>" << std::endl
-	 << "</PointData>" << std::endl;
-
-  myfile << "<Points>" << std::endl
-	 << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">"
-	 << std::endl;
-
-  if (which_atoms == "all") {
-    for (int i = 0; i < atoms->xs.cols(); i++) {
-      myfile << atoms->xs.col(i)(0) << " " << atoms->xs.col(i)(1) << " "
-	     << atoms->xs.col(i)(2) << " ";
-    
-    }
-  } else if (which_atoms == "owned") {
-    for (int i = 0; i < atoms->nowned; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
-	myfile << atoms->xs.col(i)(0) << " " << atoms->xs.col(i)(1) << " "
-	       << atoms->xs.col(i)(2) << " ";
-      else std::cout << "error?!" << std::endl;
-    }
-  } else if (which_atoms == "local") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
-	myfile << atoms->xs.col(i)(0) << " " << atoms->xs.col(i)(1) << " "
-	       << atoms->xs.col(i)(2) << " ";
-    }
-  } else if (which_atoms == "ghost") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
-	myfile << atoms->xs.col(i)(0) << " " << atoms->xs.col(i)(1) << " "
-	       << atoms->xs.col(i)(2) << " ";
-    } 
-  }
-
-  myfile << std::endl << "</DataArray>" << std::endl
-	 << "</Points>" << std::endl;
-
-  myfile << "</Piece>" << std::endl
-	 << "</PolyData>" << std::endl
-	 << "</VTKFile>" << std::endl;    
-  myfile.close();
-  
 }

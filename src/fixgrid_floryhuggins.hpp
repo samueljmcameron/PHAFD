@@ -3,7 +3,7 @@
 #define PHAFD_FIXGRID_FLORYHUGGINS_HPP
 
 
-#include "fixgrid.hpp"
+#include "fix.hpp"
 
 #include <memory>
 
@@ -15,7 +15,7 @@ namespace psPDE {
 namespace PHAFD_NS {
 
 
-class FixGridFloryHuggins : public FixGrid {
+class FixGridFloryHuggins : public Fix {
 public:
   FixGridFloryHuggins(PHAFD *);
 
@@ -24,9 +24,13 @@ public:
   virtual void setup() override;
 
   virtual void initial_integrate() override {};
-  virtual void pre_final_integrate() override;
+  virtual void post_force() override;
+  virtual void pre_final_integrate() override {};
   virtual void final_integrate() override {};
+  virtual void post_final_integrate() override {};
 
+  virtual void end_of_step() override {};
+  
 private:
 
   std::unique_ptr<psPDE::FixGridFloryHuggins> ps_flory;

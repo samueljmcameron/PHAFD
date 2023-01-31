@@ -7,10 +7,10 @@
 #include "neighbor.hpp"
 #include "input.hpp"
 #include "group.hpp"
-#include "fixatom.hpp"
-#include "fixgrid.hpp"
+#include "fix.hpp"
 #include "pair.hpp"
-
+#include "compute.hpp"
+#include "dump.hpp"
 
 
 using namespace PHAFD_NS;

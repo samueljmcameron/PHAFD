@@ -20,9 +20,6 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   ft_nonlinear = nullptr;
   ft_noise = nullptr;
 
-  ft_phi_modulus = nullptr;
-  ft_nonlinear_modulus = nullptr;
-  ft_noise_modulus = nullptr;
   
 }
 
@@ -42,10 +39,6 @@ void Grid::create(const std::vector<std::string> &v_line)
   ft_phi = ps_grid->ft_phi.get();
   ft_nonlinear = ps_grid->ft_nonlinear.get();
   ft_noise = ps_grid->ft_noise.get();
-
-  ft_phi_modulus = ps_grid->ft_phi_modulus.get();
-  ft_nonlinear_modulus = ps_grid->ft_nonlinear_modulus.get();
-  ft_noise_modulus = ps_grid->ft_noise_modulus.get();
 
   
 }

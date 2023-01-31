@@ -1,20 +1,24 @@
 
 #include "group.hpp"
 
-#include "fixatom.hpp"
-
+#include "fix.hpp"
 
 using namespace PHAFD_NS;
 
 
-FixAtom::FixAtom(PHAFD *phafd) : Pointers(phafd) {};
+Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
+  
+
+  per_grid = per_ftgrid = per_atom = global = false;
+
+};
 
 
-void FixAtom::init(const std::vector<std::string> &v_line) 
+void Fix::init(const std::vector<std::string> &v_line) 
 {
-
-  if (v_line.size() < 3)
-    throw std::runtime_error("incorrect args in fix/semiflexible.");
+  this_step = false;
+  if (v_line.size() < 2)
+    throw std::runtime_error("incorrect args in fixgrid.");
     
   name = v_line.at(0);
 
@@ -25,12 +29,12 @@ void FixAtom::init(const std::vector<std::string> &v_line)
 
   NAMES.push_back(name);
 
-  // sets start_indices and end_indices
-  find_group(v_line.at(1));
+
 }
 
 
-void FixAtom::find_group(const std::string &gname)
+
+void Fix::find_group(const std::string &gname)
 {
   int group_index = -1;
   
@@ -53,9 +57,15 @@ void FixAtom::find_group(const std::string &gname)
 }
 
 
-void FixAtom::reset_dt(double timestep)
+
+
+void Fix::reset_dt(double timestep)
 {
 
   dt = timestep;
 }
 
+void Fix::start_of_step()
+{
+  this_step = false;
+}
