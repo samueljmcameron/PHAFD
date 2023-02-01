@@ -10,7 +10,8 @@
 using namespace PHAFD_NS;
 
 Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
-
+  gridset = false;
+  gridpopulated = false;
   ps_grid = nullptr;
   boxgrid = nullptr;
   ft_boxgrid = nullptr;
@@ -39,11 +40,10 @@ void Grid::create(const std::vector<std::string> &v_line)
   ft_phi = ps_grid->ft_phi.get();
   ft_nonlinear = ps_grid->ft_nonlinear.get();
   ft_noise = ps_grid->ft_noise.get();
-
+  gridset = true;
   
 }
 
-/* need to call after commbrick->setup() */
 void Grid::populate(const std::vector<std::string> &v_line)
 {
 
@@ -64,6 +64,8 @@ void Grid::populate(const std::vector<std::string> &v_line)
   
   
   ps_grid->populate(new_v_line);
+
+  gridpopulated=true;
 }
 
 

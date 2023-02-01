@@ -19,6 +19,10 @@ using namespace PHAFD_NS;
 Domain::Domain(PHAFD *phafd)
   : Pointers(phafd)
 {
+
+  boxset = false;
+  subboxset = false;
+  
   period = nullptr;
   boxlo = nullptr;
   boxhi = nullptr;
@@ -37,7 +41,7 @@ void Domain::set_box(const std::vector<std::string> &v_line)
   period = ps_domain->period.data();
   boxlo = ps_domain->boxlo.data();
   boxhi = ps_domain->boxhi.data();
-
+  boxset = true;
 
 }
 
@@ -60,7 +64,7 @@ void Domain::set_subbox()
     subhi[1] = boxhi[1];
     subhi[2] = dz*(grid->phi->get_local0start()+grid->phi->Nz()) + boxlo[2];
   }
-
+  subboxset = true;
   return;
 }
 

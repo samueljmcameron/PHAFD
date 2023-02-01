@@ -30,7 +30,7 @@ public:
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_noise;
   
   std::unique_ptr<psPDE::Grid> ps_grid;  
-
+  bool gridset,gridpopulated;
 
 
   Grid(PHAFD *);

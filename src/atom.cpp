@@ -12,7 +12,10 @@
 using namespace PHAFD_NS;
 
 Atom::Atom(PHAFD *phafd)
-  : Pointers(phafd),size_forward(3), size_reverse(3),size_border(6) {};
+  : Pointers(phafd),size_forward(3), size_reverse(3),size_border(6) {
+  ntypes = -1;
+
+};
 
 
 
@@ -112,7 +115,9 @@ void Atom::check_tags_and_types()
 
   ntypes = all_typemax + 1;
 
-  ntypes = 2;
+  groups.push_back(std::make_unique<Group>(phafd));
+  groups.back()->create_all();
+
 
 }
 

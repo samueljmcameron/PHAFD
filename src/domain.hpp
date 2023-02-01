@@ -28,7 +28,7 @@ public:
   void pbc () const;
   int set_image() const;
 
-
+  bool boxset, subboxset;
   
   // addresses of data from psPDE arrays (of size 3)
   double *period,*boxlo,*boxhi;
