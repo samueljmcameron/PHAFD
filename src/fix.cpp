@@ -1,7 +1,8 @@
 
 #include "group.hpp"
-
 #include "fix.hpp"
+
+#include "integrate.hpp"
 
 using namespace PHAFD_NS;
 
@@ -10,6 +11,7 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
   
 
   per_grid = per_ftgrid = per_atom = global = false;
+  numberofcomponents = 1;
 
 };
 
@@ -59,10 +61,10 @@ void Fix::find_group(const std::string &gname)
 
 
 
-void Fix::reset_dt(double timestep)
+void Fix::reset_dt()
 {
 
-  dt = timestep;
+  dt = integrate->dt;
 }
 
 void Fix::start_of_step()

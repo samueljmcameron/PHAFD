@@ -37,6 +37,8 @@ using namespace PHAFD_NS;
 PairGridAtomGaussian::PairGridAtomGaussian(PHAFD *phafd) : Pair(phafd) {
   list_type = NeighList::FULL;
   list_style = NPair::GRIDBIN;
+
+  name = "gridatom/gaussian";
   
 };
 

@@ -43,6 +43,7 @@ public:
   double maxcut;
 
   int list_type,list_style;
+  std::string name;
 
 protected:
 

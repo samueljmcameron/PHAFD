@@ -12,8 +12,6 @@ public:
   ~Input();
 
   void read();
-
-  void writeVTKAtomData(std::string , std::string );
   
 };
   

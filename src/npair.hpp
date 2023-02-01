@@ -38,7 +38,7 @@ public:
 
   NPair(PHAFD *);
   virtual void copy_neighbor_info(const Neighbor *);
-  void build_setup(const NBin *, const NStencil *, int);
+  void build_setup(const NBin *, const NStencil *);
   virtual void build(class NeighList *) = 0;
 
  protected:

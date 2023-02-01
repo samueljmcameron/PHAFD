@@ -31,6 +31,8 @@ public:
   bool this_step;
   std::set<std::string> dump_callers;
   int Nx,Ny,Nz;
+
+  int numberofcomponents; // number of components in the array (e.g. 1 for scalar, 3 for vector, etc.)
   
 };
 

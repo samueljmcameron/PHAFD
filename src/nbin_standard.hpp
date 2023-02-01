@@ -23,8 +23,8 @@ class NBinStandard : public NBin {
  public:
   NBinStandard(PHAFD *);
 
-  void setup_bins(double) override;
-  void bin_atoms(int) override;
+  virtual void setup_bins(double) override;
+  virtual void bin_atoms() override;
 
 };
 

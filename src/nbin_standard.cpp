@@ -19,6 +19,7 @@
 #include "domain.hpp"
 #include "neighbor.hpp"
 
+#include "integrate.hpp"
 using namespace PHAFD_NS;
 
 #define SMALL 1.0e-6
@@ -177,13 +178,13 @@ void NBinStandard::setup_bins(double cutoff)
    bin owned and ghost atoms
 ------------------------------------------------------------------------- */
 
-void NBinStandard::bin_atoms(int step)
+void NBinStandard::bin_atoms()
 {
   int ibin;
 
 
   
-  last_bin = step;
+  last_bin = integrate->timestep;
 
   for (auto &b: binhead) b = -1;
 

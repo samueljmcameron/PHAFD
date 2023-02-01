@@ -7,7 +7,7 @@
 #include "grid.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
-
+#include "integrate.hpp"
 #include "fixgrid_conjugate.hpp"
 
 using namespace PHAFD_NS;
@@ -37,7 +37,6 @@ void FixGridConjugate<T>::init(const std::vector<std::string> &v_line)
 
   conjugate = std::make_unique<T>(*(domain->ps_domain),*(grid->ps_grid));
 
-
   
   conjugate->readCoeffs(new_v_line);
   
@@ -50,10 +49,10 @@ void FixGridConjugate<T>::setup()
 
 }
 template <typename T>
-void FixGridConjugate<T>::reset_dt(double timestep)
+void FixGridConjugate<T>::reset_dt()
 {
 
-  dt = timestep;
+  dt = integrate->dt;
 
   conjugate->reset_dt(dt);
   
@@ -67,7 +66,7 @@ void FixGridConjugate<T>::pre_final_integrate()
   fftw_execute(grid->ps_grid->forward_phi);
   fftw_execute(grid->ps_grid->forward_nonlinear);
 
-  
+  didnotintegrate = true;
   return;
 }
 
@@ -77,7 +76,7 @@ void FixGridConjugate<T>::final_integrate()
 
 
   conjugate->update();
-
+  didnotintegrate = false;
   
   return;
 }
@@ -87,6 +86,12 @@ void FixGridConjugate<T>::post_final_integrate()
 {
 
   fftw_execute(grid->ps_grid->backward_phi);
+
+  if (didnotintegrate) {
+    double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
+    
+    (*grid->phi) /= factor;
+  }
   
   return;
 }

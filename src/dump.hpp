@@ -24,11 +24,11 @@ public:
   void init(const std::vector<std::string> &);
 
   void setup();
-  void start_of_step(int);
+  void start_of_step();
   
   void write_collection_header();
   void write_collection_footer();
-  void write_collection_middle(double);
+  void write_collection_middle();
   
   inline static std::vector<std::string> NAMES;
 
@@ -52,7 +52,7 @@ protected:
   std::set<std::string> attributes;
 
 private:
-  void create_instance_name(int);
+  void create_instance_name();
 
   void write_atom_timestep();
   void write_grid_timestep();
@@ -63,7 +63,7 @@ private:
 
   template <typename T>
   void write_ascii_data(std::fstream &, const std::string &,
-			std::vector<T>);
+			std::vector<T>,int);
 
   void append_binary_data(std::fstream &,
 			  psPDE::fftw_MPI_3Darray<double> * ); 

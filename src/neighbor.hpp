@@ -45,7 +45,7 @@ public:
   std::vector<std::unique_ptr<NPair>> neigh_pairs;
   const double *bboxlo,*bboxhi;
   void setup(const std::vector<std::string> &);
-  void build(int);
+  void build();
   bool decide();
 
   int get_ncalls() {return ncalls;};

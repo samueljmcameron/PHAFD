@@ -17,7 +17,7 @@
 #include "neighbor.hpp"
 #include "nbin.hpp"
 #include "nstencil.hpp"
-
+#include "integrate.hpp"
 #include <iostream>
 
 #define MIN(A,B) ((A) < (B) ? (A) : (B))
@@ -100,14 +100,14 @@ void NPair::copy_stencil_info(const NStencil *ns)
    copy info from NBin and NStencil classes to this build class
 ------------------------------------------------------------------------- */
 
-void NPair::build_setup(const NBin *nb, const NStencil *ns,int timestep)
+void NPair::build_setup(const NBin *nb, const NStencil *ns)
 {
   if (nb) copy_bin_info(nb);
   if (ns) copy_stencil_info(ns);
   
 
   // set here, since build_setup() always called before build()
-  last_build = timestep;
+  last_build = integrate->timestep;
 }
 
 /* ----------------------------------------------------------------------

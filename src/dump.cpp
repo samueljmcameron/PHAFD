@@ -8,6 +8,7 @@
 #include "compute.hpp"
 #include "atom.hpp"
 #include "ps_pde/fftw_mpi_3darray.hpp"
+#include "integrate.hpp"
 
 using namespace PHAFD_NS;
 
@@ -130,10 +131,10 @@ void Dump::setup()
   }
 }
 
-void Dump::start_of_step(int step)
+void Dump::start_of_step()
 {
 
-  if (step % every == 0) {
+  if (integrate->timestep % every == 0) {
     for (auto &compute : computes)
       if (compute->dump_callers.find(name) != compute->dump_callers.end())
 	compute->this_step = true;
@@ -182,10 +183,11 @@ void Dump::write_collection_footer()
 
 
 /* called whenever new file is dumped. */
-void Dump::write_collection_middle(double time)
+void Dump::write_collection_middle()
 {
 
-  create_instance_name(time);
+  double time = integrate->timestep*integrate->dt;
+  create_instance_name();
   
   auto myfile = std::fstream(collection_name,std::ios_base::app);
   if (not myfile.is_open()) {
@@ -208,13 +210,13 @@ void Dump::write_collection_middle(double time)
 
 
 
-void Dump::create_instance_name(int step)
+void Dump::create_instance_name()
 {
   instance_name = base_name + std::string("_") +
-    std::to_string(step) + fext;
+    std::to_string(integrate->timestep) + fext;
   
   nopath_instance_name = nopath_base_name + std::string("_")
-    +  std::to_string(step) + fext;
+    +  std::to_string(integrate->timestep) + fext;
 
 
 }
@@ -433,7 +435,8 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
       if (!computes.at(index)->per_atom)
 	throw std::runtime_error("Cannot write dump, compute ID " + cid
 				 + std::string("is not a per_atom quantity."));
-      write_ascii_data(myfile,word,computes.at(index)->array);
+      write_ascii_data(myfile,word,computes.at(index)->array,
+		       computes.at(index)->numberofcomponents);
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
 
@@ -477,7 +480,8 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
 	throw std::runtime_error("Cannot write dump, fix ID " + fid
 				 + std::string("is not a per_atom quantity."));
       
-      write_ascii_data(myfile,word,fixes.at(index)->array);
+      write_ascii_data(myfile,word,fixes.at(index)->array,
+		       fixes.at(index)->numberofcomponents);
       
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
@@ -504,15 +508,15 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
     else if (word == "ux")
       write_ascii_data(myfile,word,atoms->uxs);
     else if (word == "ix")
-      write_ascii_data(myfile,word,atoms->images);
+      write_ascii_data(myfile,word,atoms->images,1);
     else if (word == "ID")
-      write_ascii_data(myfile,word,atoms->tags);
+      write_ascii_data(myfile,word,atoms->tags,1);
     else if (word == "molID")
-      write_ascii_data(myfile,word,atoms->moltags);
+      write_ascii_data(myfile,word,atoms->moltags,1);
     else if (word == "type")
-      write_ascii_data(myfile,word,atoms->types);
+      write_ascii_data(myfile,word,atoms->types,1);
     else if (word == "label")
-      write_ascii_data(myfile,word,atoms->labels);
+      write_ascii_data(myfile,word,atoms->labels,1);
     
     else
       throw std::runtime_error("Invalid per atom quantity in dump file.");
@@ -567,7 +571,7 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
 
 template <typename T>
 void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
-			    std::vector<T> array)
+			    std::vector<T> array,int numberofcomponents)
 {
   std::string dtype;
   if (typeid(T) == typeid(double))
@@ -578,7 +582,8 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
     throw std::runtime_error("Cannot use non double non int type for writing ascii data.");
   
   myfile << "<DataArray Name=\"" << arrname << "\" "
-	 << "type=\"" << dtype << "\" NumberOfComponents=\"1\" format=\"ascii\">" << std::endl;
+	 << "type=\"" << dtype << "\" NumberOfComponents=\""
+	 << numberofcomponents << "\" format=\"ascii\">" << std::endl;
   
   if (which_atoms == "all") {
     for (int i = 0; i < array.size(); i++) {
@@ -586,22 +591,40 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
       
     }
   } else if (which_atoms == "owned") {
+
+    int index = 0;
+
     for (int i = 0; i < atoms->nowned; i++) {
       if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
-	myfile << array[i] << " ";
+	for (int components = 0; components < numberofcomponents; components++)
+	  myfile << array[index++] << " ";
       else
 	throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
 
     }
   } else if (which_atoms == "local") {
+    
+    int index = 0;
+
     for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
       if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
-	myfile << array[i] << " ";
+	for (int components = 0; components < numberofcomponents; components++)
+	  myfile << array[index++] << " ";
+      else
+	index += numberofcomponents;
+	
     }
   } else if (which_atoms == "ghost") {
+
+    int index = 0;
+    
     for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
       if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
-	myfile << array[i] << " ";
+	for (int components = 0; components < numberofcomponents; components++)
+	  myfile << array[index++] << " ";
+      else
+	index += numberofcomponents;
+
     } 
   }
   

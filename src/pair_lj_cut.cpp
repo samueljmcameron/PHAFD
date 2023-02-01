@@ -38,6 +38,8 @@ using namespace PHAFD_NS;
 PairLJCut::PairLJCut(PHAFD *phafd) : Pair(phafd) {
   list_type = NeighList::HALF;
   list_style = NPair::HALFBINNEWTON;
+
+  name = "lj/cut";
 };
 /* ---------------------------------------------------------------------- */
 

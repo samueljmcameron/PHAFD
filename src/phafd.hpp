@@ -30,8 +30,9 @@ public:
   std::unique_ptr<class Grid> grid;
   std::unique_ptr<class CommBrick> commbrick;
   std::unique_ptr<class Neighbor> neighbor;
-  std::vector<std::unique_ptr<class Group>> groups;
   std::unique_ptr<class Input> input;
+  std::unique_ptr<class Integrate> integrate;
+  std::vector<std::unique_ptr<class Group>> groups;
   std::vector<std::unique_ptr<class Fix>> fixes;
   std::vector<std::unique_ptr<class Pair>> pairs;
   std::vector<std::unique_ptr<class Compute>> computes;

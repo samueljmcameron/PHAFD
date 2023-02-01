@@ -23,7 +23,7 @@ public:
   virtual void final_integrate() = 0;
   virtual void post_final_integrate() = 0;
 
-  virtual void reset_dt(double);
+  virtual void reset_dt();
   virtual void start_of_step();
   virtual void end_of_step() = 0;
   
@@ -42,6 +42,7 @@ public:
   std::vector<double> array;
 
   int Nx,Ny,Nz;
+  int numberofcomponents; // same as compute
   
 protected:
   // group properties, all groups must be in chunks, only relevant for atom fixes at the moment

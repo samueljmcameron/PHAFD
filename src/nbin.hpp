@@ -48,7 +48,7 @@ class NBin : protected Pointers {
   virtual void copy_neighbor_info(const Neighbor *);
 
   virtual void setup_bins(double) = 0;
-  virtual void bin_atoms(int) = 0;
+  virtual void bin_atoms() = 0;
 
   
 

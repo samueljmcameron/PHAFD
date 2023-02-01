@@ -7,9 +7,10 @@
 #include "neigh_list.hpp"
 #include "pair.hpp"
 
+
 #include "domain.hpp"
 #include "atom.hpp"
-
+#include "integrate.hpp"
 
 #define MAX(A,B) ((A) > (B) ? (A) : (B))
 
@@ -95,22 +96,22 @@ bool Neighbor::check_distance()
 
 }
 
-void Neighbor::build(int timestep)
+void Neighbor::build()
 {
 
   ago = 0;
   ncalls++;
-  lastcall = timestep;
+  lastcall = integrate->timestep;
 
   xholds.resize(Eigen::NoChange,atoms->nowned);
 
   for (int i = 0; i < atoms->nowned; i++) 
     xholds.col(i) = atoms->xs.col(i); 
   
-  neigh_bin->bin_atoms(timestep);
+  neigh_bin->bin_atoms();
 
   for (auto i = 0; i < neigh_lists.size(); i ++ ) {
-    neigh_pairs.at(i)->build_setup(neigh_bin.get(),neigh_stencils.at(i).get(),timestep);
+    neigh_pairs.at(i)->build_setup(neigh_bin.get(),neigh_stencils.at(i).get());
     neigh_pairs.at(i)->build(neigh_lists.at(i).get());
   }
 
@@ -179,7 +180,7 @@ void Neighbor::construct_lists()
   for (auto i = 0; i < neigh_lists.size(); i++) {
     neigh_lists.at(i)->setup_page(pgsize,oneatom);
     neigh_stencils.at(i)->copy_neighbor_info(this);
-    neigh_stencils.at(i)->create_setup(neigh_bin.get(),0);
+    neigh_stencils.at(i)->create_setup(neigh_bin.get(),integrate->timestep);
     neigh_stencils.at(i)->create();
     neigh_pairs.at(i)->copy_neighbor_info(this);
   }

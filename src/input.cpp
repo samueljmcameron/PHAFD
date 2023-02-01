@@ -23,8 +23,9 @@
 
 #include "ps_pde/iovtk.hpp"
 #include "dump.hpp"
-
+#include "integrate.hpp"
 #include "compute_complex.hpp"
+#include "compute_pair.hpp"
 #include "fixgrid_ave.hpp"
 
 #include <iostream>
@@ -80,7 +81,6 @@ void Input::read()
 
 
 
-  atoms->Fs.setZero();
   // atoms are now completely set.
 
 
@@ -154,7 +154,7 @@ void Input::read()
 
 
 
-  line = "atoms atom/owned vtkfiles/atom_p% 1000 attributes 4 x ux ix F";
+  line = "atoms atom/owned vtkfiles/atom_p% 1000 attributes 5 x ux ix F c_droppolyforces";
   utility::replacePercentages(line,commbrick->me);
 
   dumps.push_back(std::make_unique<Dump>(phafd));
@@ -186,159 +186,27 @@ void Input::read()
   computes.push_back(std::make_unique<ComputeComplex>(phafd));
   v_line = utility::split_line(line);
   computes.back()->init(v_line);
+
+  line = "droppolyforces gridatom/gaussian";
+  
+  computes.push_back(std::make_unique<ComputePair>(phafd));
+  v_line = utility::split_line(line);
+  computes.back()->init(v_line);
   
   line = "averagenorm 100 10 1000 c_norm";
   fixes.push_back(std::make_unique<FixGridAve>(phafd));
   v_line = utility::split_line(line);
   fixes.back()->init(v_line);
 
-  int step = 0;
-  int Nsteps = 10000;
-  double t = 0;
-  double dt = 1e-3;
-  
 
-  // need to run things now?
-  domain->pbc();
-  commbrick->borders();
-  neighbor->build(step);
-
-  
-  for (auto &dump : dumps) {
-    dump->setup();
-    dump->write_collection_header();
-  }
-
-  
-  for (auto &fix : fixes)
-    fix->reset_dt(dt);
-
-  for (auto &fix : fixes)
-    fix->setup();
+  integrate->nsteps = 10000;
+  integrate->firststep = 0;
+  integrate->timestep = integrate->firststep;
+  integrate->dt = 1e-3;
 
 
-  if (commbrick->me == 0) 
-    std::cout << "Running simulation of solution." << std::endl;
-  
-    
-  
-  errflag = 0;
-  total_errflag = 0;
-
-
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-
-
-  for (step = 1; step <= Nsteps; step++) {
-
-    for (auto &compute: computes)
-      compute->start_of_step();
-    
-    for (auto &fix: fixes)
-      fix->start_of_step();
-
-
-    for (auto &dump : dumps)
-      dump->start_of_step(step);
-
-    
-    if (neighbor->decide()) {
-      domain->pbc();
-      commbrick->borders();
-      neighbor->build(step);
-    } else {
-      commbrick->forward_comm();
-    }
-
-
-    atoms->Fs.setZero();
-
-    for (auto & pair : pairs)
-      pair->compute();
-
-    commbrick->reverse_comm();
-
-    for (auto &fix : fixes)
-      fix->initial_integrate();
-
-    grid->nonlinear->setZero();
-    atoms->Fs.setZero();
-    
-    for (auto & pair : pairs)
-      pair->compute();
-
-    commbrick->reverse_comm();
-
-    // additional terms from e.g. chemical potential, which are added to grid->nonlinear
-    for (auto &fix: fixes)
-      fix->post_force();
-
-
-    // mainly just fourier transforming phi and nonlinear
-    for (auto &fix : fixes)
-      fix->pre_final_integrate();
-
-
-    // computes which act on fourier space grids
-    for (auto &compute : computes)
-      compute->in_fourier();
-
-    
-    // updating stuff (including fourier transformed phi and nonlinear
-    for (auto &fix : fixes)
-      fix->final_integrate();
-
-
-    // mainly just inverse fourier transforming
-    for (auto &fix : fixes)
-      fix->post_final_integrate();
-
-    for (auto &fix : fixes)
-      fix->end_of_step();
-    
-
-    t += dt;
-
-    
-    for (auto &dump :dumps)
-      if (step % dump->every == 0) {
-	if (commbrick->me == 0)
-	  std::cout << "Saving on step " << step << std::endl;
-
-
-	dump->write_collection_middle(step);
-
-      
-      }
-    
-    if (std::isnan((*grid->phi)(0,0,0)))
-      errflag = 1;
-	
-    MPI_Allreduce(&errflag, &total_errflag,1,MPI_INT,MPI_SUM,world);
-
-    if (total_errflag) {
-
-      for (auto &dump : dumps)
-	dump->write_collection_footer();
-      
-      throw std::runtime_error("NAN encountered in phi.");
-    }    
-    
-  }
-
-  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-  for (auto &dump :dumps)
-    dump->write_collection_footer();
-  
-  if (commbrick->me == 0) {
-    std::cout << "number of neighbor calls = " << neighbor->get_ncalls() << std::endl;
-    
-    std::cout << "Run time = "
-	      << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1e6
-	      << "seconds." << std::endl;  
-  }
+  integrate->setup();
+  integrate->run();
 
 
 }

@@ -24,14 +24,14 @@ public:
   virtual void final_integrate() override;
   virtual void post_final_integrate() override;
   
-  virtual void reset_dt(double) override;
+  virtual void reset_dt() override;
 
   virtual void end_of_step() override {};
 private:
 
   std::unique_ptr<T> conjugate;
 
-  
+  bool didnotintegrate;
 };
 
 }

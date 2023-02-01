@@ -31,7 +31,7 @@ public:
 
   NStencil();
   void copy_neighbor_info(const Neighbor *);
-  virtual void create_setup(const NBin *,int);
+  void create_setup(const NBin *,int);
   double memory_usage();
 
   virtual void create() = 0;

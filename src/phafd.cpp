@@ -6,6 +6,7 @@
 #include "comm_brick.hpp"
 #include "neighbor.hpp"
 #include "input.hpp"
+#include "integrate.hpp"
 #include "group.hpp"
 #include "fix.hpp"
 #include "pair.hpp"
@@ -35,6 +36,7 @@ void PHAFD::create()
   domain = std::make_unique<Domain>(this);
   neighbor = std::make_unique<Neighbor>(this);
   input = std::make_unique<Input>(this);
+  integrate = std::make_unique<Integrate>(this);
 
   return;
 }

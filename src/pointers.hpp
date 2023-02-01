@@ -13,8 +13,8 @@ public:
   
   Pointers(PHAFD *ptr) : phafd(ptr), atoms(ptr->atoms),domain(ptr->domain),
 			 grid(ptr->grid),commbrick(ptr->commbrick),
-			 neighbor(ptr->neighbor),groups(ptr->groups),
-			 input(ptr->input),fixes(ptr->fixes),
+			 neighbor(ptr->neighbor),input(ptr->input),
+			 integrate(ptr->integrate),groups(ptr->groups),fixes(ptr->fixes),
 			 pairs(ptr->pairs),computes(ptr->computes),
 			 dumps(ptr->dumps),world(ptr->world)  {};
   
@@ -30,8 +30,10 @@ protected:
   std::unique_ptr<Grid> &grid;
   std::unique_ptr<CommBrick> &commbrick;
   std::unique_ptr<Neighbor> &neighbor;
-  std::vector<std::unique_ptr<Group>> &groups;
   std::unique_ptr<Input> &input;
+  std::unique_ptr<Integrate> &integrate;
+  
+  std::vector<std::unique_ptr<Group>> &groups;
   std::vector<std::unique_ptr<Fix>> &fixes;
   std::vector<std::unique_ptr<Pair>> &pairs;
   std::vector<std::unique_ptr<Compute>> &computes;
