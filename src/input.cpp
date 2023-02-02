@@ -15,6 +15,10 @@
 #include "fixgrid_conjugate.hpp"
 #include "fixgrid_floryhuggins.hpp"
 #include "beadrodpmer/no_tether.hpp"
+#include "beadrodpmer/single_tether.hpp"
+#include "beadrodpmer/double_tether.hpp"
+
+
 #include "ps_pde/conjugate_volfrac.hpp"
 #include "pair_lj_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
@@ -28,7 +32,6 @@
 #include "compute_pair.hpp"
 #include "fixgrid_ave.hpp"
 
-#include <iostream>
 #include <string>
 #include <set>
 #include <chrono>
@@ -44,15 +47,17 @@ void Input::read()
 
 
   std::vector<std::string> v_line;
-  std::string line;
+  std::string line, firstword;
   
-  while(std::getline(inputfile,line)) {
+  while(std::getline(*inputfile,line)) {
     
 
     utility::replacePercentages(line,commbrick->me);
-    
-    if (line == "" || line == "#") continue;
+    utility::convertVariables(line,*varmap);
+
     v_line = utility::split_line(line);
+
+    if (v_line.size() == 0) continue;
     
     firstword = v_line.at(0);
     v_line.erase(v_line.begin());
@@ -68,11 +73,13 @@ void Input::read()
     } else if (firstword == "grid_populate") {
       if (!grid->gridset)
 	throw std::invalid_argument("CAnnot use command grid_populate before grid_style is set.");
+
+
       grid->populate(v_line);
     } else if (firstword == "read_atoms") {
       ReadAtoms read_atoms(phafd);
       
-      int errflag = read_atoms.read_file(line);
+      int errflag = read_atoms.read_file(v_line.at(0));
       if (errflag != ReadAtoms::SUCCESS) errflag = 1;
       else errflag = 0;
       int total_errflag;
@@ -102,20 +109,24 @@ void Input::read()
       
       pairs.back()->settings(v_line);
       
-      std::streampos fpos =  inputfile.tellg();
-      while (std::getline(inputfile,line)) {
+      std::streampos fpos =  inputfile->tellg();
+      while (std::getline(*inputfile,line)) {
+	utility::convertVariables(line,*varmap);
 	
 	if (line == "" || line == "#") continue;
 	v_line = utility::split_line(line);
 	
 	firstword = v_line.at(0);
 	v_line.erase(v_line.begin());
+
+
+
 	
 	if (firstword == "pairCoeffs") {
 	  pairs.back()->coeff(v_line);
-	  fpos = inputfile.tellg();
+	  fpos = inputfile->tellg();
 	} else {
-	  inputfile.seekg(fpos);
+	  inputfile->seekg(fpos);
 	  break;
 	}
       }
@@ -123,7 +134,7 @@ void Input::read()
       if (pairs.size() == 0)
 	throw std::runtime_error("Must call neighbor after pairs are given.");
       
-      if (!subboxset)
+      if (!domain->subboxset)
 	throw std::runtime_error("Must call neighbor after subboxes are set (via grid style).");
       
       neighbor->setup(v_line);
@@ -193,7 +204,7 @@ void Input::read()
       
       if (firstword == "complex")
 	
-	computes.push_bac(std::make_unique<ComputeComplex>(phafd));
+	computes.push_back(std::make_unique<ComputeComplex>(phafd));
       
       else if (firstword == "pair")
 	

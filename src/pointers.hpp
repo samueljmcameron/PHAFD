@@ -16,7 +16,8 @@ public:
 			 neighbor(ptr->neighbor),input(ptr->input),
 			 integrate(ptr->integrate),groups(ptr->groups),fixes(ptr->fixes),
 			 pairs(ptr->pairs),computes(ptr->computes),
-			 dumps(ptr->dumps),world(ptr->world)  {};
+			 dumps(ptr->dumps),world(ptr->world),inputfile(ptr->inputfile),
+			 varmap(ptr->varmap){};
   
 protected:
 
@@ -39,6 +40,10 @@ protected:
   std::vector<std::unique_ptr<Compute>> &computes;
   std::vector<std::unique_ptr<Dump>> &dumps;
 
+
+  std::unique_ptr<std::fstream> &inputfile;
+  std::unique_ptr<std::map<std::string,std::string>> &varmap;
+  
   MPI_Comm &world;
 };
 }

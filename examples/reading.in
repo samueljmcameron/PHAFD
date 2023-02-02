@@ -5,7 +5,7 @@ domain boxdims 100.0 100.0 100.0 boxorigin -50.0 -50.0 -50.0
 
 grid_style 64 64 64 concentration
 
-grid_populate constant concentration 0.2 0.2 seed 349810
+grid_populate constant concentration 0.2 0.2 349810 
 # or
 #grid_populate read concentration vtkfiles/read_nucd_p%_100000.vti
 
@@ -22,7 +22,7 @@ pair lj/cut 2.0 1.0 1.781794
 
 neighbor 2.0
 
-group nt_pmers molecule 0 1 2
+group nt_pmers molecule 0 1 2 3 4
 
 fix atom/semiflexible/notether nt_pmers nt_pmers 58912094 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114 
 
@@ -37,7 +37,7 @@ compute pair droppolyforces gridatom/gaussian
 
 fix grid/ave averagenorm 100 10 1000 c_norm
 
-dump atoms atom/owned vtkfiles/atom_p% 1000 attributes 5 x ux i f c_droppolyforces
+dump atoms atom/owned vtkfiles/atom_p% 1000 attributes 5 x ux ix F c_droppolyforces
 
 dump realgrid grid vtkfiles/field_p% 1000 attributes 2 phi nonlinear 
 dump fouriergrid ftgrid vtkfiles/ft_field_p% 1000 attributes 1 f_averagenorm

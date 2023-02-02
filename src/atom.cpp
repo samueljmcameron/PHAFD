@@ -6,7 +6,7 @@
 #include "utility.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
-
+#include "group.hpp"
 #include "beadrodpmer/iovtk.hpp"
 
 using namespace PHAFD_NS;

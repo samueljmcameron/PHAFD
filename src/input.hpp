@@ -12,7 +12,8 @@ public:
   ~Input();
 
   void read();
-  
+
+
 };
   
 }

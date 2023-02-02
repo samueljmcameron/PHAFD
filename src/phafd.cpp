@@ -17,9 +17,44 @@
 using namespace PHAFD_NS;
 
 
-PHAFD::PHAFD(MPI_Comm communicator)
+PHAFD::PHAFD(MPI_Comm communicator, int argc, char **argv)
 {
   world = communicator;
+
+  inputfile = std::make_unique<std::fstream>();
+  varmap = std::make_unique<std::map<std::string,std::string>>();
+
+
+
+  int iarg = 1;  
+  while(iarg < argc) {
+    if (strcmp(argv[iarg],"-in") == 0) {
+      if (iarg+1 == argc) {
+	throw std::invalid_argument("Error: input flag '-in' specified, but no file given.");
+
+      }
+      inputfile->open(argv[iarg+1]);
+      iarg += 2;
+      
+    } else if (strcmp(argv[iarg],"-var") == 0) {
+      
+      if (iarg + 2 >= argc) {
+	throw std::invalid_argument("Error: invalid command line variable specification.");
+      }
+      (*varmap)[argv[iarg+1]] = argv[iarg+2];
+      iarg += 3;
+    } else {
+      throw std::invalid_argument("Error: invalid command line variable specification.");
+    }
+  }
+
+  
+  if (not inputfile->is_open()) {
+    throw std::runtime_error("Error: need to specify input file.");
+  }
+
+  
+  
   create();
 
 }

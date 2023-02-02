@@ -5,7 +5,8 @@
 #include <vector>
 #include <memory>
 #include <mpi.h>
-
+#include <fstream>
+#include <map>
 
 namespace PHAFD_NS {
 
@@ -15,7 +16,7 @@ class PHAFD
   void create();
 public:
   
-  PHAFD(MPI_Comm);
+  PHAFD(MPI_Comm,int, char **);
   ~PHAFD();
 
 
@@ -40,7 +41,10 @@ public:
   
   
   MPI_Comm world;
+
+  std::unique_ptr<std::fstream> inputfile;
   
+  std::unique_ptr<std::map<std::string,std::string>> varmap;
   
 };
 }
