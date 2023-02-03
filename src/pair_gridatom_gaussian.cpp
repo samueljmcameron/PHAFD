@@ -103,7 +103,7 @@ void PairGridAtomGaussian::compute()
 	(*grid->nonlinear)(i,j,k) += 2*delphi*expfac;
 
 	// re-use expfac vs creating new variable
-	expfac *= delphi*delphi*dv;
+	expfac *= delphi*delphi*dv/(nucwidth[ajtype]*nucwidth[ajtype]);
 	
 	atoms->Fs(0,aj) -= delx*expfac;
 	atoms->Fs(1,aj) -= dely*expfac;
@@ -177,5 +177,4 @@ void PairGridAtomGaussian::coeff(const std::vector<std::string> &params)
     
   }
   
-
 }
