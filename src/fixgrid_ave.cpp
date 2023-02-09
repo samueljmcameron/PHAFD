@@ -16,7 +16,7 @@
 using namespace PHAFD_NS;
 
 FixGridAve::FixGridAve(PHAFD *phafd) : Fix(phafd) {
-
+  averaging = true;
 };
 
 

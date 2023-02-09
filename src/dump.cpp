@@ -144,6 +144,18 @@ void Dump::start_of_step()
 	fix->this_step = true;
   }
 }
+
+void Dump::require_calculations()
+{
+  for (auto &compute : computes)
+    if (compute->dump_callers.find(name) != compute->dump_callers.end())
+      compute->this_step = true;
+  
+  for (auto & fix : fixes)
+    if (fix->dump_callers.find(name) != fix->dump_callers.end())
+      fix->this_step = true;
+
+}
   
 /* called at start of simulation */
 void Dump::write_collection_header()

@@ -25,7 +25,7 @@ public:
 
   void setup();
   void start_of_step();
-  
+  void require_calculations();
   void write_collection_header();
   void write_collection_footer();
   void write_collection_middle();

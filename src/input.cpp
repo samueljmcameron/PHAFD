@@ -234,8 +234,17 @@ void Input::read()
       
       integrate->setup();
       integrate->run();
-    }
+    } else if (firstword == "run_until_touching") {
+      
+      if (integrate->dt <= 0.0)
+	throw std::runtime_error("Cannot run simulation without setting dt > 0.");
+      
+      integrate->nsteps = std::stoi(v_line.at(0));
+
+      integrate->setup();
+      integrate->run_until_touching(std::stod(v_line.at(1)));
     
+    }
   }
   return;
 }

@@ -35,7 +35,7 @@ public:
   bool per_ftgrid;
   bool per_atom;
   bool global;
-
+  bool averaging;
   bool this_step;
 
   std::set<std::string> dump_callers;
@@ -43,6 +43,9 @@ public:
 
   int Nx,Ny,Nz;
   int numberofcomponents; // same as compute
+
+  int num_less_zero,num_great_zero;
+
   
 protected:
   // group properties, all groups must be in chunks, only relevant for atom fixes at the moment

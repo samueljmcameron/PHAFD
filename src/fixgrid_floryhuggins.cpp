@@ -45,4 +45,7 @@ void FixGridFloryHuggins::post_force()
 {
 
   ps_flory->compute(*(grid->ps_grid));
+
+  num_less_zero = ps_flory->num_less_zero;
+  num_great_zero = ps_flory->num_great_zero;
 }
