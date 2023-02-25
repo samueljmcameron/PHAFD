@@ -52,9 +52,10 @@ public:
 
   void check_tags_and_types();
 
-  int add_polymer( std::vector<std::string> ,int);
-  int add_sphere( std::vector<std::string>  , int);
-    
+
+  int add_atom( std::vector<std::string>  , int);
+  // do not use add polymer anymore!
+  int add_polymer(std::vector<std::string>  , int);
   
 
   

@@ -38,10 +38,12 @@ int ReadAtoms::read_file(const std::string & fname_in)
   
   if (total_errflag) return NOFILE;
 
+  // set styles
 
-  
-  // set per-style vectors
-  errflag =  read_perStyle();
+  std::vector<std::string> styles; // names of the particles styles (size 1 if not hybrid)
+
+  errflag = reset_styles(styles);   
+
 
 
   if (errflag != SUCCESS) errflag = 1;
@@ -52,21 +54,24 @@ int ReadAtoms::read_file(const std::string & fname_in)
   if (total_errflag) return FORMAT_ERROR;
 
 
+  int totalatoms; // total number of atoms
+  errflag = get_total_atoms(totalatoms);
 
-  // allocate the space needed in Atom
+
+  if (errflag != SUCCESS) errflag = 1;
+  else errflag = 0;
+
+  MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
+
+  if (total_errflag) return FORMAT_ERROR;
+
   
-  int totalatoms = 0;
-
-  for (auto num : atomsPerStyle)
-    totalatoms += num;
-
-    
   atoms->setup(totalatoms,styles);
 
 
   // create the atoms from the file info
   
-  errflag = create_atoms();
+  errflag = create_atoms(totalatoms);
   
   MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
 
@@ -81,43 +86,7 @@ int ReadAtoms::read_file(const std::string & fname_in)
 
 
 
-
-
-int ReadAtoms::read_perStyle()
-/*
-  Read in per-style vectors styles, particlesPerStyle, and atomsPerStyle.
-*/
-{
-
-  int errflag;
-  
-  // set styles from "particle_style" command
-  errflag = reset_styles(); 
-  
-  if (errflag == FORMAT_ERROR) 
-    return errflag;
-  
-  // set # of particles per style from "particlesperstyle" command
-  errflag = reset_particlesPerStyle(); 
-
-  if (errflag == FORMAT_ERROR)
-    return errflag;
-  
-  
-  // set # of atoms per style from particle info and "atomsperpolymer" command
-  errflag = reset_atomsPerStyle(); 
-  
-  if (errflag == FORMAT_ERROR)
-
-    return errflag;
-
-  return SUCCESS;
-}
-
-
-
-
-int ReadAtoms::create_atoms()
+int ReadAtoms::create_atoms(int totalatoms)
 /* Construct atoms from the lines of the data file. */
 {
 
@@ -133,71 +102,35 @@ int ReadAtoms::create_atoms()
   std::vector<std::string> v_line;
 
   int created_atoms;
-  
-  for (int istyle = 0; istyle < styles.size(); istyle++) {
 
-    int imol = 0;
 
-    while (std::getline(datafile,line)) {
+  while (std::getline(datafile,line)) {
       
-      if (line == "" || line[0] == '#') continue;
+    if (line == "" || line[0] == '#') continue;
 
-      v_line = utility::split_line(line);
+    v_line = utility::split_line(line);
     
-      if (styles[istyle] == "polymer") {
-
-	try {
 	  
-	  created_atoms = atoms->add_polymer(v_line,iatom);
+    created_atoms = atoms->add_atom(v_line,iatom);
 	  
-	} catch (std::invalid_argument &inv) {
-	  
-	  std::cerr << inv.what();
-	  return FORMAT_ERROR;
-	  
-	}
-	
-      } else if (styles[istyle] == "sphere") {
-
-	try {
-	  
-	  created_atoms = atoms->add_sphere(v_line,iatom);
-	  
-	} catch (std::invalid_argument &inv) {
-	  
-	  std::cerr << inv.what();
-	  return FORMAT_ERROR;
-	  
-	}
-
-      } else {
-	std::cerr << "Invalid particle style." << std::endl;
-	return FORMAT_ERROR;
-      }
-
-      imol += 1;
-      iatom += created_atoms;
-      
-      if (imol ==  particlesPerStyle[istyle]) break;
-
-
-
-
-
-    }
-
+    iatom += created_atoms;
     
   }
 
+  if (iatom != totalatoms) {
+    std::cerr << "Incorrect number of atoms specified in " << fname << std::endl;
+    return FORMAT_ERROR;
+  }
 
   atoms->check_tags_and_types();
+  std::cout << atoms->ntypes << std::endl;
 
   return SUCCESS;
 }
 
 
 
-int ReadAtoms::reset_styles() {
+int ReadAtoms::reset_styles(std::vector<std::string> & styles) {
   /*
     find the first non-empty, non-commented line of the file,
     which must start with "particle_style". Then store the particle style name(s)
@@ -269,116 +202,35 @@ int ReadAtoms::reset_styles() {
 };
 
 
-int ReadAtoms::reset_particlesPerStyle()
-/*
-  (Re)set the number of particles on the processor. Must be called after reset_styles()
-  method.
-*/
+int ReadAtoms::get_total_atoms(int &totalatoms)
 {
 
-  particlesPerStyle.clear();
-
   std::string line;
-
   
   std::vector<std::string> v_line; // to store words from line of file
 
   
+  totalatoms = 0;
   while (std::getline(datafile,line)) {
     
     if (line == "" || line[0] == '#') continue;
     
-    
+    v_line = utility::split_line(line);
+    if (v_line.at(0) != "total_atoms") {
+      std::cerr << "Expected 'total_atoms' command in " << fname << std::endl;
+      return FORMAT_ERROR;
+    }
+
+    totalatoms = std::stoi(v_line.at(1));
+
+    if (totalatoms < 0) {
+      std::cerr << "'total_atoms' must be non-negative in " << fname << std::endl;
+      return FORMAT_ERROR;
+    }
+
     break;
   }
 
-  v_line = utility::split_line(line);
-  
-  if (v_line.size() != 1 + styles.size()
-      || v_line.at(0) != "particlesperstyle" ) {
-    std::cerr << "must specify 'particlesperstyle' in " << fname << std::endl;
-    return FORMAT_ERROR;
-  }
-  
-  
-  v_line.erase(v_line.begin());
-
-  for (auto elem : v_line) {
-    
-    try {
-      particlesPerStyle.push_back(std::stoi(elem));
-    } catch (std::invalid_argument &err) {
-      std::cerr << "'particlesperstyle' requires integer values in " << fname << std::endl;
-      return FORMAT_ERROR;
-    }
-    
-  }
-  
   return SUCCESS;
-}
-
-
-int ReadAtoms::reset_atomsPerStyle()
-/*
-  (Re)set the number of atoms on the processor. Must be called after
-  reset_particlesPerStyle() method.
-*/
-{
-
-  atomsPerStyle.resize(styles.size());
   
-  for (auto istyle = 0; istyle < styles.size(); istyle++) {
-    
-    atomsPerStyle[istyle] = 0;
-    
-    if (styles[istyle] == "polymer") {
-
-      atomsPerPolymer.clear();
-      
-      std::string line;
-      std::vector<std::string> v_line;
-      
-      while (std::getline(datafile,line)) {
-	
-	if (line == "" || line[0] == '#') continue;
-	
-	break;
-      }
-      
-      v_line = utility::split_line(line);
-      
-      if (v_line.at(0) != "atomsperpolymer") {
-	std::cerr << "'polymer' style requires atomsperpolymer to be specified in "
-		  << fname << std::endl;	
-	return FORMAT_ERROR;
-      }
-      
-      v_line.erase(v_line.begin());
-      
-      if (v_line.size() != particlesPerStyle[istyle]) {
-	std::cerr << "'atomsperpolymer' must be specified for each polymer in "
-		  << fname << std::endl;	
-	return FORMAT_ERROR;
-      }
-
-      for (auto snum : v_line) {
-	try {
-
-	  atomsPerPolymer.push_back(std::stoi(snum));
-	} catch (std::invalid_argument &inv) {
-	  std::cerr << "'atomsperpolymer' requires integer values in "
-		    << fname << std::endl;	
-	  return FORMAT_ERROR;
-	}
-	atomsPerStyle[istyle] += atomsPerPolymer.back();
-      }
-
-      
-    } else {
-      atomsPerStyle[istyle] = particlesPerStyle[istyle];
-    }
-    
-  }
-
-  return SUCCESS;
 }

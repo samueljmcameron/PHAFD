@@ -19,7 +19,8 @@ public:
   int firststep; // first step
   int timestep; // current step
   double dt; // time interval between steps
-  
+private:
+  void finalise();
 };
   
 }

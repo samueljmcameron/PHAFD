@@ -86,6 +86,9 @@ void Input::read()
       MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
       if (total_errflag)
 	throw std::runtime_error("Could not read atom file. ");
+
+      if (commbrick->me == 0 && atoms->ntypes == 0)
+	std::cout << "WARNING: running simulation with no atoms." << std::endl;
       
     } else if (firstword == "pair") {
       
@@ -131,7 +134,7 @@ void Input::read()
 	}
       }
     } else if (firstword == "neighbor") {
-      if (pairs.size() == 0)
+      if (pairs.size() == 0 && atoms->ntypes > 0)
 	throw std::runtime_error("Must call neighbor after pairs are given.");
       
       if (!domain->subboxset)

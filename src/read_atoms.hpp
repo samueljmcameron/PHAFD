@@ -30,20 +30,6 @@ private:
   std::ifstream datafile;
 
 
-  std::vector<std::string> styles; // names of the particles styles (size 1 if not hybrid)
-  std::vector<int> particlesPerStyle; // # of particles of each style
-  std::vector<int> global_particlesPerStyle;
-
-  
-  std::vector<int> atomsPerStyle; // # of atoms of each style
-  std::vector<int> global_atomsPerStyle;
-
-  std::vector<int> atomsPerPolymer;
-  std::vector<int> global_atomsPerPolymer;
-
-
-  std::vector<int> global_particlesPerProc;
-
   
   
 
@@ -51,11 +37,10 @@ private:
   int read_perStyle();
 
 
-  int reset_styles();
-  int reset_particlesPerStyle();
-  int reset_atomsPerStyle();
+  int reset_styles(std::vector<std::string> &);
+  int get_total_atoms(int &);
   
-  int create_atoms();
+  int create_atoms(int);
 
   
 

@@ -99,6 +99,8 @@ void Atom::check_tags_and_types()
   utility::check_MPI_duplicates(mtmp,world,commbrick->me,commbrick->nprocs,"molIDs");
 
 
+
+  
   
   int typemax;
 
@@ -118,6 +120,13 @@ void Atom::check_tags_and_types()
   groups.push_back(std::make_unique<Group>(phafd));
   groups.back()->create_all();
 
+  if (molecule_flag) {
+    std::set<int> molset(moltags.begin(),moltags.end());
+    nmols = molset.size();
+
+  }
+
+  
 
 }
 
@@ -216,7 +225,6 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
 
   nowned += idend - idstart;
 
-  nmols += 1;
 
   BeadRodPmer::ioVTK::readVTKPolyData(xs.middleCols(startatom,idend-idstart),fname);
 
@@ -224,7 +232,7 @@ int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
 }
 
 
-int Atom::add_sphere(std::vector<std::string> v_line, int iatom)
+int Atom::add_atom(std::vector<std::string> v_line, int iatom)
 /*
   Create a single sphere at index iatom. Input should have format id type x 
 
@@ -238,7 +246,6 @@ int Atom::add_sphere(std::vector<std::string> v_line, int iatom)
 
   if (molecule_flag) {
     moltags[iatom] = std::stoi(v_line.at(l_index++));
-    nmols += 1;
   }
 
   
@@ -246,7 +253,10 @@ int Atom::add_sphere(std::vector<std::string> v_line, int iatom)
   xs(0,iatom) = std::stod(v_line.at(l_index++));
   xs(1,iatom) = std::stod(v_line.at(l_index++));
   xs(2,iatom) = std::stod(v_line.at(l_index++));
-  radius[iatom] = std::stod(v_line.at(l_index++));
+
+  if (sphere_flag)
+    radius[iatom] = std::stod(v_line.at(l_index++));
+  
   labels[iatom] = Atom::OWNED;
   images[iatom] = domain->set_image();
 

@@ -10,7 +10,7 @@ grid_populate constant concentration 0.2 0.2 349810
 #grid_populate read concentration vtkfiles/read_nucd_p%_100000.vti
 
 
-read_atoms hybridpython_p%.data
+read_atoms simple_p%.data 
 
 # can either use grid_setup to read in old data or create new grid data	
 
@@ -22,7 +22,7 @@ pair lj/cut 2.0 1.0 1.781794
 
 neighbor 2.0
 
-group nt_pmers molecule 0 1 2 3 4
+group nt_pmers molecule 0 1
 
 fix atom/semiflexible/notether nt_pmers nt_pmers 58912094 bondlength 2.0 zeta_para 0.5 zeta_perp 1.0 bending 206.0 temp 4.114 
 

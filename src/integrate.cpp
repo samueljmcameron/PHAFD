@@ -235,15 +235,10 @@ void Integrate::run()
 
   for (auto &dump :dumps)
     dump->write_collection_footer();
+
+  finalise();
   
   if (commbrick->me == 0) {
-    std::cout << "number of neighbor calls = " << neighbor->get_ncalls() << std::endl;
-
-    std::cout << "other flags:" << std::endl;
-    for (auto &fix : fixes) 
-      std::cout << fix->name << " had phi < 0 " << fix->num_less_zero << " times, and "
-		<< "phi > 1 " << fix->num_great_zero << "times." << std::endl;
-    
     std::cout << "Run time = "
 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1e6
 	      << "seconds." << std::endl;  
@@ -420,16 +415,45 @@ void Integrate::run_until_touching(double touch_point)
   
   if (commbrick->me == 0) {
     std::cout << "number of neighbor calls = " << neighbor->get_ncalls() << std::endl;
-
     std::cout << "other flags:" << std::endl;
-    for (auto &fix : fixes) 
-      std::cout << fix->name << " had phi < 0 " << fix->num_less_zero << " times, and "
-		<< "phi > 1 " << fix->num_great_zero << "times." << std::endl;
-    
+  }
+
+
+  finalise();
+  
+  if (commbrick->me == 0) {  
     std::cout << "Run time = "
 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1e6
 	      << "seconds." << std::endl;  
   }
 
 
+}
+
+
+void Integrate::finalise()
+{
+  std::vector<int> num_less_total,num_great_total;
+
+  for (auto &fix : fixes)  {
+    int tmp;
+    MPI_Reduce(&(fix->num_less_zero),&tmp,1,MPI_INT,MPI_SUM,0,world);
+    num_less_total.push_back(tmp);
+    MPI_Reduce(&(fix->num_great_zero),&tmp,1,MPI_INT,MPI_SUM,0,world);
+    num_great_total.push_back(tmp);
+  }
+
+  
+  if (commbrick->me == 0) {
+    
+    int count = 0;
+    for (auto &fix : fixes)  {
+      std::cout << fix->name << " had phi < 0 " << num_less_total.at(count) << " times, and "
+		<< "phi > 1 " << num_great_total.at(count) << "times." << std::endl;
+      count += 1;
+    }
+    
+  }
+
+  return;
 }
