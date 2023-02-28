@@ -47,7 +47,7 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
   Ny = fftw3_arr->Ny();
   Nx = fftw3_arr->Nx();
 
-  prefac = 1.0/sqrt(Nz*Ny*Nx);
+  prefac = 1./(grid->dx()*grid->dy()*grid->dz());
   
   array.resize(Nz*Ny*Nx);
   
