@@ -34,7 +34,7 @@ public:
   bool per_grid;
   bool per_ftgrid;
   bool per_atom;
-  bool global;
+  bool scalar,vector;
   bool averaging;
   bool this_step;
 

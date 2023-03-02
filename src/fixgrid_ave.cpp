@@ -34,6 +34,8 @@ void FixGridAve::init(const std::vector<std::string> &v_line)
   repeat = std::stoi(new_v_line.at(2));
   freq = std::stoi(new_v_line.at(3));
 
+  if (every <= 0 || repeat <= 0 || freq <= 0)
+    throw std::invalid_argument("Every, repeat, and freq must all be >= 0.");  
   if (every*repeat > freq)
     throw std::invalid_argument("Every and repeat exceed freq in fixgridave.");
 

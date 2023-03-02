@@ -26,7 +26,8 @@ public:
   bool per_grid;
   bool per_ftgrid;
   bool per_atom;
-  bool global;
+  bool scalar;
+  bool vector;
 
   bool this_step;
   std::set<std::string> dump_callers;
