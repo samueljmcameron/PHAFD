@@ -45,7 +45,7 @@ void Neighbor::setup(const std::vector<std::string> &v_line)
   double cutoff = 0.0;
 
   for (auto &pair : pairs) 
-    cutoff = MAX(cutoff,sqrt(pair->maxcut));
+    cutoff = MAX(cutoff,pair->maxcut);
   
 
   triggersq = 0.25*skin*skin;
@@ -61,7 +61,7 @@ void Neighbor::setup(const std::vector<std::string> &v_line)
   bboxlo = domain->boxlo;
   bboxhi = domain->boxhi;
   neigh_bin->copy_neighbor_info(this);
-  neigh_bin->setup_bins(cutoff);
+  neigh_bin->setup_bins(cutneigh);
 
   construct_lists();
 
