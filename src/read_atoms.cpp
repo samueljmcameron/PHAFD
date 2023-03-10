@@ -123,7 +123,6 @@ int ReadAtoms::create_atoms(int totalatoms)
   }
 
   atoms->check_tags_and_types();
-  std::cout << atoms->ntypes << std::endl;
 
   return SUCCESS;
 }
