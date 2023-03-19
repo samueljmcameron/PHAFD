@@ -1,1 +1,1 @@
-# liqliq_with_polymers
+# PHAFD (parallel hybrid atom-field dynamics)
