@@ -51,9 +51,8 @@ void Input::read()
   
   while(std::getline(*inputfile,line)) {
     
-
-    utility::replacePercentages(line,commbrick->me);
     utility::convertVariables(line,*varmap);
+    utility::replacePercentages(line,commbrick->me);
 
     v_line = utility::split_line(line);
 
