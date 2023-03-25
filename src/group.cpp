@@ -1,5 +1,4 @@
 #include "group.hpp"
-
 #include <stdexcept>
 #include <set>
 
@@ -73,9 +72,12 @@ void Group::create_group(const  std::vector<std::string> &v_line)
       throw std::invalid_argument("No atoms/molecules specified for group.");
 
 
+    std::size_t pos;
     int tag;
     for (std::string::size_type i = 2; i < v_line.size(); i++) {
-      tag = std::stoi(v_line.at(i));
+      tag = std::stoi(v_line.at(i),&pos);
+      if (pos != v_line.at(i).length()) 
+	throw std::invalid_argument("Group atom/molecule ID is not an integer.");
       if (tag < 0)
 	throw std::invalid_argument("Group atom/molecule IDs must be greater than zero.");
       group_set.insert(tag);

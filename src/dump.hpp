@@ -73,6 +73,8 @@ private:
   std::string which_atoms;
 
   unsigned int bytelength;
+
+  int precision;
   
 };
 

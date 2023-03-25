@@ -1,3 +1,4 @@
+#include <iomanip>
 
 #include "dump.hpp"
 
@@ -16,6 +17,7 @@ using namespace PHAFD_NS;
    file, and then there is a .pvd file to display the timesteps collectively. Files are
    always going to be outputted in parallel. */
 Dump::Dump(PHAFD *phafd) : Pointers(phafd) {
+  precision = -1;
 };
 
 
@@ -60,7 +62,7 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 
   auto it = v_line.begin()+4;
   while (it != v_line.end()) {
-
+    
     if (*it == "attributes") {
       ++it;
       int numattributes = std::stoi(*it);
@@ -74,6 +76,12 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 
       if (attributes.size() != numattributes)
 	throw std::invalid_argument("Duplicate attribute values in dump file.");
+    } else if (*it == "decimalplaces") {
+      ++it;
+      precision = std::stoi(*it);
+      ++it;
+      if (precision <= 0)
+	throw std::invalid_argument("Dump precision must be greater than or equal to zero.");
     } else
       throw std::invalid_argument("Third word in dump must be 'attributes'.");
   }
@@ -261,6 +269,9 @@ void Dump::write_atom_timestep()
     throw std::runtime_error(std::string("Cannot open file ") + instance_name);
   }
 
+  if (precision > 0) {
+    myfile << std::fixed << std::setprecision(precision);
+  }
 
   int numpoints;
   if (which_atoms == "all")
