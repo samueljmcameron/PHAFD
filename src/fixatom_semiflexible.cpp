@@ -13,6 +13,7 @@
 #include "atom.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
+#include "integrate.hpp"
 
 #include "fixatom_semiflexible.hpp"
 
@@ -84,7 +85,22 @@ template <typename T>
 void FixAtomSemiFlexible<T>::setup()
 {
 
-  check_bonds();
+  int errflag= 0;
+  int totalerrflag;
+
+
+  try {
+    check_bonds();
+  } catch (const std::runtime_error& excpt) {
+    errflag = 1;
+
+  }
+
+  MPI_Allreduce(&errflag,&totalerrflag,1,MPI_INT,MPI_SUM,world);
+
+  if (totalerrflag)
+    throw std::runtime_error("Adjacent atom displacements do not match the FixAtomSemiFlexible "
+			     "bondlength specified.");
   
   for (int i = 0; i < pmers.size(); i++) {
     pmers[i]->setup(atoms->uxs.middleCols(start_indices[i],nbeads[i]));
@@ -146,6 +162,9 @@ void FixAtomSemiFlexible<T>::final_integrate()
   int itermax = 50;
 
   int iterations;
+
+  int errflag = 0;
+  int totalerrflag;
   
   for (int i = 0; i < pmers.size(); i++) {
     iterations =
@@ -154,9 +173,18 @@ void FixAtomSemiFlexible<T>::final_integrate()
     for (int bead = start_indices[i]; bead < end_indices[i]; bead++)
       domain->map(atoms->xs.col(bead),atoms->uxs.col(bead),atoms->images[bead]);
 
-    if (iterations > itermax)
-      std::cerr << "bad timestep from no_tether." << std::endl;
+    if (iterations > itermax) {
+      std::cerr << "bad timestep from no_tether of polymer on processor "
+		<< commbrick->me << " at timestep " << integrate->timestep << std::endl;
+      errflag = 1;
+    }
+    
   }
+
+  MPI_Allreduce(&errflag,&totalerrflag,1,MPI_INT,MPI_SUM,world);
+
+  if (totalerrflag)
+    throw std::runtime_error("Failed to maintain polymer bond-length constraints.");
 
 
   return;
