@@ -21,8 +21,9 @@
 
 #include "ps_pde/conjugate_volfrac.hpp"
 #include "pair_lj_cut.hpp"
+#include "pair_harmonic_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
-
+#include "pair_gridatom_lj_ish.hpp"
 #include "ps_pde/fixgrid_floryhuggins.hpp"
 
 #include "ps_pde/iovtk.hpp"
@@ -101,9 +102,17 @@ void Input::read()
 	  
 	pairs.push_back(std::make_unique<PairGridAtomGaussian>(phafd));
 	
+      } else if (pairname == "gridatom/LJish") {
+	  
+	pairs.push_back(std::make_unique<PairGridAtomLJish>(phafd));
+	
       } else if (pairname == "lj/cut") {
 	
 	pairs.push_back(std::make_unique<PairLJCut>(phafd));
+	
+      } else if (pairname == "harmonic/cut") {
+	
+	pairs.push_back(std::make_unique<PairHarmonicCut>(phafd));
 	
       } else
 	throw std::invalid_argument("Unrecognised pair style.");
