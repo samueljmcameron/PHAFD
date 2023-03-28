@@ -22,8 +22,8 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
 
   if (arrname == "ft_phi") {
     fftw3_arr = grid->ft_phi;
-  } else if (arrname == "ft_nonlinear") {
-    fftw3_arr = grid->ft_nonlinear;
+  } else if (arrname == "ft_chempot") {
+    fftw3_arr = grid->ft_chempot;
   } else if (arrname == "ft_noise") {
     fftw3_arr = grid->ft_noise;
   } else {

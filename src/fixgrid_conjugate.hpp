@@ -18,6 +18,8 @@ public:
   
   virtual void setup() override;
 
+  virtual void start_of_step() override;
+  
   virtual void initial_integrate() override {};
   virtual void post_force() override {};
   virtual void pre_final_integrate() override;

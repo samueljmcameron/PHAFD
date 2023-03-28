@@ -94,20 +94,20 @@ void PairGridAtomGaussian::compute()
       if (rsq <= cutsq[ajtype]) {
 
 	// rescale rsq by the nucleation width of the atom
-	rsq /= nucwidth[ajtype]*nucwidth[ajtype];
+	rsq /= cutsq[ajtype];
 	
-	expfac = exp(-rsq/2.0)*epsilonstrength[ajtype];
+	expfac = (exp(-rsq/2.0)-exp(-0.5))*exp(0.5)*epsilonstrength[ajtype];
 	
 	delphi = ((*grid->phi)(i,j,k)-phi[ajtype]);
 
-	(*grid->nonlinear)(i,j,k) += 2*delphi*expfac;
+	(*grid->chempot)(i,j,k) += 2*delphi*expfac;
 
 	// re-use expfac vs creating new variable
-	expfac *= delphi*delphi*dv/(nucwidth[ajtype]*nucwidth[ajtype]);
+	expfac *= 2*delphi*dv;
 	
-	atoms->Fs(0,aj) -= delx*expfac;
-	atoms->Fs(1,aj) -= dely*expfac;
-	atoms->Fs(2,aj) -= delz*expfac;
+	atoms->Fs(0,aj) -= (*grid->gradphi_x)(i,j,k)*expfac;
+	atoms->Fs(1,aj) -= (*grid->gradphi_y)(i,j,k)*expfac;
+	atoms->Fs(2,aj) -= (*grid->gradphi_z)(i,j,k)*expfac;
 	
 	// need reverse comm here to get other contributions to integrand. should be fine
 	
@@ -129,7 +129,6 @@ void PairGridAtomGaussian::settings(const std::vector<std::string> &params)
   
   cutsq.resize(atoms->ntypes);
   epsilonstrength.resize(atoms->ntypes);
-  nucwidth.resize(atoms->ntypes);
   phi.resize(atoms->ntypes);
 
 
@@ -137,7 +136,6 @@ void PairGridAtomGaussian::settings(const std::vector<std::string> &params)
   for (int i = 0; i < epsilonstrength.size(); i++) {
     cutsq[i] = cut*cut;
     epsilonstrength[i] = 1.0;
-    nucwidth[i] = 1.0;
     phi[i] = 0.1;
   }
   
@@ -167,7 +165,10 @@ void PairGridAtomGaussian::coeff(const std::vector<std::string> &params)
       epsilonstrength.at(type) = std::stod(v_line.at(iarg+1));
       iarg += 2;
     } else if (v_line.at(iarg) == "nucwidth") {
-      nucwidth.at(type) = std::stod(v_line.at(iarg+1));
+      double cut =  std::stod(v_line.at(iarg+1));
+      if (cut > maxcut)
+	throw std::runtime_error("Pair grid/atom/gaussian nucwidth cannot be larger than maximum cut.");
+      cutsq.at(type) = cut*cut;
       iarg += 2;
     } else if (v_line.at(iarg) == "phi") {
       phi.at(type) = std::stod(v_line.at(iarg+1));

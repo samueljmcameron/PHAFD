@@ -40,7 +40,7 @@ PairGridAtomLJish::PairGridAtomLJish(PHAFD *phafd) : Pair(phafd) {
   list_style = NPair::GRIDBIN;
 
   name = "gridatom/LJish";
-  
+
 };
 
 void PairGridAtomLJish::compute()
@@ -65,14 +65,10 @@ void PairGridAtomLJish::compute()
   int gridindex,jnum,aj;
   int i,j,k;
 
-  int ajtype,ppl;
+  int ajtype;
 
-  double xexp,yexp,zexp;
 
-  double delu,delv,delw,Ou,Ov,Ow,du,dv,dw;
-  double prefac,nucwidth,ssq;
 
-  bool printed = false;
 
   std::cout << std::fixed << std::setprecision(12);  
   for (int iibin = 0; iibin < ilist.size(); iibin++) { 
@@ -105,14 +101,12 @@ void PairGridAtomLJish::compute()
 	// rescale rsq by the nucleation width of the atom
 	rsq /= cutsq[ajtype];
 
-	ppl = pointsperlength[ajtype];
-
 	expfac = exp(-1./(1-rsq)+1)*epsilonstrength[ajtype];
 	
 	delphi = ((*grid->phi)(i,j,k)-phi[ajtype]);
 
 	// currently no better approximation for the functional derivative of chem potential	  
-	(*grid->nonlinear)(i,j,k) += 2*delphi*expfac;
+	(*grid->chempot)(i,j,k) += 2*delphi*expfac;
 
 
 	// better approximation for forces felt by atoms interacting with grid is necessary
@@ -132,12 +126,21 @@ void PairGridAtomLJish::compute()
 	//
 	// -\frac{\partial U}{\partial \bm{X}} 
 	//  = - \int d^3 r (\phi(\bm{r})-\bar{\phi})^2 \frac{\partial}{\partial \bm{X}}
-	//       V(|\bm{r}-\bm{X}|).
+	//       V(|\bm{r}-\bm{X}|)
+	//
+	// or by changing the integration variable to u = \bm{r} -\bm{X} and back again,
+	// -\frac{\partial U}{\partial \bm{X}} 
+	//  = - \int d^3 r 2(\phi(\bm{r})-\bar{\phi})\nabla\phi(\bm{r}) V(|\bm{r}-\bm{X}|)
 	// 
-	// If phi(\bm{r}) is constant, then this force should be zero by divergence theorem.
-	// But this requires an exact integration of the potential V(|\bm{r}-\bm{X}|), or
-	// at least a ``good enough'' numerical integration. So for us, let's opt for the latter
-	// and discretise the integral by splitting space into boxes of size nucwidth**3, each
+	// If phi(\bm{r}) is constant, then this force should be zero either by divergence theorem
+	// (for first version of force above), or zero explicitly by second version above.
+	// First version requires an exact integration of the potential V(|\bm{r}-\bm{X}|), or
+	// at least a ``good enough'' numerical integration so the divergence theorem approximately
+	// holds (otherwise, the particle will experience significant forces when \phi\neq \bar{\phi}
+	// entirely due to numerical error). So for us, let's opt for the latter version of the force,
+	// which requires an extra round of FFTW'ing to compute gradphi, but often we need to do this
+	// anyway so it should be fine.
+	// we discretise the integral by splitting space into boxes of size nucwidth**3, each
 	// box being centred on a grid point. Each box is then further discretised into 
 	// pointsperlength**3 points, where the potential is evaluated at these points but
 	// the grid is held constant at phi(\bm{r}), where \bm{r} is the grid point that the
@@ -155,91 +158,27 @@ void PairGridAtomLJish::compute()
 
 
 
-
-	if (ppl == 1) {
-
-	  // using the value of the integrand only at the grid point
-
-
-	  expfac *= 2*delphi*delphi*vol_elem/(cutsq[ajtype]*(1-rsq)*(1-rsq));
 	
-	  atoms->Fs(0,aj) -= delx*expfac;
-	  atoms->Fs(1,aj) -= dely*expfac;
-	  atoms->Fs(2,aj) -= delz*expfac;
-
-	} else {
-
-	  xexp = yexp = zexp = 0.0;
-	  // integrating over a cube centred at the grid point, where
-	  // the size of the cube is nucwidth**3
-	  nucwidth = sqrt(cutsq[ajtype]);
-	  Ou = delx - nucwidth/2.0;
-	  Ov = dely - nucwidth/2.0;
-	  Ow = delz - nucwidth/2.0;
-
-	  du = dv = dw = nucwidth/ppl;
-
-	  // perform integral of potential over refined grid
-
-	  for (int iu = 0; iu < ppl; iu++) {
-	    delu = iu*du + Ou;
-	    for (int iv = 0; iv < ppl; iv++) {
-	      delv = iv*dv + Ov;
-	      for (int iw = 0; iw < ppl; iw ++) {
-		delw = iw*dw + Ow;
-		
-		ssq = delu*delu+delv*delv+delw*delw;
-
-		ssq /= cutsq[ajtype];
-
-
-		if (ssq < 1.0) {
-
-		  expfac = exp(-1./(1-ssq)+1)/((1-ssq)*(1-ssq));
-		
-		  if (commbrick->me == 3 && !printed) {
-		    std::cout << "atom position = (" << atoms->xs(0,aj) 
-			      << "," << atoms->xs(1,aj) << ","
-			      << atoms->xs(2,aj) << ")." << std::endl;
-		    std::cout << "(u,v,w) = (" << delu + atoms->xs(0,aj) << "," << delv + atoms->xs(1,aj) << "," 
-			      << delw + atoms->xs(2,aj) << ")." << std::endl;
-		    prefac = du*dv*dw*2*delphi*delphi/cutsq[ajtype]*epsilonstrength[ajtype];
-		    std::cout << expfac*prefac*delu << std::endl;
-		    std::cout << expfac*prefac*delv << std::endl;
-		    std::cout << expfac*prefac*delw << std::endl;
-		  }
-
-		  xexp += expfac*delu;
-		  yexp += expfac*delv;
-		  zexp += expfac*delw;
-
-		}
-		
-		
-	      }
-	    }
-	  }
-	  printed = true;
-	  prefac = du*dv*dw*2*delphi*delphi/cutsq[ajtype]*epsilonstrength[ajtype];
-	  xexp *= prefac;
-	  yexp *= prefac;
-	  zexp *= prefac;
-
-	  atoms->Fs(0,aj) -= xexp;
-	  atoms->Fs(1,aj) -= yexp;
-	  atoms->Fs(2,aj) -= zexp;
-
-
-
-	}
+	// using the value of the integrand only at the grid point
+	
+	
+	//expfac *= 2*delphi*delphi*vol_elem/(cutsq[ajtype]*(1-rsq)*(1-rsq));
+	
+	expfac *= 2*delphi*vol_elem;
+	
+	atoms->Fs(0,aj) -= (*grid->gradphi_x)(i,j,k)*expfac;
+	atoms->Fs(1,aj) -= (*grid->gradphi_y)(i,j,k)*expfac;
+	atoms->Fs(2,aj) -= (*grid->gradphi_z)(i,j,k)*expfac;
+	
 	
 	// need reverse comm here to get other contributions to integrand. should be fine
 	
-	}
-
+      }
+      
     }
-
+    
   }
+
   return;
 }
 
@@ -248,14 +187,12 @@ void PairGridAtomLJish::settings(const std::vector<std::string> &params)
 {
 
   double cut = std::stod(params.at(0));
-  int ppl = std::stoi(params.at(1));
   
   maxcut = cut;
   
   cutsq.resize(atoms->ntypes);
   epsilonstrength.resize(atoms->ntypes);
   phi.resize(atoms->ntypes);
-  pointsperlength.resize(atoms->ntypes);
 
 
   // set some default values
@@ -263,7 +200,7 @@ void PairGridAtomLJish::settings(const std::vector<std::string> &params)
     cutsq[i] = cut*cut;
     epsilonstrength[i] = 1.0;
     phi[i] = 0.1;
-    pointsperlength[i] = 1;
+
   }
   
 }
@@ -282,7 +219,7 @@ void PairGridAtomLJish::coeff(const std::vector<std::string> &params)
 
   v_line.erase(v_line.begin());
 
-  if (v_line.size() > 8) 
+  if (v_line.size() > 6) 
     throw std::runtime_error("Pair grid/atom/LJish invalid coeffs.");  
   
   int iarg = 0;
@@ -300,9 +237,6 @@ void PairGridAtomLJish::coeff(const std::vector<std::string> &params)
       iarg += 2;
     } else if (v_line.at(iarg) == "phi") {
       phi.at(type) = std::stod(v_line.at(iarg+1));
-      iarg += 2;
-    } else if (v_line.at(iarg) == "pointsperlength") {
-      pointsperlength.at(type) = std::stoi(v_line.at(iarg+1));
       iarg += 2;
     } else
       throw std::runtime_error("Pair grid/atom/LJish invalid coeffs.");

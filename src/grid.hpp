@@ -23,11 +23,14 @@ public:
   ptrdiff_t *ft_boxgrid; // global number of grid points {Nx,Ny,Nz}
 
   psPDE::fftw_MPI_3Darray<double> *phi;
-  psPDE::fftw_MPI_3Darray<double> *nonlinear;
+  psPDE::fftw_MPI_3Darray<double> *chempot;
+  psPDE::fftw_MPI_3Darray<double> *gradphi_x,*gradphi_y,*gradphi_z;
+  
 
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_phi;
-  psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_nonlinear;
+  psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_chempot;
   psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_noise;
+  psPDE::fftw_MPI_3Darray<std::complex<double>> *ft_gradphi_x,*ft_gradphi_y,*ft_gradphi_z;
   
   std::unique_ptr<psPDE::Grid> ps_grid;  
   bool gridset,gridpopulated;
@@ -45,6 +48,7 @@ public:
 private:
 
 
+  void sinusoidal_grid(const std::string &,double);
 
 
   

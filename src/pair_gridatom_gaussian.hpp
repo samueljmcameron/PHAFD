@@ -27,7 +27,7 @@ public:
   virtual void coeff(const std::vector<std::string> &) override;
 
 private:
-  std::vector<double> epsilonstrength,nucwidth,phi,cutsq;
+  std::vector<double> epsilonstrength,phi,cutsq;
   
 };
 

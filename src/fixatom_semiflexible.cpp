@@ -42,7 +42,7 @@ void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
 
 
 
-  int seed = std::stoi(new_v_line[2]);
+  int seed = std::stoi(new_v_line.at(2));
 
   seed = utility::make_unique_seed(seed,world,commbrick->me,commbrick->nprocs);
   

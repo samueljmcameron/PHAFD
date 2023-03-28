@@ -28,8 +28,7 @@ public:
 
 private:
   std::vector<double> epsilonstrength,phi,cutsq;
-  std::vector<int> pointsperlength;
-  
+
 };
 
 }    // namespace LAMMPS_NS

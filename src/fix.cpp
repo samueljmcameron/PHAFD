@@ -20,7 +20,7 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
 void Fix::init(const std::vector<std::string> &v_line) 
 {
   this_step = false;
-  if (v_line.size() < 2)
+  if (v_line.size() < 1)
     throw std::runtime_error("incorrect args in fixgrid.");
     
   name = v_line.at(0);

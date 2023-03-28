@@ -69,19 +69,19 @@ void Integrate::setup()
   
   
   atoms->Fs.setZero();
-  grid->nonlinear->setZero();
+  grid->chempot->setZero();
   
   for (auto & pair : pairs)
     pair->compute();
   
   commbrick->reverse_comm();
   
-  // additional terms from e.g. chemical potential, which are added to grid->nonlinear
+  // additional terms from e.g. chemical potential, which are added to grid->chempot
   for (auto &fix: fixes)
     fix->post_force();
 
 
-  // mainly just fourier transforming phi and nonlinear
+  // mainly just fourier transforming phi and chempot
   for (auto &fix : fixes)
     fix->pre_final_integrate();
 
@@ -166,7 +166,7 @@ void Integrate::run()
     for (auto &fix : fixes)
       fix->initial_integrate();
 
-    grid->nonlinear->setZero();
+    grid->chempot->setZero();
     atoms->Fs.setZero();
     
     for (auto & pair : pairs)
@@ -174,12 +174,12 @@ void Integrate::run()
 
     commbrick->reverse_comm();
 
-    // additional terms from e.g. chemical potential, which are added to grid->nonlinear
+    // additional terms from e.g. chemical potential, which are added to grid->chempot
     for (auto &fix: fixes)
       fix->post_force();
 
 
-    // mainly just fourier transforming phi and nonlinear
+    // mainly just fourier transforming phi and chempot
     for (auto &fix : fixes)
       fix->pre_final_integrate();
 
@@ -189,7 +189,7 @@ void Integrate::run()
       compute->in_fourier();
 
     
-    // updating stuff (including fourier transformed phi and nonlinear
+    // updating stuff (including fourier transformed phi and chempot
     for (auto &fix : fixes)
       fix->final_integrate();
 
@@ -307,7 +307,7 @@ void Integrate::run_until_touching(double touch_point)
     for (auto &fix : fixes)
       fix->initial_integrate();
 
-    grid->nonlinear->setZero();
+    grid->chempot->setZero();
     atoms->Fs.setZero();
     
     for (auto & pair : pairs)
@@ -315,12 +315,12 @@ void Integrate::run_until_touching(double touch_point)
 
     commbrick->reverse_comm();
 
-    // additional terms from e.g. chemical potential, which are added to grid->nonlinear
+    // additional terms from e.g. chemical potential, which are added to grid->chempot
     for (auto &fix: fixes)
       fix->post_force();
 
 
-    // mainly just fourier transforming phi and nonlinear
+    // mainly just fourier transforming phi and chempot
     for (auto &fix : fixes)
       fix->pre_final_integrate();
 
@@ -330,7 +330,7 @@ void Integrate::run_until_touching(double touch_point)
       compute->in_fourier();
 
     
-    // updating stuff (including fourier transformed phi and nonlinear
+    // updating stuff (including fourier transformed phi and chempot
     for (auto &fix : fixes)
       fix->final_integrate();
 

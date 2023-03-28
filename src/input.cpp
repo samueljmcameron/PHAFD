@@ -14,6 +14,8 @@
 #include "fixatom_semiflexible.hpp"
 #include "fixgrid_conjugate.hpp"
 #include "fixgrid_floryhuggins.hpp"
+#include "fixgrid_gradphi.hpp"
+#include "fixatom_drag.hpp"
 #include "beadrodpmer/no_tether.hpp"
 #include "beadrodpmer/single_tether.hpp"
 #include "beadrodpmer/double_tether.hpp"
@@ -188,6 +190,15 @@ void Input::read()
 	
 	fixes.push_back(std::make_unique<FixAtomSemiFlexible<BeadRodPmer::SingleTether>>(phafd));
 	
+      } else if (firstword == "atom/drag") {
+	if (atoms->ntypes <= 0)
+	  throw std::runtime_error("Fix requires atoms to be created.");
+	
+	
+	fixes.push_back(std::make_unique<FixAtomDrag>(phafd));
+	
+      
+
       } else if (firstword == "grid/conjugate/volfrac") {
 	if (grid->ps_grid == nullptr)
 	  throw std::runtime_error("Fix requires grid to be created.");
@@ -199,7 +210,11 @@ void Input::read()
 	fixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));	  
       } else if (firstword == "grid/ave") {
 	fixes.push_back(std::make_unique<FixGridAve>(phafd));
-      } else
+      } else if (firstword == "grid/gradphi") {
+	if (grid->ps_grid == nullptr)
+	  throw std::runtime_error("Fix requires grid to be created.");
+	fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
+      }	else
 	throw std::runtime_error("Invalid fix.");
       
       

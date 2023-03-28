@@ -518,9 +518,14 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
     if (word == "phi") {
       append_binary_data(myfile,grid->phi);
 
-    } else if (word == "nonlinear") {
-      append_binary_data(myfile,grid->nonlinear);
-
+    } else if (word == "chempot") {
+      append_binary_data(myfile,grid->chempot);
+    } else if (word == "gradphi_x") {
+      append_binary_data(myfile,grid->gradphi_x);
+    } else if (word == "gradphi_y") {
+      append_binary_data(myfile,grid->gradphi_y);
+    } else if (word == "gradphi_z") {
+      append_binary_data(myfile,grid->gradphi_z);
     } else {
       throw std::runtime_error("Dump error: Attribute does not exist.");
     }
