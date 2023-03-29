@@ -26,6 +26,7 @@
 #include "pair_harmonic_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
 #include "pair_gridatom_lj_ish.hpp"
+#include "pair_gridatom_lj_ish_linear.hpp"
 #include "ps_pde/fixgrid_floryhuggins.hpp"
 
 #include "ps_pde/iovtk.hpp"
@@ -107,6 +108,10 @@ void Input::read()
       } else if (pairname == "gridatom/LJish") {
 	  
 	pairs.push_back(std::make_unique<PairGridAtomLJish>(phafd));
+	
+      } else if (pairname == "gridatom/LJish/linear") {
+	  
+	pairs.push_back(std::make_unique<PairGridAtomLJishLinear>(phafd));
 	
       } else if (pairname == "lj/cut") {
 	
