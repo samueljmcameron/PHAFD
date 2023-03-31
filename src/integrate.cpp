@@ -46,62 +46,15 @@ void Integrate::setup()
     dump->write_collection_header();
   }
 
-  
+
   for (auto &fix : fixes)
     fix->reset_dt();
 
   for (auto &fix : fixes)
     fix->setup();
 
-
-  // do the below to potentially save things on step zero.
-
-  for (auto &compute: computes)
-    compute->start_of_step();
-  
-  for (auto &fix: fixes)
-    fix->start_of_step();
-  
-  
-  for (auto &dump : dumps)
-    dump->start_of_step();
-  
-  
-  
-  atoms->Fs.setZero();
-  grid->chempot->setZero();
-  
-  for (auto & pair : pairs)
-    pair->compute();
-  
-  commbrick->reverse_comm();
-  
-  // additional terms from e.g. chemical potential, which are added to grid->chempot
-  for (auto &fix: fixes)
-    fix->post_force();
-
-
-  // mainly just fourier transforming phi and chempot
-  for (auto &fix : fixes)
-    fix->pre_final_integrate();
-
-
-  // computes which act on fourier space grids
-  for (auto &compute : computes)
-    compute->in_fourier();
-
-
-  // mainly just inverse fourier transforming
-  for (auto &fix : fixes)
-    fix->post_final_integrate();
-
-  for (auto &compute : computes)
-    compute->end_of_step();
-
-  for (auto &fix : fixes)
-    fix->end_of_step();
-    
-    
+  // note that this will dump out zero vectors for almost everything as nothing has been
+  // computed yet
   for (auto &dump :dumps)
     if (timestep % dump->every == 0) {
       if (commbrick->me == 0)

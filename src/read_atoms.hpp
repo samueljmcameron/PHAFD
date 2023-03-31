@@ -29,16 +29,6 @@ private:
   std::string fname;
   std::ifstream datafile;
 
-
-  
-  
-
-
-  int read_perStyle();
-
-
-  int reset_styles(std::vector<std::string> &);
-  int get_total_atoms(int &);
   
   int create_atoms(int);
 

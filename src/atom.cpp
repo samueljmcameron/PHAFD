@@ -4,16 +4,18 @@
 
 #include "atom.hpp"
 #include "utility.hpp"
+#include "read_dump.hpp"
+#include "read_atoms.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
 #include "group.hpp"
-#include "beadrodpmer/iovtk.hpp"
 
 using namespace PHAFD_NS;
 
 Atom::Atom(PHAFD *phafd)
   : Pointers(phafd),size_forward(3), size_reverse(3),size_border(6) {
   ntypes = -1;
+  atomset = false;
 
 };
 
@@ -21,9 +23,61 @@ Atom::Atom(PHAFD *phafd)
 
 //void Atom::init() {};
 
-void Atom::setup(int Natoms,std::vector<std::string> styles) {
+void Atom::setup(const std::vector<std::string> & v_line) {
 
   molecule_flag = sphere_flag = false;
+
+  std::vector<int> Natomsperproc(commbrick->nprocs,0);
+
+  
+  int nargs = v_line.size();  
+  int iarg = 0;
+
+  while (v_line.at(iarg) != "natoms") {
+    if (v_line.at(iarg) == "polymer") {
+      molecule_flag = true;
+
+    } else if (v_line.at(iarg) == "sphere") {
+      sphere_flag = true;
+    } else
+      throw std::runtime_error("Unrecognised atom style.");
+
+
+    iarg += 1;
+    
+  }
+
+  iarg += 1;
+
+  std::string tmpstr;
+
+  int proc = 0;
+
+  // get number of atoms per processor
+  while (iarg < nargs) {
+
+    tmpstr = v_line.at(iarg);
+    std::string::size_type pos = tmpstr.find("*");
+    if (pos != std::string::npos) {
+      int atoms_per_proc = std::stoi(tmpstr.substr(0,pos));
+      int nps = std::stoi(tmpstr.substr(pos+1));
+
+      if (proc+nps > commbrick->nprocs)
+	throw std::runtime_error("More atom groupings than there are processors.");
+      for (int i = 0; i < nps; i++) {
+	Natomsperproc.at(proc++) = atoms_per_proc;
+
+      }
+    } else
+      Natomsperproc.at(proc++) = std::stoi(tmpstr);
+    iarg += 1;
+  }
+
+
+  int Natoms = Natomsperproc.at(commbrick->me);
+
+
+  
 
   nowned = 0;
   ngathered = 0;
@@ -40,16 +94,44 @@ void Atom::setup(int Natoms,std::vector<std::string> styles) {
   labels.resize(Natoms);
   images.resize(Natoms);
 
-  if (std::find(styles.begin(), styles.end(), "polymer")!=styles.end()) {
-    molecule_flag = true;
+  if (molecule_flag) {
     moltags.resize(Natoms);
   }
 
-  if (std::find(styles.begin(), styles.end(), "sphere")!=styles.end()) {
-    sphere_flag = true;
+  if (sphere_flag) {
     radius.resize(Natoms);
   }
+
+  atomset = true;
   
+}
+
+void Atom::populate(const std::vector<std::string> & v_line) {
+
+  if (v_line.at(0) == "read_atoms") {
+     ReadAtoms read_atoms(phafd);
+      
+     int errflag = read_atoms.read_file(v_line.at(1));
+     if (errflag != ReadAtoms::SUCCESS) errflag = 1;
+     else errflag = 0;
+     int total_errflag;
+     MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
+     if (total_errflag)
+       throw std::runtime_error("Could not read data atom file. ");
+
+  } else if (v_line.at(0) == "read_dump") {
+
+    ReadDump read_dump(phafd);
+
+    std::vector<std::string> new_v_line(v_line);
+
+    new_v_line.at(0) = "atom";
+    read_dump.init(new_v_line);
+    read_dump.process_attributes();
+
+  } else
+    throw std::runtime_error("Invalid atom_populate command.");
+
 }
 
 void Atom::check_tags_and_types()
@@ -128,107 +210,6 @@ void Atom::check_tags_and_types()
 
   
 
-}
-
-
-
-int Atom::add_polymer(std::vector<std::string> v_line,int startatom)
-/* 
-   Input line should have the form "idstart-idend mol t1*l1 t2*l2 ... tn*ln" where
-   idstart is the id of the first atom in the polymer, idend-1 is the id of the last atom
-   in the polymer (so y-x is the polymer length), mol is the molecule id,
-   t1 is the type of the first l1 atoms in the polymer, etc,
-   so l1 + l2 + ... + ln = idstart-idend .
-*/
-{
-
-  if (!molecule_flag)
-    throw std::invalid_argument("Must have molecular style atoms for creating polymer.");    
-  
-  if (v_line.size() < 3)
-    throw std::invalid_argument("Invalid arguments for creating polymer.");    
-
-  std::size_t pos = v_line.at(0).find("-");
-
-  if (pos == std::string::npos)
-    throw std::invalid_argument("Invalid ID specification when creating polymer.");
-
-
-  int idstart,idend,molid;
-
-
-  idstart = std::stoi(v_line.at(0).substr(0,pos));
-
-  idend = std::stoi(v_line.at(0).substr(pos+1));
-
-  molid = std::stoi(v_line.at(1));
-
-  
-  v_line.erase(v_line.begin(),v_line.begin()+2);
-
-  std::vector<int> spectypes,lengthtypes;
-
-  std::string fname = v_line.back();
-
-  v_line.pop_back();
-  
-  for (auto word : v_line) {
-    pos = word.find("*");
-    if (pos == std::string::npos)
-      throw std::invalid_argument("Invalid type specification when creating polymer.");
-
-    spectypes.push_back(std::stoi(word.substr(0,pos)));
-
-    lengthtypes.push_back(std::stoi(word.substr(pos+1)));
-
-  }
-
-
-  int lt_sum = 0;
-
-  for (int lt : lengthtypes) lt_sum += lt;
-
-  if (lt_sum != idend - idstart)
-    throw std::invalid_argument("Type specification does not match number of "
-				"atoms in creating polymer.");
-
-  int lt_index = 0;
-  lt_sum = lengthtypes.at(0);
-
-
-
-  // set IDs, molIDs, types
-  for (int iatom = startatom; iatom < idend-idstart+startatom; iatom ++) {
-
-    if (iatom >= tags.size()) {
-      throw std::invalid_argument("atom index " + std::to_string(iatom)
-				  + std::string(" out of range when creating polymer")
-				  + std::string(" starting at index ")
-				  + std::to_string(startatom));
-    }
-    tags[iatom] = idstart + iatom - startatom;
-
-
-    
-    moltags[iatom] = molid;
-
-    if (iatom - startatom == lt_sum) {
-      lt_sum += lengthtypes[++lt_index];
-    }
-    
-    types[iatom] = spectypes[lt_index];
-    images[iatom] = domain->set_image();
-    labels[iatom] = Atom::OWNED;
-    
-  }
-
-
-  nowned += idend - idstart;
-
-
-  BeadRodPmer::ioVTK::readVTKPolyData(xs.middleCols(startatom,idend-idstart),fname);
-
-  return idend - idstart;
 }
 
 

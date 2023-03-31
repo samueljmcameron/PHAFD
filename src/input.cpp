@@ -8,7 +8,6 @@
 #include "grid.hpp"
 #include "group.hpp"
 #include "comm_brick.hpp"
-#include "read_atoms.hpp"
 #include "atom.hpp"
 #include "neighbor.hpp"
 #include "fixatom_semiflexible.hpp"
@@ -79,16 +78,20 @@ void Input::read()
 
 
       grid->populate(v_line);
-    } else if (firstword == "read_atoms") {
-      ReadAtoms read_atoms(phafd);
-      
-      int errflag = read_atoms.read_file(v_line.at(0));
-      if (errflag != ReadAtoms::SUCCESS) errflag = 1;
-      else errflag = 0;
-      int total_errflag;
-      MPI_Allreduce(&errflag,&total_errflag,1,MPI_INT,MPI_SUM,world);
-      if (total_errflag)
-	throw std::runtime_error("Could not read atom file. ");
+    } else if (firstword == "atom_style") {
+
+      // set atom style and number of atoms on the processor.
+      atoms->setup(v_line);
+    } else if (firstword == "atom_populate") {
+
+      if  (!atoms->atomset)
+	throw std::invalid_argument("CAnnot use command atom_populate before atom_style is set.");
+
+
+      atoms->populate(v_line);
+
+      // call this to ensure everything is filled in that needs to be filled in.
+      atoms->check_tags_and_types();
 
       if (commbrick->me == 0 && atoms->ntypes == 0)
 	std::cout << "WARNING: running simulation with no atoms." << std::endl;

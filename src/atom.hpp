@@ -21,8 +21,8 @@ public:
 
   Atom(PHAFD *);
 
-  void setup(int,std::vector<std::string> styles = {""});
-
+  void setup(const std::vector<std::string> &);
+  void populate(const std::vector<std::string> &);
   
   int nowned; // atoms which are owned by this processor (as they are in a polymer)
   int nlocal; // atoms which are local to this processor
@@ -32,6 +32,7 @@ public:
 
   bool molecule_flag;
   bool sphere_flag;
+  bool atomset;
 
   // atom positions within periodic box and outside of periodic box, respectively
   Eigen::Matrix3Xd xs, uxs,Fs;
@@ -54,10 +55,6 @@ public:
 
 
   int add_atom( std::vector<std::string>  , int);
-  // do not use add polymer anymore!
-  int add_polymer(std::vector<std::string>  , int);
-  
-
   
   int unpack_reverse(int, const std::vector<int> &, double *);
 
