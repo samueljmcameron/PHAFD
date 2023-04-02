@@ -25,11 +25,8 @@
 
 #include "atom.hpp"
 #include "comm_brick.hpp"
-#include "grid.hpp"
 #include "domain.hpp"
 
-
-#include "ps_pde/fftw_mpi_3darray.hpp"
 
 using namespace PHAFD_NS;
 

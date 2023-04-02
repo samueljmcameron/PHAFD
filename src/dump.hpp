@@ -8,9 +8,9 @@
 
 #include "pointers.hpp"
 
-namespace psPDE {
+namespace fftwArr {
   template<typename>
-  class fftw_MPI_3Darray;
+  class array3D;
 }
 
 namespace PHAFD_NS {
@@ -66,7 +66,7 @@ private:
 			std::vector<T>,int);
 
   void append_binary_data(std::fstream &,
-			  psPDE::fftw_MPI_3Darray<double> * ); 
+			  fftwArr::array3D<double> * ); 
 
   void append_binary_data(std::fstream &,const double *);
   

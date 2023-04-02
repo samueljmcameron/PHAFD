@@ -2,13 +2,14 @@
 
 #include "utility.hpp"
 
-#include "ps_pde/conjugate_volfrac.hpp"
 
 #include "grid.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_conjugate.hpp"
+#include "conjugate_volfrac.hpp"
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 
@@ -35,7 +36,7 @@ void FixGridConjugate<T>::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(std::to_string(seed));
 
 
-  conjugate = std::make_unique<T>(*(domain->ps_domain),*(grid->ps_grid));
+  conjugate = std::make_unique<T>(phafd);
 
   
   conjugate->readCoeffs(new_v_line);
@@ -63,7 +64,7 @@ void FixGridConjugate<T>::start_of_step()
 {
 
   // calculate the gradient of phi.
-  fftw_execute(grid->ps_grid->forward_phi);
+  fftw_execute(grid->forward_phi);
 
   const int local0start = grid->ft_phi->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
@@ -94,23 +95,23 @@ void FixGridConjugate<T>::start_of_step()
 
 	n = k;
 	
-	(*grid->ft_gradphi_x)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
-	(*grid->ft_gradphi_y)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
-	(*grid->ft_gradphi_z)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
+	(*grid->ft_gradphi[0])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
+	(*grid->ft_gradphi[1])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
+	(*grid->ft_gradphi[2])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
 
 	
       }
     }
   }
 
-  fftw_execute(grid->ps_grid->backward_gradphi_x);
-  fftw_execute(grid->ps_grid->backward_gradphi_y);
-  fftw_execute(grid->ps_grid->backward_gradphi_z);
+  fftw_execute(grid->backward_gradphi[0]);
+  fftw_execute(grid->backward_gradphi[1]);
+  fftw_execute(grid->backward_gradphi[2]);
 
   double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-  (*grid->gradphi_x) /= factor;
-  (*grid->gradphi_y) /= factor;
-  (*grid->gradphi_z) /= factor;
+  (*grid->gradphi[0]) /= factor;
+  (*grid->gradphi[1]) /= factor;
+  (*grid->gradphi[2]) /= factor;
   
 }
 
@@ -120,7 +121,7 @@ void FixGridConjugate<T>::pre_final_integrate()
 {
 
 
-  fftw_execute(grid->ps_grid->forward_chempot);
+  fftw_execute(grid->forward_chempot);
 
   didnotintegrate = true;
   return;
@@ -141,7 +142,7 @@ template <typename T>
 void FixGridConjugate<T>::post_final_integrate()
 {
 
-  fftw_execute(grid->ps_grid->backward_phi);
+  fftw_execute(grid->backward_phi);
 
   if (didnotintegrate) {
     double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
@@ -153,4 +154,4 @@ void FixGridConjugate<T>::post_final_integrate()
 }
 
 
-template class FixGridConjugate<psPDE::ConjugateVolFrac>;
+template class FixGridConjugate<ConjugateVolFrac>;

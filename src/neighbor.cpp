@@ -58,8 +58,8 @@ void Neighbor::setup(const std::vector<std::string> &v_line)
   
   // build neighbor bins, and also copy in box dimensions
   neigh_bin = std::make_unique<NBinStandard>(phafd);
-  bboxlo = domain->boxlo;
-  bboxhi = domain->boxhi;
+  bboxlo = domain->boxlo.data();
+  bboxhi = domain->boxhi.data();
   neigh_bin->copy_neighbor_info(this);
   neigh_bin->setup_bins(cutneigh);
 

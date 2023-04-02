@@ -8,7 +8,7 @@
 #include "fix.hpp"
 #include "compute.hpp"
 #include "atom.hpp"
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 #include "integrate.hpp"
 
 using namespace PHAFD_NS;
@@ -117,15 +117,15 @@ void ReadDump::process_grid_attributes()
 
   for (const auto& [key,value] : offsets) {
     if (key == "phi") {
-      read_binary_data(myfile,grid->phi);
+      read_binary_data(myfile,grid->phi.get());
     } else if (key == "chempot") {
-      read_binary_data(myfile,grid->chempot);
+      read_binary_data(myfile,grid->chempot.get());
     } else if (key == "gradphi_x") {
-      read_binary_data(myfile,grid->gradphi_x);
+      read_binary_data(myfile,grid->gradphi[0].get());
     } else if (key == "gradphi_y") {
-      read_binary_data(myfile,grid->gradphi_y);
+      read_binary_data(myfile,grid->gradphi[1].get());
     } else if (key == "gradphi_z") {
-      read_binary_data(myfile,grid->gradphi_z);
+      read_binary_data(myfile,grid->gradphi[2].get());
     } else {
       throw std::runtime_error("ReadDump error: Attribute does not exist.");
     }
@@ -234,7 +234,7 @@ void ReadDump::read_ascii_data(const std::string &line,
 
 
 void ReadDump::read_binary_data(std::fstream &myfile,
-				psPDE::fftw_MPI_3Darray<double> *array) {
+				fftwArr::array3D<double> *array) {
 
   unsigned int bytelength;
 

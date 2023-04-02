@@ -2,12 +2,12 @@
 
 #include "utility.hpp"
 
-#include "ps_pde/grid.hpp"
 #include "grid.hpp"
 #include "domain.hpp"
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_gradphi.hpp"
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 
@@ -45,7 +45,7 @@ void FixGridGradPhi::start_of_step()
   if ((once == true && integrate->timestep == integrate->firststep) || !once) {
     
     // calculate the gradient of phi.
-    fftw_execute(grid->ps_grid->forward_phi);
+    fftw_execute(grid->forward_phi);
     
     const int local0start = grid->ft_phi->get_local0start();
     const int globalNy = grid->ft_boxgrid[1];
@@ -76,23 +76,23 @@ void FixGridGradPhi::start_of_step()
 	  
 	  n = k;
 	  
-	  (*grid->ft_gradphi_x)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
-	  (*grid->ft_gradphi_y)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
-	  (*grid->ft_gradphi_z)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
+	  (*grid->ft_gradphi[0])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
+	  (*grid->ft_gradphi[1])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
+	  (*grid->ft_gradphi[2])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
 	  
 	  
 	}
       }
     }
     
-    fftw_execute(grid->ps_grid->backward_gradphi_x);
-    fftw_execute(grid->ps_grid->backward_gradphi_y);
-    fftw_execute(grid->ps_grid->backward_gradphi_z);
+    fftw_execute(grid->backward_gradphi[0]);
+    fftw_execute(grid->backward_gradphi[1]);
+    fftw_execute(grid->backward_gradphi[2]);
     
     double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-    (*grid->gradphi_x) /= factor;
-    (*grid->gradphi_y) /= factor;
-    (*grid->gradphi_z) /= factor;
+    (*grid->gradphi[0]) /= factor;
+    (*grid->gradphi[1]) /= factor;
+    (*grid->gradphi[2]) /= factor;
   }
 
 

@@ -2,7 +2,6 @@
 
 #include "utility.hpp"
 
-#include "ps_pde/conjugate_volfrac.hpp"
 
 #include "grid.hpp"
 #include "domain.hpp"

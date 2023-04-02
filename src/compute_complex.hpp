@@ -5,9 +5,9 @@
 #include "compute.hpp"
 
 
-namespace psPDE {
+namespace fftwArr {
   template<typename>
-  class fftw_MPI_3Darray;
+  class array3D;
 }
 
 namespace PHAFD_NS {
@@ -24,7 +24,7 @@ public:
 
   
 private:
-  psPDE::fftw_MPI_3Darray<std::complex<double>> *fftw3_arr;
+  fftwArr::array3D<std::complex<double>> *fftw3_arr;
 
   std::string which_quant;
 

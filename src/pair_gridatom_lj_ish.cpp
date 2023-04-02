@@ -27,9 +27,7 @@
 #include "comm_brick.hpp"
 #include "grid.hpp"
 #include "domain.hpp"
-
-
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 
@@ -166,9 +164,9 @@ void PairGridAtomLJish::compute()
 	
 	expfac *= 2*delphi*vol_elem;
 	
-	atoms->Fs(0,aj) -= (*grid->gradphi_x)(i,j,k)*expfac;
-	atoms->Fs(1,aj) -= (*grid->gradphi_y)(i,j,k)*expfac;
-	atoms->Fs(2,aj) -= (*grid->gradphi_z)(i,j,k)*expfac;
+	atoms->Fs(0,aj) -= (*grid->gradphi[0])(i,j,k)*expfac;
+	atoms->Fs(1,aj) -= (*grid->gradphi[1])(i,j,k)*expfac;
+	atoms->Fs(2,aj) -= (*grid->gradphi[2])(i,j,k)*expfac;
 	
 	
 	// need reverse comm here to get other contributions to integrand. should be fine

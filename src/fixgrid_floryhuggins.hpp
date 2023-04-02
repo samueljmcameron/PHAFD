@@ -33,7 +33,7 @@ public:
   
 private:
 
-  std::unique_ptr<psPDE::FixGridFloryHuggins> ps_flory;
+  double temp,volFH,chi;
   
 };
 

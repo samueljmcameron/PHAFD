@@ -7,7 +7,7 @@
 #include "atom.hpp"
 #include "grid.hpp"
 
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 
 #include <iostream>
 

@@ -20,15 +20,14 @@
 #include "beadrodpmer/double_tether.hpp"
 
 
-#include "ps_pde/conjugate_volfrac.hpp"
+#include "conjugate_volfrac.hpp"
 #include "pair_lj_cut.hpp"
 #include "pair_harmonic_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
 #include "pair_gridatom_lj_ish.hpp"
 #include "pair_gridatom_lj_ish_linear.hpp"
-#include "ps_pde/fixgrid_floryhuggins.hpp"
+#include "fixgrid_floryhuggins.hpp"
 
-#include "ps_pde/iovtk.hpp"
 #include "dump.hpp"
 #include "integrate.hpp"
 #include "compute_complex.hpp"
@@ -208,19 +207,19 @@ void Input::read()
       
 
       } else if (firstword == "grid/conjugate/volfrac") {
-	if (grid->ps_grid == nullptr)
-	  throw std::runtime_error("Fix requires grid to be created.");
-	fixes.push_back(std::make_unique<FixGridConjugate<psPDE::ConjugateVolFrac>>(phafd));
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridConjugate<ConjugateVolFrac>>(phafd));
 	
       } else if (firstword == "grid/floryhuggins") {
-	if (grid->ps_grid == nullptr)
-	  throw std::runtime_error("Fix requires grid to be created.");
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));	  
       } else if (firstword == "grid/ave") {
 	fixes.push_back(std::make_unique<FixGridAve>(phafd));
       } else if (firstword == "grid/gradphi") {
-	if (grid->ps_grid == nullptr)
-	  throw std::runtime_error("Fix requires grid to be created.");
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
       }	else
 	throw std::runtime_error("Invalid fix.");

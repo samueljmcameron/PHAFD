@@ -9,13 +9,14 @@
 #include "pair.hpp"
 #include "compute.hpp"
 #include "dump.hpp"
-#include "ps_pde/fftw_mpi_3darray.hpp"
 
 #include <mpi.h>
 #include <iostream>
 #include <string>
 #include <set>
 #include <chrono>
+
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 

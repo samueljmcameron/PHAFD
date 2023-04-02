@@ -8,7 +8,7 @@
 #include "fix.hpp"
 #include "compute.hpp"
 #include "atom.hpp"
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 #include "integrate.hpp"
 
 using namespace PHAFD_NS;
@@ -516,16 +516,16 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
   } else if (dump_type == "grid") {
 
     if (word == "phi") {
-      append_binary_data(myfile,grid->phi);
+      append_binary_data(myfile,grid->phi.get());
 
     } else if (word == "chempot") {
-      append_binary_data(myfile,grid->chempot);
+      append_binary_data(myfile,grid->chempot.get());
     } else if (word == "gradphi_x") {
-      append_binary_data(myfile,grid->gradphi_x);
+      append_binary_data(myfile,grid->gradphi[0].get());
     } else if (word == "gradphi_y") {
-      append_binary_data(myfile,grid->gradphi_y);
+      append_binary_data(myfile,grid->gradphi[1].get());
     } else if (word == "gradphi_z") {
-      append_binary_data(myfile,grid->gradphi_z);
+      append_binary_data(myfile,grid->gradphi[2].get());
     } else {
       throw std::runtime_error("Dump error: Attribute does not exist.");
     }
@@ -662,7 +662,7 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
 
 
 void Dump::append_binary_data(std::fstream &myfile,
-			      psPDE::fftw_MPI_3Darray<double> *array) {
+			      fftwArr::array3D<double> *array) {
 
   myfile.write((char*)&bytelength,sizeof(bytelength));
   // since real fftw arrays aren't contiguous, need to write each row separately.

@@ -8,10 +8,6 @@
 
 #include "pointers.hpp"
 
-namespace psPDE {
-  class Domain;
-
-}
 namespace PHAFD_NS {
 
   
@@ -20,8 +16,6 @@ class Domain : protected Pointers
 public:
   Domain(PHAFD *);
   ~Domain();
-  std::unique_ptr<psPDE::Domain> ps_domain;
-
   
   void set_box(const std::vector<std::string> &);
   void set_subbox();
@@ -31,7 +25,7 @@ public:
   bool boxset, subboxset;
   
   // addresses of data from psPDE arrays (of size 3)
-  double *period,*boxlo,*boxhi;
+  std::array<double,3> period,boxlo,boxhi;
   std::array<double,3> sublo,subhi;
 
   void map(Eigen::Ref<Eigen::Vector3d>,

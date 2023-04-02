@@ -3,7 +3,7 @@
 #include <cmath>
 
 #include "grid.hpp"
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 
@@ -21,12 +21,10 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
   std::string arrname = v_line.at(1);
 
   if (arrname == "ft_phi") {
-    fftw3_arr = grid->ft_phi;
+    fftw3_arr = grid->ft_phi.get();
   } else if (arrname == "ft_chempot") {
-    fftw3_arr = grid->ft_chempot;
-  } else if (arrname == "ft_noise") {
-    fftw3_arr = grid->ft_noise;
-  } else {
+    fftw3_arr = grid->ft_chempot.get();
+  }  else {
     throw std::runtime_error("Invalid array to compute in compute modulus.");
   }
 

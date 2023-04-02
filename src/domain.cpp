@@ -3,8 +3,7 @@
 #include "atom.hpp"
 #include "grid.hpp"
 
-#include "ps_pde/domain.hpp"
-#include "ps_pde/fftw_mpi_3darray.hpp"
+#include "fftw_arr/array3d.hpp"
 
 #include "comm_brick.hpp"
 
@@ -23,10 +22,6 @@ Domain::Domain(PHAFD *phafd)
   boxset = false;
   subboxset = false;
   
-  period = nullptr;
-  boxlo = nullptr;
-  boxhi = nullptr;
-  ps_domain = nullptr;
   
 };
 
@@ -35,12 +30,47 @@ Domain::~Domain() = default;
 void Domain::set_box(const std::vector<std::string> &v_line)
 {
 
+  int iargs = 0;
 
-  ps_domain = std::make_unique<psPDE::Domain>(commbrick->me,commbrick->nprocs,v_line);
 
-  period = ps_domain->period.data();
-  boxlo = ps_domain->boxlo.data();
-  boxhi = ps_domain->boxhi.data();
+
+
+
+  bool period_flag = false;
+  bool origin_flag = false;
+  
+  while (iargs < v_line.size()) {
+    
+    if (v_line[iargs] == "boxdims") {
+      period_flag = true;
+      iargs ++;
+      period[0] = std::stod(v_line[iargs++]);
+      period[1] = std::stod(v_line[iargs++]);
+      period[2] = std::stod(v_line[iargs++]);
+    } else if (v_line[iargs] == "boxorigin") {
+      origin_flag = true;
+      iargs ++;
+      boxlo[0] = std::stod(v_line[iargs++]);
+      boxlo[1] = std::stod(v_line[iargs++]);
+      boxlo[2] = std::stod(v_line[iargs++]);
+      
+    } else {
+      throw std::invalid_argument("Bad arguments for domain_setup.");
+      
+    }
+  }
+
+  if (!period_flag)
+    throw std::runtime_error("need to set box dimensions.");
+
+  
+  if (!origin_flag)
+    throw std::runtime_error("need to set box origin.");
+
+  
+  for (int i = 0; i < 3; i++)  
+    boxhi[i] = boxlo[i] + period[i];
+
   boxset = true;
 
 }
@@ -48,7 +78,7 @@ void Domain::set_box(const std::vector<std::string> &v_line)
 void Domain::set_subbox()
 {
 
-  if (grid->boxgrid == nullptr)
+  if (!grid->gridset)
     throw std::runtime_error("Cannot create subdomains before grid is created.");
   
   double dz = period[2]/grid->boxgrid[2];
@@ -173,6 +203,6 @@ int Domain::set_image() const
 
 }
 
-double Domain::dqx() { return ps_domain->dqx();};
-double Domain::dqy() { return ps_domain->dqy();};
-double Domain::dqz() { return ps_domain->dqz();};
+double Domain::dqx() { return 2*3.141592/period[0];};
+double Domain::dqy() { return 2*3.141592/period[2];};  
+double Domain::dqz() { return 2*3.141592/period[1];};
