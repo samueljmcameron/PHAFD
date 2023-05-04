@@ -42,7 +42,7 @@ private:
 		       Eigen::Ref<Eigen::Matrix3Xd>);
 
   
-  void read_ascii_data(const std::string &,std::vector<int>);
+  void read_ascii_data(const std::string &,std::vector<int> &);
 
   void read_binary_data(std::fstream &,
 			fftwArr::array3D<double> * ); 

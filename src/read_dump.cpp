@@ -1,7 +1,6 @@
 #include <iomanip>
-
+#include <iostream>
 #include "read_dump.hpp"
-
 
 #include "domain.hpp"
 #include "grid.hpp"
@@ -80,8 +79,17 @@ void ReadDump::process_attributes()
 void ReadDump::process_grid_attributes()
 /* Start from the beginning of the dump file. */
 {
+  int localerr = 0;
+  int globalerr;
   auto myfile = std::fstream(filename, std::ios::in | std::ios::binary);
+  if (myfile.fail()) {
+    std::cerr << "could not open file " << filename << std::endl;
+    localerr = 1;
+  }
+  MPI_Allreduce(&localerr,&globalerr,1,MPI_INT,MPI_SUM,world);
 
+  if (globalerr)
+    throw std::runtime_error("file not found.");
   std::string line,expected;
 
 
@@ -138,7 +146,18 @@ void ReadDump::process_atom_attributes()
 /* Start from the beginning of the dump file. */
 {
 
+  int localerr = 0;
+  int globalerr;
   auto myfile = std::fstream(filename, std::ios::in);
+  if (myfile.fail()) {
+    std::cerr << "could not open file " << filename << std::endl;
+    localerr = 1;
+  }
+  MPI_Allreduce(&localerr,&globalerr,1,MPI_INT,MPI_SUM,world);
+
+  if (globalerr)
+    throw std::runtime_error("file not found.");
+
   std::string line;
   std::set<std::string> attributes_copy;
 
@@ -162,6 +181,7 @@ void ReadDump::process_atom_attributes()
     for (auto &word : attributes) {
       if (line ==  "<DataArray Name=\"" + word + "\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">") {
 	std::getline(myfile,line);
+
 	if (word == "x")
 	  read_ascii_data(line,atoms->xs);
 	else if (word == "F")
@@ -174,13 +194,14 @@ void ReadDump::process_atom_attributes()
 	break;
       }	else if (line ==  "<DataArray Name=\"" + word + "\" type=\"Int64\" NumberOfComponents=\"1\" format=\"ascii\">") {
 	std::getline(myfile,line);
+	
 	if (word == "ix")
 	  read_ascii_data(line,atoms->images);
-	else if (word == "ID")
+	else if (word == "ID") 
 	  read_ascii_data(line,atoms->tags);
 	else if (word == "molID")
 	  read_ascii_data(line,atoms->moltags);
-	else if (word == "type")
+	else if (word == "type") 
 	  read_ascii_data(line,atoms->types);
 	else if (word == "label")
 	  read_ascii_data(line,atoms->labels);
@@ -189,10 +210,14 @@ void ReadDump::process_atom_attributes()
 	attributes_copy.insert(word);
 	
 	break;
-      }
+      } 
+      
       
     }
   }
+
+  atoms->nowned = atoms->tags.size();
+
 
   if (attributes_copy != attributes) {
     std::string errstring = "Only found attributes ";
@@ -200,7 +225,7 @@ void ReadDump::process_atom_attributes()
       errstring += word  + ", ";
     throw std::runtime_error(errstring);
   }
-    
+  
   return;
 }
  
@@ -223,11 +248,11 @@ void ReadDump::read_ascii_data(const std::string &line,
 
 
 void ReadDump::read_ascii_data(const std::string &line,
-			       std::vector<int> array)
+			       std::vector<int> & array)
 {
 
   std::stringstream ss(line);
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < array.size(); i++) 
     ss >> array[i];
 
 }
