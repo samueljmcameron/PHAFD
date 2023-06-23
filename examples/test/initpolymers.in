@@ -1,0 +1,15 @@
+
+
+
+
+no_tether beads ${beads} bondlength ${bondlength} zeta_para ${zeta_para} zeta_perp ${zeta_perp} bending ${bending} temp ${temp} seed ${seed}
+
+initialise x1 ${x1x} ${x1y} ${x1z} xN ${xNx} ${xNy} ${xNz} springK 100 dt ${dt} nsteps 0 tol 10000.0 itermax 20 seed ${seed} delay 1.0 equilibrium 
+
+
+timestep ${dt}
+
+dump_file ${fname}
+dump_every 1
+
+run 0

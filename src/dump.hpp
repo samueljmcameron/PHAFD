@@ -42,9 +42,8 @@ protected:
   std::string nopath_base_name; // name of file without path or extension, e.g. field_p0
   std::string collection_name; // collection name, .e.g vtkfiles/field_p0.pvd
   std::string instance_name; // base name plus time and extension, e.g. vtkfiles/field_p0_0.vti
-
-  std::string nopath_instance_name; // above but without path, e.g. field_p0_0.vti
-
+  std::string pinstance_name; // base name plus time and extension, e.g. vtkfiles/field_0.pvti
+  std::string pnopath_instance_name; // above but without path, e.g. field_0.pvti
   std::string fext; // file extension of per time files (e.g. ".vti" for grid, ".vtp" for atom)
   
   std::string dump_type; // either atom, grid, or ftgrid
@@ -58,13 +57,18 @@ private:
   void write_atom_timestep();
   void write_grid_timestep();
 
-  void process_attribute_name(std::fstream &, const std::string &);
+  void write_atom_timestep_pvtp();
+  void write_grid_timestep_pvti();
+  
+
+  void process_attribute_name(std::fstream &, const std::string &,
+			      bool for_pvtp=false);
   void write_ascii_data(std::fstream &, const std::string &,
-			Eigen::Ref<Eigen::Matrix3Xd>);
+			Eigen::Ref<Eigen::Matrix3Xd>,bool for_pvtp);
 
   template <typename T>
   void write_ascii_data(std::fstream &, const std::string &,
-			std::vector<T>,int);
+			std::vector<T>,int,bool for_pvtp);
 
   void append_binary_data(std::fstream &,
 			  fftwArr::array3D<double> * ); 
@@ -82,6 +86,7 @@ private:
   int arrplane_size;
 
   int zstart,zend;
+  std::vector<int> zstarts,zends;
   
 };
 

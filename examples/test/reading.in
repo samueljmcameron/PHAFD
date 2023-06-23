@@ -1,0 +1,41 @@
+# set global parameters
+
+
+domain boxdims 256.0 256.0 256.0 boxorigin -128.0 -128.0 -128.0
+
+grid_style 64 64 64 concentration
+
+grid_populate constant concentration ${phi0} ${phi_var} ${seed1}
+atom_style polymer natoms ${Nbeads} 
+atom_populate read_atoms polymercoords_${attract}/run${run}_empty_p%.data
+
+# can either use grid_setup to read in old data or create new grid data	
+
+pair gridatom/LJish/linear ${bondlength}
+pairCoeffs 0 epsilon ${attract} nucwidth ${bondlength}
+pairCoeffs 1 epsilon ${repel} nucwidth ${bondlength}
+
+pair lj/cut ${ljcut} ${ljeps} ${ljsigma}
+
+neighbor ${nskin}
+
+group nt_pmers molecule 0
+
+fix atom/semiflexible/notether nt_pmers nt_pmers ${seed2} bondlength ${bondlength} zeta_para ${zeta_para} zeta_perp ${zeta_perp} bending ${bending} temp ${temp}
+
+
+#fix grid/gradphi gradphi once
+fix grid/conjugate/volfrac volfrac ${seed3} mobility ${mobility} temp ${temp} volFH ${v0} gamma ${gamma}
+
+fix grid/floryhuggins chempot temp ${temp} chi ${chi} volFH ${v0}
+
+compute pair droppolyforces gridatom/LJish/linear
+
+dump atoms atom/owned vtkfiles_${attract}/run${run}atom 100 attributes 8 x ux ix F c_droppolyforces ID molID type
+
+dump realgrid grid vtkfiles_${attract}/run${run}field 100 attributes 5 phi chempot gradphi_x gradphi_y gradphi_z
+
+timestep 0
+dt ${dt}
+
+run_until_touching 1000 4.0 

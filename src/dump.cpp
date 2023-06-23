@@ -1,5 +1,5 @@
 #include <iomanip>
-
+#include <iostream>
 #include "dump.hpp"
 #include "comm_brick.hpp"
 
@@ -78,6 +78,22 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 
     if (commbrick->me != commbrick->nprocs-1)
       zend += 1;
+
+
+    zstarts.resize(commbrick->nprocs);
+    zends.resize(commbrick->nprocs);    
+    for (int proc = 0; proc < commbrick->nprocs; proc++) {
+      if (proc == commbrick->me) {
+	zstarts.at(proc) = zstart;
+	zends.at(proc) = zend;
+      }
+
+      MPI_Bcast(&zstarts[proc],1,MPI_INT,proc,world);
+      MPI_Bcast(&zends[proc],1,MPI_INT,proc,world);
+      
+      
+
+    }
   }
 
 
@@ -208,19 +224,21 @@ void Dump::require_calculations()
 /* called at start of simulation */
 void Dump::write_collection_header()
 {
-  auto myfile = std::ofstream(collection_name);
-  if (not myfile.is_open()) {
-    throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+
+  if (commbrick->me == 0) {
+    auto myfile = std::ofstream(collection_name);
+    if (not myfile.is_open()) {
+      throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+    }
+    
+    myfile << "<?xml version=\"1.0\"?>" << std::endl
+	   << "<VTKFile type=\"Collection\"  version=\"1.0\""
+	   << " byte_order=\"LittleEndian\">" << std::endl
+	   << "<Collection>" << std::endl;
+    
+    
+    myfile.close();
   }
-  
-  myfile << "<?xml version=\"1.0\"?>" << std::endl
-	 << "<VTKFile type=\"Collection\"  version=\"1.0\""
-	 << " byte_order=\"LittleEndian\">" << std::endl
-	 << "<Collection>" << std::endl;
-
-
-  myfile.close();
-  
 
 
 }
@@ -230,15 +248,18 @@ void Dump::write_collection_header()
 /* called at end of simulation */
 void Dump::write_collection_footer() 
 {
-  auto myfile = std::fstream(collection_name, std::ios_base::app);
-  if (not myfile.is_open()) {
-    throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+
+  if (commbrick->me == 0) {
+    auto myfile = std::fstream(collection_name, std::ios_base::app);
+    if (not myfile.is_open()) {
+      throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+    }
+    
+    myfile << "</Collection>" << std::endl
+	   << "</VTKFile>";
+    
+    myfile.close();
   }
-  
-  myfile << "</Collection>" << std::endl
-	 << "</VTKFile>";
-  
-  myfile.close();
 }
 
 
@@ -248,22 +269,27 @@ void Dump::write_collection_middle()
 
   double time = integrate->timestep*integrate->dt;
   create_instance_name();
-  
-  auto myfile = std::fstream(collection_name,std::ios_base::app);
-  if (not myfile.is_open()) {
-    throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+
+  if (commbrick->me == 0) {
+    auto myfile = std::fstream(collection_name,std::ios_base::app);
+    if (not myfile.is_open()) {
+      throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+    }
+    
+    myfile << "<DataSet timestep=\"" << time << "\" group=\"\" part=\"0\""
+	   << " file=\"" << pnopath_instance_name << "\"/>" << std::endl;
+    
+    myfile.close();
   }
-  
-  myfile << "<DataSet timestep=\"" << time << "\" group=\"\" part=\"0\""
-	 << " file=\"" << nopath_instance_name << "\"/>" << std::endl;
 
-  myfile.close();
-
-  if (dump_type == "atom")
+  if (dump_type == "atom") {
     write_atom_timestep();
-  else
+    write_atom_timestep_pvtp();
+  }
+  else {
     write_grid_timestep();
-  
+    write_grid_timestep_pvti();
+  }
 }
 
 
@@ -272,12 +298,20 @@ void Dump::write_collection_middle()
 
 void Dump::create_instance_name()
 {
-  instance_name = base_name + std::string("_") +
-    std::to_string(integrate->timestep) + std::string(".") + fext;
-  
-  nopath_instance_name = nopath_base_name  + std::string("_") +
-    std::to_string(integrate->timestep) + std::string(".") + fext;
+  instance_name = base_name + std::string("_p") + std::to_string(commbrick->me)
+    + std::string("_") + std::to_string(integrate->timestep) + std::string(".") + fext;
 
+  pinstance_name = base_name +  std::string("_") + std::to_string(integrate->timestep)
+    + std::string(".p") + fext;
+
+  
+
+
+  pnopath_instance_name = nopath_base_name + std::string("_")
+    + std::to_string(integrate->timestep) + std::string(".p") + fext;
+
+  
+  
 }
 
 
@@ -287,16 +321,9 @@ void Dump::create_instance_name()
 void Dump::write_atom_timestep()
 /*============================================================================*/
 /*
-  Write scalar image data to a vtk (and paraview) compatible file
-  (extension .vti).
+  Write atom data to a vtk (and paraview) compatible file
+  (extension .vtp).
 
-  Parameters
-  ----------
-
-  fname : string
-      Name of file to save with extension (either ".vtp" or ".pvtp").
-
-  xs : beads to save
 */
 /*============================================================================*/
 
@@ -340,7 +367,7 @@ void Dump::write_atom_timestep()
     throw std::runtime_error("Atom dump must contain positions.");
 
   myfile << "<Points>" << std::endl;
-  write_ascii_data(myfile,"x",atoms->xs);
+  write_ascii_data(myfile,"x",atoms->xs,false);
   myfile << "</Points>" << std::endl;
 
   myfile << "<PointData>" << std::endl;
@@ -348,7 +375,7 @@ void Dump::write_atom_timestep()
 
   // don't re-save position data
   for (auto &word : attributes)
-    if (word != "x")
+    if (word != "x") 
       process_attribute_name(myfile,word);
 
   myfile << "</PointData>" << std::endl;
@@ -356,8 +383,73 @@ void Dump::write_atom_timestep()
 	 << "</PolyData>" << std::endl
 	 << "</VTKFile>" << std::endl;    
   myfile.close();
+
   
 }
+
+
+void Dump::write_atom_timestep_pvtp()
+/*============================================================================*/
+/*
+  Write atom data to a vtk (and paraview) compatible file
+  (extension .pvtp).
+
+*/
+/*============================================================================*/
+
+{
+
+  if (commbrick->me == 0) {
+    auto myfile = std::fstream(pinstance_name, std::ios::out);
+    
+    if (not myfile.is_open()) {
+      throw std::runtime_error(std::string("Cannot open file ") + instance_name);
+    }
+    
+    int numpoints;
+    if (which_atoms == "all")
+      numpoints = atoms->xs.cols();
+    else if (which_atoms == "owned")
+      numpoints = atoms->nowned;
+    else if (which_atoms == "local")
+      numpoints = atoms->nlocal;
+    else if (which_atoms == "ghost")
+      numpoints = atoms->nghost;
+    else
+      throw std::runtime_error("need atoms to be dumped to be owned, all, local, or ghost");
+    
+    
+    myfile << "<?xml version=\"1.0\"?>" << std::endl
+	   << "<VTKFile type=\"PPolyData\"  version=\"1.0\""
+	   << " byte_order=\"LittleEndian\">" << std::endl
+	   << "<PPolyData GhostLevel=\"0\">" << std::endl
+	   << "<PPoints>" << std::endl;
+    
+    write_ascii_data(myfile,"x",atoms->xs,true);
+    myfile << "</PPoints>" << std::endl;
+    
+    myfile << "<PPointData>" << std::endl;
+
+    for (auto &word : attributes)
+      if (word != "x")
+	process_attribute_name(myfile,word,true);
+    
+    myfile << "</PPointData>" << std::endl;
+    for (int proc = 0; proc < commbrick->nprocs; proc++) {
+      std::string sourcename =  nopath_base_name  + std::string("_p") + std::to_string(proc)
+	+ std::string("_") + std::to_string(integrate->timestep) + std::string(".") + fext;
+
+      myfile << "<Piece Source=\"" + sourcename + std::string("\"/>") << std::endl;
+    }
+    
+    
+    myfile << "</PPolyData>" << std::endl
+	   << "</VTKFile>" << std::endl;    
+    myfile.close();
+    
+  }
+}
+
 
 
 void Dump::write_grid_timestep()
@@ -458,14 +550,104 @@ void Dump::write_grid_timestep()
 	 << "</VTKFile>" << std::endl;    
   myfile.close();
 
-
   
+}
+
+void Dump::write_grid_timestep_pvti()
+{
+
+  if (commbrick->me == 0) {
+    auto myfile = std::fstream(pinstance_name, std::ios::out | std::ios::binary);
+    
+    if (not myfile.is_open()) {
+      throw std::runtime_error(std::string("Cannot open file ") + instance_name);
+    }
+    
+    
+    int globalNz,Ny,Nx;
+    
+    double dz,dy,dx;
+    
+    std::array<double,3> boxlo;
+    
+    if (dump_type == "grid") {
+      
+      
+      
+      globalNz = grid->boxgrid[2];
+      Ny = grid->phi->Ny();
+      Nx = grid->phi->Nx();
+      
+      arrplane_size = Nx*Ny;
+      
+      dz = grid->dz();
+      dy = grid->dy();
+      dx = grid->dx();
+      
+      boxlo = {domain->boxlo[0],domain->boxlo[1],domain->boxlo[2]};
+      
+    } else if (dump_type == "ftgrid") {
+      
+      
+      globalNz = grid->boxgrid[2];
+      Ny = grid->ft_phi->Ny();
+      Nx = grid->ft_phi->Nx();
+      
+      arrplane_size = Nx*Ny;
+      
+      
+      dz = domain->dqz();
+      dy = domain->dqy();
+      dx = domain->dqx();
+      
+      boxlo = {0,0,0};
+      
+      
+    }
+    
+    
+    myfile << "<?xml version=\"1.0\"?>" << std::endl
+	   << "<VTKFile type=\"PImageData\"  version=\"1.0\""
+	   << " byte_order=\"LittleEndian\">" << std::endl
+	   << "<PImageData WholeExtent=\"0 " << Nx-1 << " 0 "
+	   << Ny-1 << " " << " 0 " << globalNz-1 << "\" "
+	   <<"Origin=\"" << boxlo[0] << " " << boxlo[1] << " " << boxlo[2] << " \" "
+	   << "Spacing=\"" << dx << " " << dy << " " << dz << "\""
+	   << " GhostLevel=\"1\">" << std::endl
+	   << "<PPointData Scalars=\"scalars\">" << std::endl;
+    
+    for (auto &word : attributes) 
+      myfile << "<PDataArray Name=\"" << word
+	     << "\" type=\"Float64\"/>" << std::endl;
+
+    
+    myfile << "</PPointData>" << std::endl;
+    
+    for (int proc = 0; proc < commbrick->nprocs; proc++) {
+
+      std::string sourcename =  nopath_base_name  + std::string("_p") + std::to_string(proc)
+	+ std::string("_") + std::to_string(integrate->timestep) + std::string(".") + fext;
+      
+      myfile << "<Piece Extent=\"0 " << Nx << " 0 " << Ny << " " << zstarts.at(proc)
+	     << " " << zends.at(proc) << "\" Source=\"" << sourcename << "\"/>" << std::endl;
+
+    }
+    myfile << std::endl << "</PImageData>" << std::endl
+	   << "</VTKFile>" << std::endl;    
+    myfile.close();
+    
+    
+  }
 }
 
 
 
-void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
+
+void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
+				  bool for_pvtp)
 {
+
+  
   if (word.rfind("c_",0) == 0) {
 
 
@@ -504,7 +686,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
 	throw std::runtime_error("Cannot write dump, compute ID " + cid
 				 + std::string("is not a per_atom quantity."));
       write_ascii_data(myfile,word,computes.at(index)->array,
-		       computes.at(index)->numberofcomponents);
+		       computes.at(index)->numberofcomponents,for_pvtp);
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
 
@@ -549,7 +731,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
 				 + std::string("is not a per_atom quantity."));
       
       write_ascii_data(myfile,word,fixes.at(index)->array,
-		       fixes.at(index)->numberofcomponents);
+		       fixes.at(index)->numberofcomponents,for_pvtp);
       
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
@@ -577,19 +759,19 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
   } else if (dump_type == "atom") {
 
     if (word == "F")
-      write_ascii_data(myfile,word,atoms->Fs);
+      write_ascii_data(myfile,word,atoms->Fs,for_pvtp);
     else if (word == "ux")
-      write_ascii_data(myfile,word,atoms->uxs);
+      write_ascii_data(myfile,word,atoms->uxs,for_pvtp);
     else if (word == "ix")
-      write_ascii_data(myfile,word,atoms->images,1);
+      write_ascii_data(myfile,word,atoms->images,1,for_pvtp);
     else if (word == "ID")
-      write_ascii_data(myfile,word,atoms->tags,1);
+      write_ascii_data(myfile,word,atoms->tags,1,for_pvtp);
     else if (word == "molID")
-      write_ascii_data(myfile,word,atoms->moltags,1);
+      write_ascii_data(myfile,word,atoms->moltags,1,for_pvtp);
     else if (word == "type")
-      write_ascii_data(myfile,word,atoms->types,1);
+      write_ascii_data(myfile,word,atoms->types,1,for_pvtp);
     else if (word == "label")
-      write_ascii_data(myfile,word,atoms->labels,1);
+      write_ascii_data(myfile,word,atoms->labels,1,for_pvtp);
     
     else
       throw std::runtime_error("Invalid per atom quantity in dump file.");
@@ -604,49 +786,55 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
 
 
 void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
-			    Eigen::Ref<Eigen::Matrix3Xd> array)
+			    Eigen::Ref<Eigen::Matrix3Xd> array,
+			    bool for_pvtp)
 {
 
+  if (!for_pvtp) {
+    myfile << "<DataArray Name=\"" << arrname << "\" "
+	   << "type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">" << std::endl;
+    
+    if (which_atoms == "all") {
+      for (int i = 0; i < array.cols(); i++) {
+	myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
+	       << array.col(i)(2) << " ";
+	
+      }
+    } else if (which_atoms == "owned") {
+      for (int i = 0; i < atoms->nowned; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
+	  myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
+		 << array.col(i)(2) << " ";
+	else
+	  throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
+      }
+    } else if (which_atoms == "local") {
+      for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
+	  myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
+		 << array.col(i)(2) << " ";
+      }
+    } else if (which_atoms == "ghost") {
+      for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
+	  myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
+		 << array.col(i)(2) << " ";
+      } 
+    }
+    
+    myfile << std::endl << "</DataArray>" << std::endl;
+  } else {
+    myfile << "<PDataArray Name=\"" << arrname << "\" "
+	   << "type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\"/>" << std::endl;
 
-  myfile << "<DataArray Name=\"" << arrname << "\" "
-	 << "type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">" << std::endl;
-  
-  if (which_atoms == "all") {
-    for (int i = 0; i < array.cols(); i++) {
-      myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
-	     << array.col(i)(2) << " ";
-      
-    }
-  } else if (which_atoms == "owned") {
-    for (int i = 0; i < atoms->nowned; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
-	myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
-	       << array.col(i)(2) << " ";
-      else
-	throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
-    }
-  } else if (which_atoms == "local") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
-	myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
-	       << array.col(i)(2) << " ";
-    }
-  } else if (which_atoms == "ghost") {
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
-	myfile << array.col(i)(0) << " " << array.col(i)(1) << " "
-	       << array.col(i)(2) << " ";
-    } 
   }
-  
-  myfile << std::endl << "</DataArray>" << std::endl;
-
 }
 
 
 template <typename T>
 void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
-			    std::vector<T> array,int numberofcomponents)
+			    std::vector<T> array,int numberofcomponents,
+			    bool for_pvtp)
 {
   std::string dtype;
   if (typeid(T) == typeid(double))
@@ -657,55 +845,62 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
     throw std::runtime_error("Cannot use non double non int type for writing ascii data.");
   
 
-  myfile << "<DataArray Name=\"" << arrname << "\" "
-	 << "type=\"" << dtype << "\" NumberOfComponents=\""
-	 << numberofcomponents << "\" format=\"ascii\">" << std::endl;
-  
-  
-  if (which_atoms == "all") {
-    for (int i = 0; i < array.size(); i++) {
-      myfile << array[i] << " ";
+  if (!for_pvtp) {
+    myfile << "<DataArray Name=\"" << arrname << "\" "
+	   << "type=\"" << dtype << "\" NumberOfComponents=\""
+	   << numberofcomponents << "\" format=\"ascii\">" << std::endl;
+    
+    
+    if (which_atoms == "all") {
+      for (int i = 0; i < array.size(); i++) {
+	myfile << array[i] << " ";
+	
+      }
+    } else if (which_atoms == "owned") {
       
+      int index = 0;
+      
+      for (int i = 0; i < atoms->nowned; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
+	  for (int components = 0; components < numberofcomponents; components++)
+	    myfile << array[index++] << " ";
+	else
+	  throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
+	
+      }
+    } else if (which_atoms == "local") {
+      
+      int index = 0;
+      
+      for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
+	  for (int components = 0; components < numberofcomponents; components++)
+	    myfile << array[index++] << " ";
+	else
+	  index += numberofcomponents;
+	
+      }
+    } else if (which_atoms == "ghost") {
+      
+      int index = 0;
+      
+      for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
+	if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
+	  for (int components = 0; components < numberofcomponents; components++)
+	    myfile << array[index++] << " ";
+	else
+	  index += numberofcomponents;
+	
+      } 
     }
-  } else if (which_atoms == "owned") {
     
-    int index = 0;
-    
-    for (int i = 0; i < atoms->nowned; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
-	for (int components = 0; components < numberofcomponents; components++)
-	  myfile << array[index++] << " ";
-      else
-	throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
-      
-    }
-  } else if (which_atoms == "local") {
-    
-    int index = 0;
-    
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
-	for (int components = 0; components < numberofcomponents; components++)
-	  myfile << array[index++] << " ";
-      else
-	index += numberofcomponents;
-      
-    }
-  } else if (which_atoms == "ghost") {
-    
-    int index = 0;
-    
-    for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
-      if (atoms->labels[i] == PHAFD_NS::Atom::GHOST)
-	for (int components = 0; components < numberofcomponents; components++)
-	  myfile << array[index++] << " ";
-      else
-	index += numberofcomponents;
-      
-    } 
+    myfile << std::endl << "</DataArray>" << std::endl;
+  } else {
+    myfile << "<PDataArray Name=\"" << arrname << "\" "
+	   << "type=\"" << dtype << "\" NumberOfComponents=\""
+	   << numberofcomponents << "\" format=\"ascii\"/>" << std::endl;
+
   }
-  
-  myfile << std::endl << "</DataArray>" << std::endl;
   
 
 }

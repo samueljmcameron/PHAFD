@@ -86,9 +86,12 @@ void Atom::setup(const std::vector<std::string> & v_line) {
 
   nmols = 0;
   
-  xs.resize(3,Natoms); 
-  uxs.resize(3,Natoms); 
+  xs.resize(3,Natoms);
+  xs.setZero();
+  uxs.resize(3,Natoms);
+  uxs.setZero();
   Fs.resize(3,Natoms);
+  Fs.setZero();
   tags.resize(Natoms);
   types.resize(Natoms);
   labels.resize(Natoms);

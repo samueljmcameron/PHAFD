@@ -1,0 +1,58 @@
+#!/bin/bash
+
+run=0
+procs=4
+seed1=$RANDOM
+seed2=$RANDOM
+seed3=$RANDOM
+
+echo concentration initial conditions seed is $seed1
+echo fix polymer seed is $seed2
+echo fix volfrac seed is $seed3
+
+attract=8.228
+repel=-4.114
+Nbeads=400
+phi0=0.15
+phi_var=0.0
+mobility=100.0
+v0=1.0
+gamma=100.0
+chi=3.0
+dt=1e-5
+
+echo attract is $attract
+echo repel is $repel
+echo Nbeads is $Nbeads
+echo phi0 is $phi0
+echo phi_var is $phi_var
+echo mobility is $mobility
+echo v0 is $v0
+echo gamma is $gamma
+echo chi is $chi
+echo dt is $dt
+
+mkdir -p polymercoords_${attract}
+
+
+
+
+
+additionalargs=$(python3 write_data.py $HOME $Nbeads $RANDOM $dt $run $attract 0)
+
+
+for n in $(seq "1" "$(($procs-1))") ; do
+
+    python3 write_data.py $HOME $Nbeads $RANDOM $dt $run $attract $n
+done
+
+
+echo $additionalargs
+
+
+mkdir -p vtkfiles_${attract}
+
+inputf="reading.in"
+
+
+mpiexec -np $procs ~/Documents/phafd/build/src/phafd -in $inputf -var seed1 ${seed1} -var seed2 ${seed2} -var seed3 ${seed3} -var attract ${attract} -var repel ${repel} -var phi0 ${phi0} -var phi_var ${phi_var} -var mobility ${mobility} -var v0 ${v0} -var gamma ${gamma} -var chi ${chi} -var Nbeads ${Nbeads} -var run $run $additionalargs
