@@ -1,7 +1,7 @@
 #include <iomanip>
 
 #include "dump.hpp"
-
+#include "comm_brick.hpp"
 
 #include "domain.hpp"
 #include "grid.hpp"
@@ -18,11 +18,16 @@ using namespace PHAFD_NS;
    always going to be outputted in parallel. */
 Dump::Dump(PHAFD *phafd) : Pointers(phafd) {
   precision = -1;
+  zstart = zend = -1;
+  fftw_recv = nullptr;
 };
 
+Dump::~Dump() {
+}
 
 
 void Dump::init(const std::vector<std::string> &v_line ) {
+
 
   name = v_line.at(0);
 
@@ -40,10 +45,43 @@ void Dump::init(const std::vector<std::string> &v_line ) {
   }
 
 
-  if (dump_type == "atom")
-    fext = ".vtp";
-  else
-    fext = ".vti";
+  if (dump_type == "atom") {
+    fext = "vtp";
+
+  } else {
+    fext = "vti";
+
+    int Nz;
+
+    if (dump_type == "grid")
+      if (grid->phi != nullptr) {
+	Nz = grid->phi->Nz();
+	zstart = grid->phi->get_local0start();
+      } else
+	throw std::runtime_error("phi does not exist, but needed to save dump.");
+
+    else if  (dump_type == "ftgrid")
+      if (grid->ft_phi != nullptr) {
+	Nz = grid->ft_phi->Nz();
+	zstart = grid->ft_phi->get_local0start();
+      } else
+	throw std::runtime_error("ft_phi does not exist, but needed to save dump.");
+
+    else
+      throw std::runtime_error("Invalid dump type (must be atom or grid or ftgrid).");
+
+    
+    zend = Nz + zstart-1;
+  
+    if (commbrick-> me != 0)
+      zstart -= 1;
+
+    if (commbrick->me != commbrick->nprocs-1)
+      zend += 1;
+  }
+
+
+	
   
   base_name = v_line.at(2);
   collection_name = base_name + std::string(".pvd");
@@ -51,13 +89,15 @@ void Dump::init(const std::vector<std::string> &v_line ) {
   
   nopath_base_name = base_name;
   
-  size_t firstslash = base_name.find_last_of("\\/");
+  size_t endslash = base_name.find_last_of("\\/");
 
-  if (firstslash != std::string::npos) {
-    nopath_base_name = base_name.substr(firstslash+1);
+  if (endslash != std::string::npos) {
+    nopath_base_name = base_name.substr(endslash+1);
   }
 
 
+
+  
   every = std::stoi(v_line.at(3));
 
   auto it = v_line.begin()+4;
@@ -233,11 +273,10 @@ void Dump::write_collection_middle()
 void Dump::create_instance_name()
 {
   instance_name = base_name + std::string("_") +
-    std::to_string(integrate->timestep) + fext;
+    std::to_string(integrate->timestep) + std::string(".") + fext;
   
-  nopath_instance_name = nopath_base_name + std::string("_")
-    +  std::to_string(integrate->timestep) + fext;
-
+  nopath_instance_name = nopath_base_name  + std::string("_") +
+    std::to_string(integrate->timestep) + std::string(".") + fext;
 
 }
 
@@ -329,23 +368,22 @@ void Dump::write_grid_timestep()
     throw std::runtime_error(std::string("Cannot open file ") + instance_name);
   }
 
-  int zstart;
+
   int Nz,Ny,Nx;
+
   double dz,dy,dx;
 
   std::array<double,3> boxlo;
   
   if (dump_type == "grid") {
 
-    if (grid->phi != nullptr)
-      zstart = grid->phi->get_local0start();
-    else
-      throw std::runtime_error("phi does not exist, but needed to save dump.");
 
   
     Nz = grid->phi->Nz();
     Ny = grid->phi->Ny();
     Nx = grid->phi->Nx();
+
+    arrplane_size = Nx*Ny;
 
     dz = grid->dz();
     dy = grid->dy();
@@ -353,46 +391,51 @@ void Dump::write_grid_timestep()
 
     boxlo = {domain->boxlo[0],domain->boxlo[1],domain->boxlo[2]};
     
-    bytelength = Nx*Ny*Nz*sizeof(double);
-    
   } else if (dump_type == "ftgrid") {
-
-    if (grid->ft_phi != nullptr)
-      zstart = grid->ft_phi->get_local0start();
-    else
-      throw std::runtime_error("ft_phi does not exist, but needed to save dump.");
 
   
     Nz = grid->ft_phi->Nz();
     Ny = grid->ft_phi->Ny();
     Nx = grid->ft_phi->Nx();
 
+    arrplane_size = Nx*Ny;
+
+    
     dz = domain->dqz();
     dy = domain->dqy();
     dx = domain->dqx();
 
     boxlo = {0,0,0};
-    bytelength = Nx*Ny*Nz*sizeof(double);
+
+
   }
 
+
+
   
+  if (commbrick->me == 0 || commbrick->me == commbrick->nprocs-1) 
+    bytelength = Nx*Ny*(Nz+1)*sizeof(double);
+  else 
+    bytelength = Nx*Ny*(Nz+2)*sizeof(double);
+
   
   myfile << "<?xml version=\"1.0\"?>" << std::endl
 	 << "<VTKFile type=\"ImageData\"  version=\"1.0\""
 	 << " byte_order=\"LittleEndian\">" << std::endl
 	 << "<ImageData WholeExtent=\"0 " << Nx-1 << " 0 "
-	 << Ny-1 << " " << zstart <<  "  " << Nz+zstart-1 << "\" "
+	 << Ny-1 << " " << zstart <<  "  " << zend << "\" "
 	 <<"Origin=\"" << boxlo[0] << " " << boxlo[1] << " " << boxlo[2] << " \" "
 	 << "Spacing=\"" << dx << " " << dy << " " << dz << " "
 	 << "\">" << std::endl
 	 << "<Piece Extent=\"0 " << Nx-1 << " 0 "
-	 << Ny-1 << " " << zstart << " " << Nz+zstart-1 << "\">" << std::endl
+	 << Ny-1 << " " << zstart << " " << zend << "\">" << std::endl
 	 << "<PointData Scalars=\"scalars\">" << std::endl;
 
   int counter = 0;
+
   for (auto &word : attributes) {
     
-    int offset = counter*(sizeof(double)*Nx*Ny*Nz+sizeof(bytelength));
+    int offset = counter*(bytelength+sizeof(bytelength));
     
     myfile << "<DataArray Name=\"" << word
 	   << "\" type=\"Float64\" format=\"appended\" "
@@ -414,6 +457,8 @@ void Dump::write_grid_timestep()
   myfile << std::endl << "</AppendedData>" << std::endl
 	 << "</VTKFile>" << std::endl;    
   myfile.close();
+
+
   
 }
 
@@ -561,6 +606,8 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word)
 void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
 			    Eigen::Ref<Eigen::Matrix3Xd> array)
 {
+
+
   myfile << "<DataArray Name=\"" << arrname << "\" "
 	 << "type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">" << std::endl;
   
@@ -609,9 +656,11 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
   else
     throw std::runtime_error("Cannot use non double non int type for writing ascii data.");
   
+
   myfile << "<DataArray Name=\"" << arrname << "\" "
 	 << "type=\"" << dtype << "\" NumberOfComponents=\""
 	 << numberofcomponents << "\" format=\"ascii\">" << std::endl;
+  
   
   if (which_atoms == "all") {
     for (int i = 0; i < array.size(); i++) {
@@ -619,31 +668,31 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
       
     }
   } else if (which_atoms == "owned") {
-
+    
     int index = 0;
-
+    
     for (int i = 0; i < atoms->nowned; i++) {
       if (atoms->labels[i] == PHAFD_NS::Atom::OWNED)
 	for (int components = 0; components < numberofcomponents; components++)
 	  myfile << array[index++] << " ";
       else
 	throw std::runtime_error("Somehow an un-owned atom snuck into the owned? shouldn't happen.");
-
+      
     }
   } else if (which_atoms == "local") {
     
     int index = 0;
-
+    
     for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
       if (atoms->labels[i] == PHAFD_NS::Atom::LOCAL)
 	for (int components = 0; components < numberofcomponents; components++)
 	  myfile << array[index++] << " ";
       else
 	index += numberofcomponents;
-	
+      
     }
   } else if (which_atoms == "ghost") {
-
+    
     int index = 0;
     
     for (int i = atoms->nowned; i < atoms->nowned+atoms->ngathered; i++) {
@@ -652,11 +701,12 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
 	  myfile << array[index++] << " ";
       else
 	index += numberofcomponents;
-
+      
     } 
   }
   
   myfile << std::endl << "</DataArray>" << std::endl;
+  
 
 }
 
@@ -664,7 +714,49 @@ void Dump::write_ascii_data(std::fstream &myfile,const std::string &arrname,
 void Dump::append_binary_data(std::fstream &myfile,
 			      fftwArr::array3D<double> *array) {
 
+
+  int recvid, sendid;
+  int me = commbrick->me;
+  int nprocs = commbrick->nprocs;
+
+  
+  if (!fftw_recv)
+    fftw_recv = std::make_unique<fftwArr::array3D<double>>(world,"neighborplane",
+							   array->Nx(),array->Ny(),
+							   nprocs);
+
+  
   myfile.write((char*)&bytelength,sizeof(bytelength));
+
+
+  // send to right/recv from left first
+
+  if (me == 0) {
+    recvid = nprocs-1;
+    sendid = me+1;
+
+  } else if (me == nprocs-1) {
+    recvid = me-1;
+    sendid = 0;
+    
+  } else {
+    recvid = me -1;
+    sendid = me+1;
+  }
+
+
+  
+  MPI_Sendrecv(&(*array)(array->Nz()-1,0,0),array->xysize(),  MPI_DOUBLE,sendid,0,
+	       fftw_recv->data(),fftw_recv->xysize(),MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+
+  if (me != 0)
+
+    for (int j = 0; j < fftw_recv->Ny(); j++)
+      myfile.write((char*)&(*fftw_recv)(0,j,0),sizeof(double)*fftw_recv->Nx());
+
+  
+
+  
   // since real fftw arrays aren't contiguous, need to write each row separately.
   for (int i = 0; i < array->Nz(); i++) {
     for (int j = 0; j < array->Ny(); j++) {
@@ -673,11 +765,59 @@ void Dump::append_binary_data(std::fstream &myfile,
     }
   }
 
+
+  if (me == 0) {
+    recvid = nprocs-1;
+    sendid = me+1;
+
+  } else if (me == nprocs-1) {
+    recvid = me-1;
+    sendid = 0;
+    
+  } else {
+    recvid = me -1;
+    sendid = me+1;
+  }
+
+  if (me != nprocs-1)
+    for (int j = 0; j < fftw_recv->Ny(); j++)
+      myfile.write((char*)&(*fftw_recv)(0,j,0),sizeof(double)*fftw_recv->Nx());  
+
+  
+
   return;
 
 }
 
 void Dump::append_binary_data(std::fstream &myfile,const double *array) {
+
+
+  /*
+  int recvid, sendid;
+  int me = commbrick->me;
+  int nprocs = commbrick->nprocs;
+
+  // send to right/recv from left first
+
+  if (me == 0) {
+    recvid = nprocs-1;
+    sendid = me+1;
+
+  } else if (me == nprocs-1) {
+    recvid = me-1;
+    sendid = 0;
+    
+  } else {
+    recvid = me -1;
+    sendid = me+1;
+  }
+
+
+  
+  MPI_Sendrecv(&(*array)(array->Nz()-1,0,0),array->xysize(),  MPI_DOUBLE,sendid,0,
+	       fftw_recv->data(),fftw_recv->xysize(),MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+
+  */  
   
   myfile.write((char*)&bytelength,sizeof(bytelength));
   myfile.write((char*)&(array)[0],bytelength);

@@ -19,7 +19,7 @@ class Dump : protected Pointers
 {
 public:
   Dump(PHAFD *);
-
+  ~Dump();
 
   void init(const std::vector<std::string> &);
 
@@ -42,6 +42,7 @@ protected:
   std::string nopath_base_name; // name of file without path or extension, e.g. field_p0
   std::string collection_name; // collection name, .e.g vtkfiles/field_p0.pvd
   std::string instance_name; // base name plus time and extension, e.g. vtkfiles/field_p0_0.vti
+
   std::string nopath_instance_name; // above but without path, e.g. field_p0_0.vti
 
   std::string fext; // file extension of per time files (e.g. ".vti" for grid, ".vtp" for atom)
@@ -75,6 +76,12 @@ private:
   unsigned int bytelength;
 
   int precision;
+  std::unique_ptr<fftwArr::array3D<double>> fftw_recv;
+  std::vector<double> arr_recv;
+
+  int arrplane_size;
+
+  int zstart,zend;
   
 };
 
