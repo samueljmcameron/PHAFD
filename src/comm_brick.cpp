@@ -277,7 +277,25 @@ void CommBrick::borders()
       if (dim == 2)  {
 	labels.clear();      
 	pbcz[iswap].clear();
-	if (sendproc[iswap] == 0) {
+	if (sendproc[iswap] == 0 && sendproc[iswap] == nprocs-1) {
+	  // need this for periodic boundary conditions
+	  for (int i = 0; i < atoms->nowned; i++) {
+	    if (atoms->xs(dim,i) >= subloz[iswap] && atoms->xs(dim,i) <= subhiz[iswap]) {
+	      sendlists[iswap].push_back(i);
+	      pbcz[iswap].push_back(0);
+	      nlocalsend ++;
+	      labels.push_back(Atom::LOCAL);
+	    } else if (atoms->xs(dim,i) >= lo) {
+	      sendlists[iswap].push_back(i);
+	      pbcz[iswap].push_back(-zprd);
+	      labels.push_back(Atom::GHOST);
+	    } else if (atoms->xs(dim,i) <= hi) {
+	      sendlists[iswap].push_back(i);
+	      pbcz[iswap].push_back(zprd);
+	      labels.push_back(Atom::GHOST);
+	    }
+	  }
+	} else if (sendproc[iswap] == 0) {
 	  // need this for periodic boundary conditions
 	  for (int i = 0; i < atoms->nowned; i++) {
 	    if (atoms->xs(dim,i) <= hi) {
@@ -294,7 +312,7 @@ void CommBrick::borders()
 	      labels.push_back(Atom::GHOST);
 	    }
 	  }
-	}  else if (sendproc[iswap] == nprocs - 1) {
+	} else if (sendproc[iswap] == nprocs - 1) {
 	  // need this for periodic boundary conditions
 	  for (int i = 0; i < atoms->nowned; i++) {
 	    if (atoms->xs(dim,i) >= lo) {
