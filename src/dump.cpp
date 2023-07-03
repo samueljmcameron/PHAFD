@@ -960,20 +960,27 @@ void Dump::append_binary_data(std::fstream &myfile,
     }
   }
 
-
+  // now send to left/recv from right
   if (me == 0) {
-    recvid = nprocs-1;
-    sendid = me+1;
+    recvid = me+1;
+    sendid = nprocs-1;
 
   } else if (me == nprocs-1) {
-    recvid = me-1;
-    sendid = 0;
+    recvid = 0;
+    sendid = me-1;
     
   } else {
-    recvid = me -1;
-    sendid = me+1;
+    recvid = me+1;
+    sendid = me -1;
   }
 
+
+
+  
+  MPI_Sendrecv(&(*array)(0,0,0),array->xysize(),  MPI_DOUBLE,sendid,0,
+	       fftw_recv->data(),fftw_recv->xysize(),MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+
+  
   if (me != nprocs-1)
     for (int j = 0; j < fftw_recv->Ny(); j++)
       myfile.write((char*)&(*fftw_recv)(0,j,0),sizeof(double)*fftw_recv->Nx());  
