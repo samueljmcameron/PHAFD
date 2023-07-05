@@ -2,6 +2,7 @@
 #include <iostream>
 #include "read_dump.hpp"
 
+#include "comm_brick.hpp"
 #include "domain.hpp"
 #include "grid.hpp"
 #include "fix.hpp"
@@ -16,6 +17,7 @@ using namespace PHAFD_NS;
    file, and then there is a .pvd file to display the timesteps collectively. Files are
    always going to be outputted in parallel. */
 ReadDump::ReadDump(PHAFD *phafd) : Pointers(phafd) {
+  dummy_fftwArr = nullptr;
 };
 
 
@@ -61,6 +63,9 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
     } 
   }
   
+}
+
+ReadDump::~ReadDump() {
 }
 
 
@@ -265,17 +270,48 @@ void ReadDump::read_binary_data(std::fstream &myfile,
 
   myfile.read((char*)&bytelength,sizeof(bytelength));
 
-  if (bytelength != array->Nz()*array->Ny()*array->Nx()*sizeof(double))
+  
+  unsigned int expected_bytelength;
+
+  if (commbrick->me == 0 || commbrick->me == commbrick->nprocs-1)
+    expected_bytelength = (array->Nz()+1)*array->Ny()*array->Nx()*sizeof(double);
+  else
+    expected_bytelength = (array->Nz()+2)*array->Ny()*array->Nx()*sizeof(double);
+
+  if (bytelength != expected_bytelength)
     throw std::runtime_error("incorrect size " + array->get_name() + " in file.");
   
-  // since real fftw arrays aren't contiguous, need to read each row separately.
+
+  if (dummy_fftwArr == nullptr) {
+
+    dummy_fftwArr = std::make_unique<fftwArr::array3D<double>>(world,"dummy",array->Nx(),
+							       array->Ny(),commbrick->nprocs);
+
+  }
+
+  if (commbrick->me != 0)
+    for (int j = 0; j < array->Ny(); j++) {
+      myfile.read((char*)&(*dummy_fftwArr)(0,j,0),sizeof(double)*array->Nx());
+      
+    }
+
   
+
+  // since real fftw arrays aren't contiguous, need to read each row separately.
+
   for (int i = 0; i < array->Nz(); i++) {
     for (int j = 0; j < array->Ny(); j++) {
       myfile.read((char*)&(*array)(i,j,0),sizeof(double)*array->Nx());
 
     }
   }
+
+
+  if (commbrick->me != commbrick->nprocs-1) 
+      for (int j = 0; j < array->Ny(); j++) {
+	myfile.read((char*)&(*dummy_fftwArr)(0,j,0),sizeof(double)*array->Nx());
+      }
+  
 
   return;
 

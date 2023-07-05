@@ -139,7 +139,7 @@ void Dump::init(const std::vector<std::string> &v_line ) {
       if (precision <= 0)
 	throw std::invalid_argument("Dump precision must be greater than or equal to zero.");
     } else
-      throw std::invalid_argument("Third word in dump must be 'attributes'.");
+      throw std::invalid_argument("Invalid dump command.");
   }
 
   if (attributes.size() == 0)

@@ -19,7 +19,7 @@ class ReadDump : protected Pointers
 {
 public:
   ReadDump(PHAFD *);
-
+  ~ReadDump();
 
   void init(const std::vector<std::string> &);
 
@@ -32,6 +32,7 @@ private:
 
   std::set<std::string> attributes; // what properties are to be read in
 
+  std::unique_ptr<fftwArr::array3D<double>> dummy_fftwArr;
 
 
 
