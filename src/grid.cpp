@@ -54,6 +54,9 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   ft_vtherm_dot_gradphi = nullptr;
   for (int i = 0; i < 3; i++) {
     ft_Znoise[i] = nullptr;
+    ft_gradphitilde[i] = nullptr;
+    chempot_gradphi[i] = nullptr;
+    ft_chempot_gradphi[i] = nullptr;
   }
   
 }
@@ -284,6 +287,79 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
   return;
   
 }
+
+
+void Grid::create_velocity(int Nx, int Ny, int Nz)
+{
+  velocity_set = true;
+  
+  std::array<std::string,3> listxyz = {"x","y","z"};
+
+  if (!pressure) 
+    pressure = std::make_unique<fftwArr::array3D<double>
+				>(world,"pressure",Nx,Ny,Nz);
+  if (!ft_pressure)
+    ft_pressure = std::make_unique<fftwArr::array3D<std::complex<double>>
+				   >(world,"ft_pressure",Nx,Nz,Ny);
+
+
+  
+  for (int i = 0; i < 3; i++) {
+    if (!velocity[i])
+      velocity[i] = std::make_unique<fftwArr::array3D<double>
+				    >(world,"velocity_"+listxyz[i],Nx,Ny,Nz);
+
+    if (!ft_velocity[i])
+      ft_velocity[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
+				       >(world,"ft_velocity_"+listxyz[i],Nx,Nz,Ny);
+
+    if (!vtherm[i])
+      vtherm[i] = std::make_unique<fftwArr::array3D<double>
+				    >(world,"vtherm_"+listxyz[i],Nx,Ny,Nz);
+
+    if (!ft_vtherm[i])
+      ft_vtherm[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
+				       >(world,"ft_vtherm_"+listxyz[i],Nx,Nz,Ny);
+
+    
+  }
+
+
+
+  for (int i = 0; i < 3; i++) {
+    forward_velocity[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,velocity[i]->data(),
+						   reinterpret_cast<fftw_complex*>
+						   (ft_velocity[i]->data()),
+						   world, FFTW_MPI_TRANSPOSED_OUT);
+  
+    backward_velocity[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						    (ft_velocity[i]->data()), velocity[i]->data(),
+						    world,FFTW_MPI_TRANSPOSED_IN);
+
+    forward_vtherm[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vtherm[i]->data(),
+						 reinterpret_cast<fftw_complex*>
+						 (ft_vtherm[i]->data()),
+						 world, FFTW_MPI_TRANSPOSED_OUT);
+    
+    backward_vtherm[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vtherm[i]->data()), vtherm[i]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
+    
+    
+  }
+  backward_pressure = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
+					       reinterpret_cast<fftw_complex*>
+					       (ft_pressure->data()),
+					       pressure->data(),world,
+					       FFTW_MPI_TRANSPOSED_IN);
+
+  
+  return;
+  
+}
+
+
+
 
 
 void Grid::noisy_constant(fftwArr::array3D<double> * array,

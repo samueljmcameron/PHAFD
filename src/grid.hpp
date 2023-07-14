@@ -20,7 +20,6 @@ class Grid : protected Pointers
 {
 public:
 
-  // points to psPDE::grid std::arrays (of size three)
   std::array<ptrdiff_t,3> boxgrid; // global number of grid points {Nx,Ny,Nz}
   std::array<ptrdiff_t,3> ft_boxgrid; // global number of grid points {Nx,Ny,Nz}
 
@@ -44,13 +43,16 @@ public:
   /* velocity (Navier-stokes) arrays */
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> velocity; // fluid velocity
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> vtherm; // fluid thermal noise
+  std::unique_ptr<fftwArr::array3D<double>> pressure;
   
   // and their fourier transforms
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_velocity;
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_vtherm;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_pressure;
 
   std::array<fftw_plan,3> forward_velocity, backward_velocity;
   std::array<fftw_plan,3> forward_vtherm, backward_vtherm;
+  fftw_plan forward_pressure,backward_pressure;
   
 
   /* Model H arrays (not already established) */
@@ -58,7 +60,12 @@ public:
   std::unique_ptr<fftwArr::array3D<double>> vtherm_dot_gradphi;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_vtherm_dot_gradphi;
 
+  std::array<std::unique_ptr<fftwArr::array3D<double>>,3> chempot_gradphi;
+  std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_chempot_gradphi;
+
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_Znoise;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_noise;
+  std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_gradphitilde;
 
   
   bool gridset,gridpopulated;
@@ -80,6 +87,7 @@ private:
 
   void sinusoidal_grid(const std::string &,double);
   void create_concentration(int , int , int);
+  void create_velocity(int , int , int);
   void create_noise(int, int, int);
   void noisy_constant(fftwArr::array3D<double>*, double,double, int);
   void constant_noise(double,double,int);
