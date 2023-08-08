@@ -1,7 +1,7 @@
 #include <iomanip>
 #include <iostream>
 #include "read_dump.hpp"
-
+#include "comm_brick.hpp"
 #include "domain.hpp"
 #include "grid.hpp"
 #include "fix.hpp"
@@ -124,6 +124,7 @@ void ReadDump::process_grid_attributes()
 
 
   for (const auto& [key,value] : offsets) {
+
     if (key == "phi") {
       read_binary_data(myfile,grid->phi.get());
     } else if (key == "chempot") {
@@ -265,17 +266,53 @@ void ReadDump::read_binary_data(std::fstream &myfile,
 
   myfile.read((char*)&bytelength,sizeof(bytelength));
 
-  if (bytelength != array->Nz()*array->Ny()*array->Nx()*sizeof(double))
+  int factor = 2;
+
+  int front_offset = 1;
+  int back_offset = 1;
+
+  if (commbrick->me == 0) {
+    factor = 1;
+    front_offset = 0;
+  } else if (commbrick->me == commbrick->nprocs-1) {
+    factor = 1;
+    back_offset=0;
+  }
+
+
+  if (bytelength != (array->Nz()+factor)*array->Ny()*array->Nx()*sizeof(double)) {
     throw std::runtime_error("incorrect size " + array->get_name() + " in file.");
+  }
   
+  // create a dummy vector to read in the padded outsides of the array (that
+  // are included in data output for Paraview visualisation) so that these bits aren't
+  // included in the array to be read in.
+  std::vector<double> dummy(array->Nx());
+
+
+  // if not processor zero, then we need to read the extra bit at the front of the data file
+  for (int i = 0; i < front_offset; i++) {
+    for (int j = 0; j < array->Ny(); j++) {
+      myfile.read((char*)&dummy[0],sizeof(double)*array->Nx());
+    }
+  }
+
+
   // since real fftw arrays aren't contiguous, need to read each row separately.
-  
   for (int i = 0; i < array->Nz(); i++) {
     for (int j = 0; j < array->Ny(); j++) {
       myfile.read((char*)&(*array)(i,j,0),sizeof(double)*array->Nx());
 
     }
   }
+
+  // if not the last processor, then we need to read the extra bit at the end of the data file
+  for (int i = 0; i < back_offset; i++) {
+    for (int j = 0; j < array->Ny(); j++) {
+      myfile.read((char*)&dummy[0],sizeof(double)*array->Nx());
+    }
+  }
+
 
   return;
 

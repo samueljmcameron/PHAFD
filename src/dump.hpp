@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <Eigen/Core>
+#include <cstdint>
 
 #include "pointers.hpp"
 
@@ -32,7 +33,7 @@ public:
   
   inline static std::vector<std::string> NAMES;
 
-  int every;
+  int64_t every;
 
   std::string name;
   

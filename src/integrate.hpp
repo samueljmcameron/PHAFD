@@ -1,6 +1,6 @@
 #ifndef PHAFD_INTEGRATE_HPP
 #define PHAFD_INTEGRATE_HPP
-
+#include <cstdint>
 #include "pointers.hpp"
 
 namespace PHAFD_NS {
@@ -15,9 +15,9 @@ public:
   void run();
   void run_until_touching(double);
 
-  int nsteps; // total number of steps
-  int firststep; // first step
-  int timestep; // current step
+  int64_t nsteps; // total number of steps
+  int64_t firststep; // first step
+  int64_t timestep; // current step
   double dt; // time interval between steps
 private:
   void finalise();

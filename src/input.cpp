@@ -251,7 +251,7 @@ void Input::read()
       
     } else if (firstword == "timestep") {
       
-      integrate->firststep = std::stoi(v_line.at(0));
+      integrate->firststep = std::stoll(v_line.at(0));
       integrate->timestep = integrate->firststep;
       
     } else if (firstword == "dt") {
@@ -263,7 +263,7 @@ void Input::read()
       if (integrate->dt <= 0.0)
 	throw std::runtime_error("Cannot run simulation without setting dt > 0.");
       
-      integrate->nsteps = std::stoi(v_line.at(0));
+      integrate->nsteps = std::stoll(v_line.at(0));
       
       integrate->setup();
       integrate->run();
@@ -272,7 +272,7 @@ void Input::read()
       if (integrate->dt <= 0.0)
 	throw std::runtime_error("Cannot run simulation without setting dt > 0.");
       
-      integrate->nsteps = std::stoi(v_line.at(0));
+      integrate->nsteps = std::stoll(v_line.at(0));
 
       integrate->setup();
       integrate->run_until_touching(std::stod(v_line.at(1)));

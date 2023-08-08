@@ -114,7 +114,7 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 
 
   
-  every = std::stoi(v_line.at(3));
+  every = std::stoll(v_line.at(3));
 
   auto it = v_line.begin()+4;
   while (it != v_line.end()) {
