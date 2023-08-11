@@ -1,7 +1,7 @@
 #ifndef PHAFD_READ_DUMP_HPP
 #define PHAFD_READ_DUMP_HPP
 
-#include <set>
+#include <vector>
 #include <string>
 #include <fstream>
 #include <Eigen/Core>
@@ -30,7 +30,7 @@ private:
   
   std::string dump_type; // either atom or grid
 
-  std::set<std::string> attributes; // what properties are to be read in
+  std::vector<std::string> attributes; // what properties are to be read in
 
 
 
@@ -46,6 +46,8 @@ private:
 
   void read_binary_data(std::fstream &,
 			fftwArr::array3D<double> * ); 
+
+  void ignore_binary_data(std::fstream &);
   
 };
 

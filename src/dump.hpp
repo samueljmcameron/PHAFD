@@ -1,7 +1,7 @@
 #ifndef PHAFD_DUMP_HPP
 #define PHAFD_DUMP_HPP
 
-#include <set>
+#include <vector>
 #include <string>
 #include <fstream>
 #include <Eigen/Core>
@@ -50,7 +50,7 @@ protected:
   std::string dump_type; // either atom, grid, or ftgrid
 
 
-  std::set<std::string> attributes;
+  std::vector<std::string> attributes;
 
 private:
   void create_instance_name();
@@ -61,7 +61,8 @@ private:
   void write_atom_timestep_pvtp();
   void write_grid_timestep_pvti();
   
-
+  void create_lammps_style_file();
+  void write_lammps_dump();
   void process_attribute_name(std::fstream &, const std::string &,
 			      bool for_pvtp=false);
   void write_ascii_data(std::fstream &, const std::string &,

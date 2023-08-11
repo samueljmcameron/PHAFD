@@ -1,5 +1,7 @@
 #include <iomanip>
 #include <iostream>
+#include <limits>
+
 #include "read_dump.hpp"
 #include "comm_brick.hpp"
 #include "domain.hpp"
@@ -38,7 +40,7 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
       for (int i = 0; i < numattributes; i++) {
 	if (it == v_line.end())
 	  throw std::invalid_argument("Incorrect number of attributes in dump file.");
-	attributes.insert(*it);
+	attributes.push_back(*it);
 	++it;
       }
 
@@ -97,24 +99,53 @@ void ReadDump::process_grid_attributes()
   std::vector<std::string> necessary = {"phi"};
 
   for (auto &word : necessary)
-    if (attributes.find(word) == attributes.end())
+    if (std::find(attributes.begin(),attributes.end(),word) == attributes.end())
       throw std::runtime_error("Read dump needs attribute " + word + ".");
 
+  std::string expstart = "<DataArray Name=";
+
   
-  std::map<std::string,int> offsets;
+  std::vector<std::string> found_attributes;
+  int ignored_attributes = 0;
   while (std::getline(myfile,line)) {
 
     if (line == "<AppendedData encoding=\"raw\">")
       break;
 
+
+
+
+    bool found_attribute = false;
     for (auto &word : attributes) {
+
       expected = "<DataArray Name=\"" + word + "\" type=\"Float64\" format=\"appended\" offset=\"";
       if (line.substr(0,expected.length()) == expected) {
-	offsets.insert({word,std::stoi(line.substr(expected.length()))});
+	found_attributes.push_back(word);
+	found_attribute = true;
 	break;
       }
     }
+
+    if (found_attribute == false && line.substr(0,expstart.length()) == expstart) {
+      found_attributes.push_back("ignore");
+      ignored_attributes += 1;
+    }
   }
+
+
+  if (found_attributes.size()-ignored_attributes < attributes.size()) {
+
+    std::string msg = "Not all attributes requested in read_dump command are in "
+      + filename + std::string(". List of attributes in file are:");
+
+    for (const auto &word : attributes)
+      msg += std::string(" ") + word;
+    
+    msg += std::string(".");
+
+    throw std::runtime_error(msg.c_str());
+  }
+
 
   // read in the underscore
   char memblock[2];
@@ -123,18 +154,20 @@ void ReadDump::process_grid_attributes()
   // then read in all the array files
 
 
-  for (const auto& [key,value] : offsets) {
+  for (const auto &word : found_attributes) {
 
-    if (key == "phi") {
+    if (word == "phi") {
       read_binary_data(myfile,grid->phi.get());
-    } else if (key == "chempot") {
+    } else if (word == "chempot") {
       read_binary_data(myfile,grid->chempot.get());
-    } else if (key == "gradphi_x") {
+    } else if (word == "gradphi_x") {
       read_binary_data(myfile,grid->gradphi[0].get());
-    } else if (key == "gradphi_y") {
+    } else if (word == "gradphi_y") {
       read_binary_data(myfile,grid->gradphi[1].get());
-    } else if (key == "gradphi_z") {
+    } else if (word == "gradphi_z") {
       read_binary_data(myfile,grid->gradphi[2].get());
+    } else if (word == "ignore") {
+      ignore_binary_data(myfile);
     } else {
       throw std::runtime_error("ReadDump error: Attribute does not exist.");
     }
@@ -160,7 +193,7 @@ void ReadDump::process_atom_attributes()
     throw std::runtime_error("file not found.");
 
   std::string line;
-  std::set<std::string> attributes_copy;
+  std::vector<std::string> found_attributes;
 
   // necessary attributes
   std::vector<std::string> necessary = {"x","type", "ID"};
@@ -173,12 +206,13 @@ void ReadDump::process_atom_attributes()
     throw std::runtime_error("Not yet implemented read dump for radius.");
 
   for (auto &word : necessary)
-    if (attributes.find(word) == attributes.end())
+    if (std::find(attributes.begin(),attributes.end(),(word)) == attributes.end())
       throw std::runtime_error("Read dump needs attribute " + word + ".");
   
-  
+
   while (std::getline(myfile,line)) {
 
+    bool found_attribute = false;
     for (auto &word : attributes) {
       if (line ==  "<DataArray Name=\"" + word + "\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">") {
 	std::getline(myfile,line);
@@ -190,8 +224,9 @@ void ReadDump::process_atom_attributes()
 	else if (word == "ux")
 	  read_ascii_data(line,atoms->uxs);
 	else
-	  throw std::runtime_error("Attribute " + word + " not found in file.");
-	attributes_copy.insert(word);
+	  throw std::runtime_error("Attribute " + word + " not recognised.");
+	found_attribute = true;
+	found_attributes.push_back(word);
 	break;
       }	else if (line ==  "<DataArray Name=\"" + word + "\" type=\"Int64\" NumberOfComponents=\"1\" format=\"ascii\">") {
 	std::getline(myfile,line);
@@ -207,22 +242,25 @@ void ReadDump::process_atom_attributes()
 	else if (word == "label")
 	  read_ascii_data(line,atoms->labels);
 	else
-	  throw std::runtime_error("Attribute " + word + " not found in file.");
-	attributes_copy.insert(word);
+	  throw std::runtime_error("Attribute " + word + " not recognised.");
+	found_attribute = true;
+	found_attributes.push_back(word);
 	
 	break;
-      } 
+      }
       
-      
+    }
+    if (not found_attribute) {
+      myfile.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
     }
   }
 
   atoms->nowned = atoms->tags.size();
 
 
-  if (attributes_copy != attributes) {
+  if (found_attributes != attributes) {
     std::string errstring = "Only found attributes ";
-    for (auto &word : attributes_copy)
+    for (auto &word : found_attributes)
       errstring += word  + ", ";
     throw std::runtime_error(errstring);
   }
@@ -272,10 +310,12 @@ void ReadDump::read_binary_data(std::fstream &myfile,
   int back_offset = 1;
 
   if (commbrick->me == 0) {
-    factor = 1;
+    factor -= 1;
     front_offset = 0;
-  } else if (commbrick->me == commbrick->nprocs-1) {
-    factor = 1;
+  } 
+
+  if (commbrick->me == commbrick->nprocs-1) {
+    factor -= 1;
     back_offset=0;
   }
 
@@ -284,17 +324,9 @@ void ReadDump::read_binary_data(std::fstream &myfile,
     throw std::runtime_error("incorrect size " + array->get_name() + " in file.");
   }
   
-  // create a dummy vector to read in the padded outsides of the array (that
-  // are included in data output for Paraview visualisation) so that these bits aren't
-  // included in the array to be read in.
-  std::vector<double> dummy(array->Nx());
-
-
   // if not processor zero, then we need to read the extra bit at the front of the data file
   for (int i = 0; i < front_offset; i++) {
-    for (int j = 0; j < array->Ny(); j++) {
-      myfile.read((char*)&dummy[0],sizeof(double)*array->Nx());
-    }
+    myfile.ignore(sizeof(double)*array->Nx()*array->Ny());
   }
 
 
@@ -308,11 +340,37 @@ void ReadDump::read_binary_data(std::fstream &myfile,
 
   // if not the last processor, then we need to read the extra bit at the end of the data file
   for (int i = 0; i < back_offset; i++) {
-    for (int j = 0; j < array->Ny(); j++) {
-      myfile.read((char*)&dummy[0],sizeof(double)*array->Nx());
-    }
+    myfile.ignore(sizeof(double)*array->Nx()*array->Ny());
   }
 
+
+  return;
+
+}
+
+void ReadDump::ignore_binary_data(std::fstream &myfile) {
+
+  unsigned int bytelength;
+  myfile.read((char*)&bytelength,sizeof(bytelength));
+
+  int factor = 2;
+
+
+  if (commbrick->me == 0) {
+    factor -= 1;
+  } 
+  if (commbrick->me == commbrick->nprocs-1) {
+    factor -= 1;
+  }
+  int Nx = grid->phi->Nx();
+  int Ny = grid->phi->Ny();
+  int Nz = grid->phi->Nz();
+
+  if (bytelength != (Nz+factor)*Ny*Nx*sizeof(double)) {
+    throw std::runtime_error("incorrect array size in " + filename);
+  }
+  
+  myfile.ignore(bytelength);
 
   return;
 

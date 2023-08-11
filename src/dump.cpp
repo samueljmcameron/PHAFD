@@ -44,10 +44,10 @@ void Dump::init(const std::vector<std::string> &v_line ) {
     dump_type = "atom";
   }
 
-
   if (dump_type == "atom") {
     fext = "vtp";
-
+  } else if (dump_type == "lammpsatom") {
+    fext = "lmmpstrj";
   } else {
     fext = "vti";
 
@@ -126,7 +126,7 @@ void Dump::init(const std::vector<std::string> &v_line ) {
       for (int i = 0; i < numattributes; i++) {
 	if (it == v_line.end())
 	  throw std::invalid_argument("Incorrect number of attributes in dump file.");
-	attributes.insert(*it);
+	attributes.push_back(*it);
 	++it;
       }
 
@@ -193,6 +193,10 @@ void Dump::setup()
       fixes.at(index)->dump_callers.insert(name);
     }
   }
+
+  if (dump_type=="lammpsatom") {
+    create_lammps_style_file();
+  }
 }
 
 void Dump::start_of_step()
@@ -225,7 +229,7 @@ void Dump::require_calculations()
 void Dump::write_collection_header()
 {
 
-  if (commbrick->me == 0) {
+  if (commbrick->me == 0 && dump_type != "lammpsatom") {
     auto myfile = std::ofstream(collection_name);
     if (not myfile.is_open()) {
       throw std::runtime_error(std::string("Cannot open file ") + collection_name);
@@ -249,7 +253,7 @@ void Dump::write_collection_header()
 void Dump::write_collection_footer() 
 {
 
-  if (commbrick->me == 0) {
+  if (commbrick->me == 0 && dump_type != "lammpsatom") {
     auto myfile = std::fstream(collection_name, std::ios_base::app);
     if (not myfile.is_open()) {
       throw std::runtime_error(std::string("Cannot open file ") + collection_name);
@@ -267,26 +271,32 @@ void Dump::write_collection_footer()
 void Dump::write_collection_middle()
 {
 
-  double time = integrate->timestep*integrate->dt;
-  create_instance_name();
 
-  if (commbrick->me == 0) {
-    auto myfile = std::fstream(collection_name,std::ios_base::app);
-    if (not myfile.is_open()) {
-      throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+  if (dump_type != "lammpsatom") {
+    double time = integrate->timestep*integrate->dt;
+    create_instance_name();
+
+    if (commbrick->me == 0) {
+      auto myfile = std::fstream(collection_name,std::ios_base::app);
+      if (not myfile.is_open()) {
+	throw std::runtime_error(std::string("Cannot open file ") + collection_name);
+      }
+      
+      myfile << "<DataSet timestep=\"" << time << "\" group=\"\" part=\"0\""
+	     << " file=\"" << pnopath_instance_name << "\"/>" << std::endl;
+      
+      myfile.close();
     }
-    
-    myfile << "<DataSet timestep=\"" << time << "\" group=\"\" part=\"0\""
-	   << " file=\"" << pnopath_instance_name << "\"/>" << std::endl;
-    
-    myfile.close();
   }
+
+  
 
   if (dump_type == "atom") {
     write_atom_timestep();
     write_atom_timestep_pvtp();
-  }
-  else {
+  } else if (dump_type == "lammpsatom") {
+    write_lammps_dump();
+  } else {
     write_grid_timestep();
     write_grid_timestep_pvti();
   }
@@ -298,23 +308,34 @@ void Dump::write_collection_middle()
 
 void Dump::create_instance_name()
 {
+
   instance_name = base_name + std::string("_p") + std::to_string(commbrick->me)
     + std::string("_") + std::to_string(integrate->timestep) + std::string(".") + fext;
-
+  
   pinstance_name = base_name +  std::string("_") + std::to_string(integrate->timestep)
     + std::string(".p") + fext;
-
   
-
-
+  
+  
+  
   pnopath_instance_name = nopath_base_name + std::string("_")
     + std::to_string(integrate->timestep) + std::string(".p") + fext;
+ 
 
-  
   
 }
 
+void Dump::create_lammps_style_file()
+{
+  instance_name = base_name + std::string("_p") + std::to_string(commbrick->me)
+    +std::string(".") + fext;
+  
+  auto myfile = std::fstream(instance_name, std::ios::out);  
 
+  myfile.close();
+
+
+}
 
 
 
@@ -362,7 +383,7 @@ void Dump::write_atom_timestep()
 
 
   // first find and save the position data, as it must always be present in the atom dump.
-  std::set<std::string>::iterator it = attributes.find("x");
+  auto it = std::find(attributes.begin(),attributes.end(),"x");
   if (it == attributes.end())
     throw std::runtime_error("Atom dump must contain positions.");
 
@@ -450,6 +471,145 @@ void Dump::write_atom_timestep_pvtp()
   }
 }
 
+
+void Dump::write_lammps_dump()
+/*============================================================================*/
+/*
+  Write atom data to a similar format to a lammps dump file.
+
+*/
+/*============================================================================*/
+
+{
+  
+  auto myfile = std::fstream(instance_name, std::ios::out|std::ios::app);
+
+  if (not myfile.is_open()) {
+    throw std::runtime_error(std::string("Cannot open file ") + instance_name);
+  }
+
+  if (precision > 0) {
+    myfile << std::fixed << std::setprecision(precision);
+  }
+  
+  int numpoints = atoms->nowned;
+    
+
+
+  myfile << "ITEM: TIMESTEP" << std::endl << integrate->timestep << std::endl;
+  myfile << "ITEM: NUMBER OF ATOMS" << std::endl << numpoints << std::endl;
+  myfile << "ITEM: BOX BOUNDS pp pp pp" << std::endl 
+	 << domain->boxlo[0] << " " << domain->boxhi[0] << std::endl
+	 << domain->boxlo[1] << " " << domain->boxhi[1] << std::endl
+	 << domain->boxlo[2] << " " << domain->boxhi[2] << std::endl;
+
+  myfile << "ITEM: ATOMS ";
+  for (auto &word : attributes)
+    if (word == "x")
+      myfile << "x y z ";
+    else if (word == "F")
+      myfile << "Fx Fy Fz ";
+    else if (word == "ux")
+      myfile << "ux uy uz ";
+    else
+      myfile << word << " ";
+
+  myfile << std::endl;
+
+  for (int point = 0; point < numpoints; point++) {
+    
+    for (auto &word : attributes) {
+      
+      if (word.rfind("c_",0) == 0) {
+	
+	
+	std::string cid = word.substr(2);
+	
+	int index = 0;
+	
+	for (auto &name : Compute::NAMES) {
+	  
+	  if (cid == name) {
+	    break;
+	  }
+	  index += 1;
+	}
+	
+	if (index == computes.size())
+	  throw std::runtime_error("Cannot write dump, compute ID " + cid
+				   + std::string("doesn't exist."));
+	
+	int nc = computes.at(index)->numberofcomponents;
+	for (int component = 0; component < nc; component ++ )
+	  myfile << computes.at(index)->array[point*nc+component] << " ";
+	
+      } else if (word.rfind("f_",0) == 0) {
+	
+	std::string fid = word.substr(2);
+	
+	int index = 0;
+	
+	for (auto &name : Fix::NAMES) {
+	  if (fid == name) {
+	    break;
+	  }
+	  index += 1;
+	}
+	
+	
+	if (index == fixes.size())
+	  throw std::runtime_error("Cannot write dump, fix ID " + fid
+				   + std::string("doesn't exist."));
+	
+	int nc = fixes.at(index)->numberofcomponents;
+	for (int component = 0; component < nc; component ++ )
+	  myfile << fixes.at(index)->array[point*nc+component] << " ";
+	
+      } else {
+	
+	if (word == "x")
+	  myfile << atoms->xs.col(point)(0) << " "
+		 << atoms->xs.col(point)(1) << " " 
+		 << atoms->xs.col(point)(2) << " " ;
+	
+	else if (word == "F")
+	  myfile << atoms->Fs.col(point)(0) << " "
+		 << atoms->Fs.col(point)(1) << " " 
+		 << atoms->Fs.col(point)(2) << " " ;
+	
+	else if (word == "ux")
+	  myfile << atoms->uxs.col(point)(0) << " "
+		 << atoms->uxs.col(point)(1) << " " 
+		 << atoms->uxs.col(point)(2) << " " ;
+	
+	
+	else if (word == "ix")
+	  myfile << atoms->images[point] << " ";
+	
+	else if (word == "ID")
+	  myfile << atoms->tags[point] << " ";
+	
+	else if (word == "molID")
+	  myfile << atoms->moltags[point] << " ";
+	
+	else if (word == "type")
+	  myfile << atoms->types[point] << " ";
+	
+	else if (word == "label")
+	  myfile << atoms->labels[point] << " ";
+	
+	else 
+	  throw std::runtime_error("Invalid per atom quantity in dump file.");
+
+      }
+    }
+    myfile << std::endl;
+  }
+
+  myfile.close();
+
+  
+}
 
 
 void Dump::write_grid_timestep()
