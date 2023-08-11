@@ -5,6 +5,7 @@ using namespace PHAFD_NS;
 
 Compute::Compute(PHAFD *phafd) : Pointers(phafd) {
   per_grid = per_ftgrid = per_atom = scalar = vector =  false;
+  clusterscomputed = false;
   numberofcomponents = 1;
 }
 

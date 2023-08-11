@@ -29,6 +29,8 @@ public:
   bool scalar;
   bool vector;
 
+  bool clusterscomputed;
+
   bool this_step;
   std::set<std::string> dump_callers;
   int Nx,Ny,Nz;

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <limits>
 
+
 #include "read_dump.hpp"
 #include "comm_brick.hpp"
 #include "domain.hpp"
@@ -18,6 +19,7 @@ using namespace PHAFD_NS;
    file, and then there is a .pvd file to display the timesteps collectively. Files are
    always going to be outputted in parallel. */
 ReadDump::ReadDump(PHAFD *phafd) : Pointers(phafd) {
+  dummy_fftwArr = nullptr;
 };
 
 
@@ -63,6 +65,9 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
     } 
   }
   
+}
+
+ReadDump::~ReadDump() {
 }
 
 

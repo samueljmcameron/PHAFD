@@ -32,6 +32,7 @@
 #include "integrate.hpp"
 #include "compute_complex.hpp"
 #include "compute_pair.hpp"
+#include "compute_grid_clusters.hpp"
 #include "fixgrid_ave.hpp"
 
 #include <string>
@@ -242,7 +243,10 @@ void Input::read()
       else if (firstword == "pair")
 	
 	computes.push_back(std::make_unique<ComputePair>(phafd));
-
+      
+      else if (firstword == "grid/cluster")
+	
+	computes.push_back(std::make_unique<ComputeGridClusters>(phafd));
       else
 	throw std::runtime_error("Invalid compute.");
       
