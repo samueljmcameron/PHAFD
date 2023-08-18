@@ -31,10 +31,9 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
 
 
   filename = v_line.at(1);
-
+  no_padding = false;
   auto it = v_line.begin()+2;
   while (it != v_line.end()) {
-    
     if (*it == "attributes") {
       ++it;
       int numattributes = std::stoi(*it);
@@ -48,6 +47,9 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
 
       if (attributes.size() != numattributes)
 	throw std::invalid_argument("Duplicate attribute values in dump file.");
+    } else if (*it == "no_padding") {
+      no_padding=true;
+      ++it;
     } else
       throw std::invalid_argument("Third word in dump must be 'attributes'.");
   }
@@ -64,6 +66,8 @@ void ReadDump::init(const std::vector<std::string> &v_line) {
       
     } 
   }
+
+
   
 }
 
@@ -217,7 +221,6 @@ void ReadDump::process_atom_attributes()
 
   while (std::getline(myfile,line)) {
 
-    bool found_attribute = false;
     for (auto &word : attributes) {
       if (line ==  "<DataArray Name=\"" + word + "\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">") {
 	std::getline(myfile,line);
@@ -230,7 +233,7 @@ void ReadDump::process_atom_attributes()
 	  read_ascii_data(line,atoms->uxs);
 	else
 	  throw std::runtime_error("Attribute " + word + " not recognised.");
-	found_attribute = true;
+
 	found_attributes.push_back(word);
 	break;
       }	else if (line ==  "<DataArray Name=\"" + word + "\" type=\"Int64\" NumberOfComponents=\"1\" format=\"ascii\">") {
@@ -248,22 +251,21 @@ void ReadDump::process_atom_attributes()
 	  read_ascii_data(line,atoms->labels);
 	else
 	  throw std::runtime_error("Attribute " + word + " not recognised.");
-	found_attribute = true;
+
 	found_attributes.push_back(word);
 	
 	break;
       }
+
       
     }
-    if (not found_attribute) {
-      myfile.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-    }
+
   }
 
   atoms->nowned = atoms->tags.size();
 
 
-  if (found_attributes != attributes) {
+  if (found_attributes.size() != attributes.size()) {
     std::string errstring = "Only found attributes ";
     for (auto &word : found_attributes)
       errstring += word  + ", ";
@@ -324,6 +326,10 @@ void ReadDump::read_binary_data(std::fstream &myfile,
     back_offset=0;
   }
 
+  if (no_padding) {
+    factor = front_offset = back_offset = 0;
+  }
+
 
   if (bytelength != (array->Nz()+factor)*array->Ny()*array->Nx()*sizeof(double)) {
     throw std::runtime_error("incorrect size " + array->get_name() + " in file.");
@@ -367,6 +373,11 @@ void ReadDump::ignore_binary_data(std::fstream &myfile) {
   if (commbrick->me == commbrick->nprocs-1) {
     factor -= 1;
   }
+
+  if (no_padding) {
+    factor =  0;
+  }
+
   int Nx = grid->phi->Nx();
   int Ny = grid->phi->Ny();
   int Nz = grid->phi->Nz();

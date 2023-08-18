@@ -49,6 +49,8 @@ private:
 			fftwArr::array3D<double> * ); 
 
   void ignore_binary_data(std::fstream &);
+
+  bool no_padding;
   
 };
 

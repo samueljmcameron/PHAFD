@@ -113,7 +113,7 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 
 
 
-  
+  fmt = "lf";
   every = std::stoll(v_line.at(3));
 
   auto it = v_line.begin()+4;
@@ -138,6 +138,12 @@ void Dump::init(const std::vector<std::string> &v_line ) {
       ++it;
       if (precision <= 0)
 	throw std::invalid_argument("Dump precision must be greater than or equal to zero.");
+    } else if (*it == "fmt") {
+      ++it;
+      fmt = *it;
+      ++it;
+      if (fmt != "lf" && fmt != "e")
+	throw std::invalid_argument("Dump fmt must be either lf or e.");
     } else
       throw std::invalid_argument("Invalid dump command.");
   }
@@ -356,8 +362,12 @@ void Dump::write_atom_timestep()
     throw std::runtime_error(std::string("Cannot open file ") + instance_name);
   }
 
-  if (precision > 0) {
+  if (precision > 0 && fmt == "lf") {
     myfile << std::fixed << std::setprecision(precision);
+  } else if (precision > 0 && fmt == "e") {
+    myfile << std::scientific << std::setprecision(precision);
+  } else if (fmt == "e") {
+    myfile << std::scientific;
   }
 
   int numpoints;
@@ -488,8 +498,12 @@ void Dump::write_lammps_dump()
     throw std::runtime_error(std::string("Cannot open file ") + instance_name);
   }
 
-  if (precision > 0) {
+  if (precision > 0 && fmt == "lf") {
     myfile << std::fixed << std::setprecision(precision);
+  } else if (precision > 0 && fmt == "e") {
+    myfile << std::scientific << std::setprecision(precision);
+  } else if (fmt == "e") {
+    myfile << std::scientific;
   }
   
   int numpoints = atoms->nowned;
@@ -511,8 +525,60 @@ void Dump::write_lammps_dump()
       myfile << "Fx Fy Fz ";
     else if (word == "ux")
       myfile << "ux uy uz ";
-    else
-      myfile << word << " ";
+    else {
+      int nc = 1;
+      if (word.rfind("c_",0) == 0) {
+	
+	
+	std::string cid = word.substr(2);
+	
+	int index = 0;
+	
+	for (auto &name : Compute::NAMES) {
+	  
+	  if (cid == name) {
+	    break;
+	  }
+	  index += 1;
+	}
+	
+	if (index == computes.size())
+	  throw std::runtime_error("Cannot write dump, compute ID " + cid
+				   + std::string("doesn't exist."));
+	
+	nc = computes.at(index)->numberofcomponents;
+	
+      } else if (word.rfind("f_",0) == 0) {
+	
+	std::string fid = word.substr(2);
+	
+	int index = 0;
+	
+	for (auto &name : Fix::NAMES) {
+	  if (fid == name) {
+	    break;
+	  }
+	  index += 1;
+	}
+	
+	
+	if (index == fixes.size())
+	  throw std::runtime_error("Cannot write dump, fix ID " + fid
+				   + std::string("doesn't exist."));
+	
+	nc = fixes.at(index)->numberofcomponents;
+	
+      }
+
+      if (nc > 1) 
+
+	for (int component = 0; component < nc; component++)
+	  myfile << word << "_" << component << " ";
+
+      else
+	myfile << word << " ";
+
+    }
 
   myfile << std::endl;
 

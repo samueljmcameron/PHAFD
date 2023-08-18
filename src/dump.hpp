@@ -82,6 +82,7 @@ private:
   unsigned int bytelength;
 
   int precision;
+  std::string fmt;
   std::unique_ptr<fftwArr::array3D<double>> fftw_recv;
   std::vector<double> arr_recv;
 
