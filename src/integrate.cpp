@@ -201,7 +201,7 @@ void Integrate::run()
 
 }
 
-void Integrate::run_until_touching(double touch_point)
+void Integrate::run_until_touching(double touch_point,bool continue_running,int delay_step)
 {
 
   if (commbrick->me == 0) 
@@ -221,6 +221,9 @@ void Integrate::run_until_touching(double touch_point)
 
   int breakflag = 0;
   int total_breakflag = 0;
+
+  // when since_last_cyc < delay_step, don't count as new cyclisation event
+  int since_last_cyc = delay_step;
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -329,33 +332,43 @@ void Integrate::run_until_touching(double touch_point)
     if (commbrick->me == 0) {
 
       if ((atoms->xs.col(atoms->nowned-1)-atoms->xs.col(0)).norm() < touch_point) {
-	std::cout << "cyclisation occured at step "
-		  << timestep << std::endl;
 
+	if (since_last_cyc >= delay_step) {
+	  std::cout << "cyclisation occured at step "
+		    << timestep << std::endl;
+	} 
+	since_last_cyc = 0;
 	breakflag = 1;
+      } else {
+	if (breakflag && since_last_cyc == delay_step)
+	  std::cout << "cyclisation interval ended at step "
+		    << timestep-delay_step << std::endl;
+	since_last_cyc += 1;
       }
-
+      
     }
 
-    MPI_Allreduce(&breakflag, &total_breakflag,1,MPI_INT,MPI_SUM,world);
+    if (! continue_running) {
 
-    if (total_breakflag) {
+      MPI_Allreduce(&breakflag, &total_breakflag,1,MPI_INT,MPI_SUM,world);
 
-      for (auto &dump : dumps) 
-	dump->require_calculations();
+      if (total_breakflag) {
 
-      for (auto &compute : computes)
-	compute->end_of_step();
-    
-      for (auto &fix : fixes)
-	fix->end_of_step();
 
-      for (auto &dump : dumps)
-	dump->write_collection_middle();
+	for (auto &dump : dumps) 
+	  dump->require_calculations();
 	
-
-      break;
-
+	for (auto &compute : computes)
+	  compute->end_of_step();
+	
+	for (auto &fix : fixes)
+	  fix->end_of_step();
+	
+	for (auto &dump : dumps)
+	  dump->write_collection_middle();
+	
+	break;
+      }
     }
     
     

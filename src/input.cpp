@@ -278,9 +278,21 @@ void Input::read()
       
       integrate->nsteps = std::stoll(v_line.at(0));
 
+      if (v_line.size() < 2)
+	throw std::runtime_error("Must provide a size at which atoms are considered touching.");
+
+      if (v_line.size() < 3)
+	throw std::runtime_error("Must say whether to continue simulation after touching occurs.");
+
       integrate->setup();
-      integrate->run_until_touching(std::stod(v_line.at(1)));
-    
+      if (v_line.at(2) == "continue") {
+	if (v_line.size() < 4) 
+	  throw std::runtime_error("Must say delay to mention new cyclisation events.");
+	integrate->run_until_touching(std::stod(v_line.at(1)),true,std::stod(v_line.at(3)));
+      } else if (v_line.at(2) == "stop")
+	integrate->run_until_touching(std::stod(v_line.at(1)),false,0);
+      else
+	throw std::runtime_error("Must say whether to continue simulation after touching occurs.");    
     }
   }
   return;

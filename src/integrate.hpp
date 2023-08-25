@@ -13,7 +13,7 @@ public:
 
   void setup();
   void run();
-  void run_until_touching(double);
+  void run_until_touching(double,bool,int);
 
   int64_t nsteps; // total number of steps
   int64_t firststep; // first step
