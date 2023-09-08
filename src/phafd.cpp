@@ -13,6 +13,7 @@
 #include "compute.hpp"
 #include "dump.hpp"
 
+#include <algorithm>
 
 using namespace PHAFD_NS;
 
@@ -28,6 +29,8 @@ PHAFD::PHAFD(MPI_Comm communicator, int argc, char **argv)
 
   int iarg = 1;  
   while(iarg < argc) {
+
+
     if (strcmp(argv[iarg],"-in") == 0) {
       if (iarg+1 == argc) {
 	throw std::invalid_argument("Error: input flag '-in' specified, but no file given.");
@@ -37,12 +40,53 @@ PHAFD::PHAFD(MPI_Comm communicator, int argc, char **argv)
       iarg += 2;
       
     } else if (strcmp(argv[iarg],"-var") == 0) {
-      
+
+
       if (iarg + 2 >= argc) {
 	throw std::invalid_argument("Error: invalid command line variable specification.");
       }
-      (*varmap)[argv[iarg+1]] = argv[iarg+2];
-      iarg += 3;
+
+
+      std::string strVar = argv[iarg+2];
+
+
+      int iiarg = 0;
+      // check if double quotes (meaning variable with spaces in it)
+      if (strVar.at(0) == '\"') {
+	strVar.erase(strVar.begin());
+
+	if (strVar.back() == '\"') {
+	  strVar.pop_back();
+	  if (strVar.empty())
+	    throw std::invalid_argument("Empty double quotes in variable.");
+	} else {
+
+
+	  iiarg = 1;
+
+	  while (iiarg + iarg + 2 < argc) {
+
+	    strVar += std::string(" ") + std::string(argv[iarg+2+iiarg]);
+	    if (strVar.back() == '\"') {
+	      strVar.pop_back();
+	      break;
+	    }
+	    
+	    iiarg += 1;
+	  
+	  }
+
+	  if (iarg + 2+ iiarg >= argc) {
+	    throw std::invalid_argument("Error: open double quotes in command line variable specification.");
+	  }
+
+	  
+
+	}
+      }
+
+      (*varmap)[argv[iarg+1]] = strVar;
+      iarg += 3+iiarg;
     } else {
       throw std::invalid_argument("Error: invalid command line variable specification.");
     }

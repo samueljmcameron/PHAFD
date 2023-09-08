@@ -40,12 +40,27 @@ void Integrate::setup()
 
   // can only call neighbors after pair coefficients have been set (for force cutoff)
   neighbor->build();
-
+  int errflag = 0;
+  int total_errflag;
+  std::string ewhat = "";
   
   for (auto &dump : dumps) {
-    dump->setup();
+    try {
+      dump->setup();
+    } catch (const std::runtime_error &e) {
+      errflag = 1;
+      ewhat = e.what();
+    }
+    MPI_Allreduce(&errflag, &total_errflag,1,MPI_INT,MPI_SUM,world);
+
+    if (total_errflag) {
+      throw std::runtime_error(ewhat.c_str());
+    }
+
+
     dump->write_collection_header();
   }
+
 
 
   for (auto &fix : fixes)

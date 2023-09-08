@@ -102,7 +102,18 @@ void CommBrick::setup()
   zprd = domain->period[2];
   zinterval = domain->subhi[2]-domain->sublo[2];
   zlo = domain->boxlo[2];
+  std::vector<int> zstarts(nprocs);
+  std::vector<int> zends(nprocs);
 
+  for (int i = 0; i < nprocs; i++) {
+    if (i == me) {
+      zstarts.at(i) = domain->sublo[2];
+      zends.at(i) = domain->subhi[2];
+    }
+    MPI_Bcast(&zstarts.at(i),1,MPI_INT,i,world);
+    MPI_Bcast(&zends.at(i),1,MPI_INT,i,world);
+  }
+  
 
   // start with zdim, which uses different structure than the x and y dim swaps
   // (the x and y dim swaps use the same method as LAMMPS)
@@ -118,14 +129,22 @@ void CommBrick::setup()
  
     sendproc[iswap] = (me - 1 - iswap < 0 ? me + nprocs -  iswap - 1  : me - 1  - iswap );
     recvproc[iswap] = (me + 1 + iswap) % nprocs;
-    subloz[iswap] = sendproc[iswap]*zinterval + zlo;
-    subhiz[iswap] = (sendproc[iswap]+1)*zinterval + zlo;
 
+    subloz[iswap] = zstarts[sendproc[iswap]];
+      //subloz[iswap] = sendproc[iswap]*zinterval + zlo;
+    subhiz[iswap] = zends[sendproc[iswap]];
+      //subhiz[iswap] = (sendproc[iswap]+1)*zinterval + zlo;
+
+    slablo[iswap] = (sendproc[iswap] == 0 ? zends[nprocs-1] : zstarts[sendproc[iswap]])
+      - cutghost;
+    //slablo[iswap] = (sendproc[iswap] == 0 ? nprocs : sendproc[iswap] )*zinterval
+    //  - cutghost + zlo;
+    slabhi[iswap] = (sendproc[iswap] == nprocs-1 ? zstarts[0] : zends[sendproc[iswap]])
+      + cutghost;
     
-    slablo[iswap] = (sendproc[iswap] == 0 ? nprocs : sendproc[iswap] )*zinterval
-      - cutghost + zlo;
-    slabhi[iswap] = ((sendproc[iswap]+1) % nprocs)*zinterval + cutghost
-      + zlo;
+
+    //slabhi[iswap] = ((sendproc[iswap]+1) % nprocs)*zinterval + cutghost
+    // + zlo;
      
     
     iswap ++;
