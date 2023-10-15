@@ -134,8 +134,8 @@ void Input::read()
       while (std::getline(*inputfile,line)) {
 	utility::convertVariables(line,*varmap);
 	
-	if (line == "" || line == "#") continue;
 	v_line = utility::split_line(line);
+	if (line == "" || line == "#") continue;
 	
 	firstword = v_line.at(0);
 	v_line.erase(v_line.begin());

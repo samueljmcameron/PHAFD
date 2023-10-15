@@ -43,6 +43,8 @@ void Integrate::setup()
   int errflag = 0;
   int total_errflag;
   std::string ewhat = "";
+
+  atoms->Fs.setZero();
   
   for (auto &dump : dumps) {
     try {
