@@ -84,7 +84,11 @@ private:
   void noisy_constant(fftwArr::array3D<double>*, double,double, int);
   void constant_noise(double,double,int);
   void create_modelH(int, int, int);
+  void flat_interface(fftwArr::array3D<double>*, double,double,double,double, int);
+  void sphere(fftwArr::array3D<double>*,double, double , double ,
+	      double);
 
+  double sphericalshape(double , double, double);
 
   
 
