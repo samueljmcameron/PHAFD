@@ -14,6 +14,7 @@
 #include "fixgrid_conjugate.hpp"
 #include "fixgrid_floryhuggins.hpp"
 #include "fixgrid_gradphi.hpp"
+#include "fixgrid_modelb.hpp"
 #include "fixatom_drag.hpp"
 #include "beadrodpmer/no_tether.hpp"
 #include "beadrodpmer/single_tether.hpp"
@@ -21,6 +22,7 @@
 
 
 #include "conjugate_volfrac.hpp"
+#include "conjugate_noise.hpp"
 #include "pair_lj_cut.hpp"
 #include "pair_harmonic_cut.hpp"
 #include "pair_gridatom_gaussian.hpp"
@@ -222,6 +224,11 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
+      } else if (firstword == "grid/modelb") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelB>(phafd));
+	
       }	else
 	throw std::runtime_error("Invalid fix.");
       

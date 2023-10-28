@@ -7,9 +7,15 @@
 
 #include <memory>
 
+namespace fftwArr {
+  template<typename>
+  class array3D;
+}
+
 namespace PHAFD_NS {
 class FixGridGradPhi;
-class ConjugateVolFrac;
+class ConjugateNoise;
+
 
 class FixGridModelB : public Fix {
 public:
@@ -32,11 +38,24 @@ public:
   virtual void end_of_step() override {};
 private:
 
-  std::unique_ptr<ConjugateVolFrac> conjugate;
+  std::unique_ptr<ConjugateNoise> conjugate;
 
   bool didnotintegrate;
+  double normalization;
+  double mobility,temp,volFH,gamma;
+
+  std::vector<double> qys,qzs;
 
   std::unique_ptr<FixGridGradPhi> fixgridgradphi;
+
+  void point_update(int,int,int);
+
+  void origin_update();
+
+  fftwArr::array3D<std::complex<double>> *ft_phi;
+  fftwArr::array3D<std::complex<double>> *ft_chempot;
+
+  
   
 };
 

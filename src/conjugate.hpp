@@ -29,6 +29,12 @@ public:
 
   virtual void readCoeffs(const std::vector<std::string> &) = 0;
 
+  void copy_qs(std::vector<double> &qyret, std::vector<double> &qzret)
+  {
+    qyret = qys;
+    qzret = qzs;
+
+  };
 
 private:
   
