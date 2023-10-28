@@ -29,6 +29,7 @@ public:
   NeighList *list;        // standard neighbor list used by most pairs
 
   Pair(PHAFD *);
+  virtual ~Pair() = default;
 
   // general child-class methods
 

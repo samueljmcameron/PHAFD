@@ -12,6 +12,7 @@ class Fix : protected Pointers {
 public:
   Fix(PHAFD *);
 
+  virtual ~Fix() = default;
   virtual void init(const std::vector<std::string> &) ;
 
 
