@@ -40,6 +40,8 @@ void FixGridVtherm::init(const std::vector<std::string> &v_line)
     seeds.at(iarg-1) = utility::make_unique_seed(std::stoi(v_line.at(iarg)),
 						 world,commbrick->me,commbrick->nprocs);
 
+  viscosity = std::stod(v_line.at(4));
+  temp = std::stod(v_line.at(5));
   
   for (int i = 0; i < 3; i++) {
     conjugate_vnoise.at(i) = std::make_unique<ConjugateNoise>(phafd);
@@ -131,6 +133,7 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
   
   q2 = qx*qx + qy*qy + qz*qz;
 
+
   if (q2 == 0) {
     (*ft_vtherm_x)(i,j,k) = 0.0;
     (*ft_vtherm_y)(i,j,k) = 0.0;
@@ -159,7 +162,6 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
 
 
   }
-
   
   return ;
 

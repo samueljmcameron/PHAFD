@@ -36,6 +36,7 @@
 #include "compute_pair.hpp"
 #include "compute_grid_clusters.hpp"
 #include "fixgrid_ave.hpp"
+#include "fixgrid_vtherm.hpp"
 
 #include <string>
 #include <set>
@@ -218,6 +219,10 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));	  
+      } else if (firstword == "grid/vtherm") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridVtherm>(phafd));	  
       } else if (firstword == "grid/ave") {
 	fixes.push_back(std::make_unique<FixGridAve>(phafd));
       } else if (firstword == "grid/gradphi") {

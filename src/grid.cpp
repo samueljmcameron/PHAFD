@@ -41,6 +41,7 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   for (int i = 0; i < 3; i++) {
     velocity[i] = nullptr;
     ft_velocity[i] = nullptr;
+    ft_Znoise[i] = nullptr;
     vtherm[i] = nullptr;
     ft_vtherm[i] = nullptr;
   }
@@ -53,7 +54,6 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   vtherm_dot_gradphi = nullptr;
   ft_vtherm_dot_gradphi = nullptr;
   for (int i = 0; i < 3; i++) {
-    ft_Znoise[i] = nullptr;
     ft_gradphitilde[i] = nullptr;
     chempot_gradphi[i] = nullptr;
     ft_chempot_gradphi[i] = nullptr;
@@ -123,6 +123,7 @@ void Grid::populate(const std::vector<std::string> &v_line)
 
   std::vector<std::string> new_v_line = v_line;
 
+
   if (new_v_line.at(0) == "constant") {
 
     if (new_v_line.at(1) == "concentration") {
@@ -135,9 +136,14 @@ void Grid::populate(const std::vector<std::string> &v_line)
 
       noisy_constant(phi.get(),average,variance,seed);
       
+    } else if (new_v_line.at(1) == "velocity") {
+      velocity[0]->setZero();
+      velocity[1]->setZero();
+      velocity[2]->setZero();
     } else {
       throw std::runtime_error("Invalid options for grid_populate.");
     }
+
     
   } else if (new_v_line.at(0) == "flat_interface") {
 
@@ -318,13 +324,19 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
       velocity[i] = std::make_unique<fftwArr::array3D<double>
 				    >(world,"velocity_"+listxyz[i],Nx,Ny,Nz);
 
+    if (!ft_Znoise[i])
+      ft_Znoise[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
+				       >(world,"ft_Znoise_"+listxyz[i],Nx,Nz,Ny);
+
+    
     if (!ft_velocity[i])
       ft_velocity[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
 				       >(world,"ft_velocity_"+listxyz[i],Nx,Nz,Ny);
 
-    if (!vtherm[i])
+    if (!vtherm[i]) 
       vtherm[i] = std::make_unique<fftwArr::array3D<double>
 				    >(world,"vtherm_"+listxyz[i],Nx,Ny,Nz);
+    
 
     if (!ft_vtherm[i])
       ft_vtherm[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
@@ -362,7 +374,6 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 					       pressure->data(),world,
 					       FFTW_MPI_TRANSPOSED_IN);
 
-  
   return;
   
 }

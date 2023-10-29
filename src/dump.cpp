@@ -20,6 +20,7 @@ Dump::Dump(PHAFD *phafd) : Pointers(phafd) {
   precision = -1;
   zstart = zend = -1;
   fftw_recv = nullptr;
+
 };
 
 Dump::~Dump() {
@@ -51,21 +52,34 @@ void Dump::init(const std::vector<std::string> &v_line ) {
   } else {
     fext = "vti";
 
-    int Nz;
 
     if (dump_type == "grid")
       if (grid->phi != nullptr) {
 	Nz = grid->phi->Nz();
+	Ny = grid->phi->Ny();
+	Nx = grid->phi->Nx();
 	zstart = grid->phi->get_local0start();
+      } else if (grid->vtherm[0] != nullptr) {
+	Nz = grid->vtherm[0]->Nz();
+	Ny = grid->vtherm[0]->Ny();
+	Nx = grid->vtherm[0]->Nx();
+	zstart = grid->vtherm[0]->get_local0start();
       } else
-	throw std::runtime_error("phi does not exist, but needed to save dump.");
+	throw std::runtime_error("phi or vtherm[0] does not exist, but needed to save dump.");
 
     else if  (dump_type == "ftgrid")
       if (grid->ft_phi != nullptr) {
 	Nz = grid->ft_phi->Nz();
+	Ny = grid->ft_phi->Ny();
+	Nx = grid->ft_phi->Nx();
 	zstart = grid->ft_phi->get_local0start();
+      } else if (grid->ft_vtherm[0] != nullptr) {
+	Nz = grid->ft_vtherm[0]->Nz();
+	Ny = grid->ft_vtherm[0]->Ny();
+	Nx = grid->ft_vtherm[0]->Nx();
+	zstart = grid->ft_vtherm[0]->get_local0start();
       } else
-	throw std::runtime_error("ft_phi does not exist, but needed to save dump.");
+	throw std::runtime_error("ft_phi or ft_vtherm[0] does not exist, but needed to save dump.");
 
     else
       throw std::runtime_error("Invalid dump type (must be atom or grid or ftgrid).");
@@ -686,20 +700,11 @@ void Dump::write_grid_timestep()
     throw std::runtime_error(std::string("Cannot open file ") + instance_name);
   }
 
-
-  int Nz,Ny,Nx;
-
   double dz,dy,dx;
 
   std::array<double,3> boxlo;
   
   if (dump_type == "grid") {
-
-
-  
-    Nz = grid->phi->Nz();
-    Ny = grid->phi->Ny();
-    Nx = grid->phi->Nx();
 
     arrplane_size = Nx*Ny;
 
@@ -712,10 +717,6 @@ void Dump::write_grid_timestep()
   } else if (dump_type == "ftgrid") {
 
   
-    Nz = grid->ft_phi->Nz();
-    Ny = grid->ft_phi->Ny();
-    Nx = grid->ft_phi->Nx();
-
     arrplane_size = Nx*Ny;
 
     
@@ -790,7 +791,7 @@ void Dump::write_grid_timestep_pvti()
     }
     
     
-    int globalNz,Ny,Nx;
+    int globalNz;
     
     double dz,dy,dx;
     
@@ -801,8 +802,6 @@ void Dump::write_grid_timestep_pvti()
       
       
       globalNz = grid->boxgrid[2];
-      Ny = grid->phi->Ny();
-      Nx = grid->phi->Nx();
       
       arrplane_size = Nx*Ny;
       
@@ -816,8 +815,6 @@ void Dump::write_grid_timestep_pvti()
       
       
       globalNz = grid->boxgrid[2];
-      Ny = grid->ft_phi->Ny();
-      Nx = grid->ft_phi->Nx();
       
       arrplane_size = Nx*Ny;
       
@@ -979,6 +976,12 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
       append_binary_data(myfile,grid->gradphi[1].get());
     } else if (word == "gradphi_z") {
       append_binary_data(myfile,grid->gradphi[2].get());
+    } else if (word == "vtherm_x") {
+      append_binary_data(myfile,grid->vtherm[0].get());
+    } else if (word == "vtherm_y") {
+      append_binary_data(myfile,grid->vtherm[1].get());      
+    } else if (word == "vtherm_z") {
+      append_binary_data(myfile,grid->vtherm[2].get());
     } else {
       throw std::runtime_error("Dump error: Attribute does not exist.");
     }
@@ -1220,11 +1223,15 @@ void Dump::append_binary_data(std::fstream &myfile,
 void Dump::append_binary_data(std::fstream &myfile,const double *array) {
 
 
-  /*
   int recvid, sendid;
   int me = commbrick->me;
   int nprocs = commbrick->nprocs;
 
+  myfile.write((char*)&bytelength,sizeof(bytelength));
+  
+  if (arr_recv.size() != Nx*Ny)
+    arr_recv.resize(Nx*Ny);
+  
   // send to right/recv from left first
 
   if (me == 0) {
@@ -1241,14 +1248,37 @@ void Dump::append_binary_data(std::fstream &myfile,const double *array) {
   }
 
 
-  
-  MPI_Sendrecv(&(*array)(array->Nz()-1,0,0),array->xysize(),  MPI_DOUBLE,sendid,0,
-	       fftw_recv->data(),fftw_recv->xysize(),MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+  MPI_Sendrecv(&(array[Nx*Ny*(Nz-1)]),Nx*Ny, MPI_DOUBLE,sendid,0,
+	       arr_recv.data(),Nx*Ny,MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
 
-  */  
+  if (me != 0)
+    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny);
+
+
+  myfile.write((char*)&(array[0]),sizeof(double)*Nx*Ny*Nz);
+
+  // now send to left/recv from right
+  if (me == 0) {
+    recvid = me+1;
+    sendid = nprocs-1;
+
+  } else if (me == nprocs-1) {
+    recvid = 0;
+    sendid = me-1;
+    
+  } else {
+    recvid = me+1;
+    sendid = me -1;
+  }
+
   
-  myfile.write((char*)&bytelength,sizeof(bytelength));
-  myfile.write((char*)&(array)[0],bytelength);
+  MPI_Sendrecv(&(array[0]),Nx*Ny,MPI_DOUBLE,sendid,0,
+	       arr_recv.data(),Nx*Ny,MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+  
+  if (me != nprocs-1)
+
+    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny);
+
 
 }
 

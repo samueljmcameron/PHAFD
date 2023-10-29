@@ -1,6 +1,7 @@
 #include "compute_complex.hpp"
 
 #include <cmath>
+#include <iostream>
 
 #include "grid.hpp"
 #include "fftw_arr/array3d.hpp"
@@ -24,6 +25,18 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
     fftw3_arr = grid->ft_phi.get();
   } else if (arrname == "ft_chempot") {
     fftw3_arr = grid->ft_chempot.get();
+  } else if (arrname == "ft_vtherm_x") {
+    fftw3_arr = grid->ft_vtherm[0].get();
+  } else if (arrname == "ft_vtherm_y") {
+    fftw3_arr = grid->ft_vtherm[1].get();
+  } else if (arrname == "ft_vtherm_z") {
+    fftw3_arr = grid->ft_vtherm[2].get();
+  } else if (arrname == "ft_Znoise_x") {
+    fftw3_arr = grid->ft_Znoise[0].get();
+  } else if (arrname == "ft_Znoise_y") {
+    fftw3_arr = grid->ft_Znoise[1].get();
+  } else if (arrname == "ft_Znoise_z") {
+    fftw3_arr = grid->ft_Znoise[2].get();
   }  else {
     throw std::runtime_error("Invalid array to compute in compute modulus.");
   }
@@ -45,7 +58,8 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
   Ny = fftw3_arr->Ny();
   Nx = fftw3_arr->Nx();
 
-  prefac = 1./(grid->dx()*grid->dy()*grid->dz());
+  prefac = 1.0;
+  // too much confusion using prefactor that isn't unity.
   
   array.resize(Nz*Ny*Nx);
   

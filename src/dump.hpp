@@ -86,6 +86,8 @@ private:
   std::unique_ptr<fftwArr::array3D<double>> fftw_recv;
   std::vector<double> arr_recv;
 
+  int Nx,Ny,Nz;
+  
   int arrplane_size;
 
   int zstart,zend;

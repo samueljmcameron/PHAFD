@@ -33,18 +33,22 @@ Integrate::~Integrate() = default;
 void Integrate::setup()
 {  
 
-  // need to apply pbc to atoms in case they are outside of simulation domain
-  domain->pbc();
-  // can only call borders after atoms are in the simulation domain
-  commbrick->borders();
+  if (atoms->ntypes >= 0) {
+    // need to apply pbc to atoms in case they are outside of simulation domain
+    domain->pbc();
+    // can only call borders after atoms are in the simulation domain
+    commbrick->borders();
 
-  // can only call neighbors after pair coefficients have been set (for force cutoff)
-  neighbor->build();
+    // can only call neighbors after pair coefficients have been set (for force cutoff)
+    neighbor->build();
+    atoms->Fs.setZero();
+  }
+  
   int errflag = 0;
   int total_errflag;
   std::string ewhat = "";
 
-  atoms->Fs.setZero();
+
   
   for (auto &dump : dumps) {
     try {
@@ -118,16 +122,19 @@ void Integrate::run()
       dump->start_of_step();
 
     
-    if (neighbor->decide()) {
-      domain->pbc();
-      commbrick->borders();
-      neighbor->build();
-    } else {
-      commbrick->forward_comm();
+    if (atoms->ntypes >= 0) {
+    
+      if (neighbor->decide()) {
+	domain->pbc();
+	commbrick->borders();
+	neighbor->build();
+      } else {
+	commbrick->forward_comm();
+      }
+      
+      
+      atoms->Fs.setZero();
     }
-
-
-    atoms->Fs.setZero();
 
     for (auto & pair : pairs)
       pair->compute();
@@ -137,13 +144,16 @@ void Integrate::run()
     for (auto &fix : fixes)
       fix->initial_integrate();
 
-    grid->chempot->setZero();
-    atoms->Fs.setZero();
+    if (grid->chempot != nullptr)
+      grid->chempot->setZero();
+    if (atoms->ntypes >= 0)
+      atoms->Fs.setZero();
     
     for (auto & pair : pairs)
       pair->compute();
-
-    commbrick->reverse_comm();
+    
+    if (atoms->ntypes >= 0) 
+      commbrick->reverse_comm();
 
     // additional terms from e.g. chemical potential, which are added to grid->chempot
     for (auto &fix: fixes)
@@ -187,7 +197,7 @@ void Integrate::run()
       
       }
     
-    if (std::isnan((*grid->phi)(0,0,0)))
+    if (grid->phi != nullptr && std::isnan((*grid->phi)(0,0,0)))
       errflag = 1;
 	
     MPI_Allreduce(&errflag, &total_errflag,1,MPI_INT,MPI_SUM,world);
