@@ -71,12 +71,15 @@ public:
   bool gridset,gridpopulated;
 
   bool phi_set,velocity_set,modelH_set;
+  std::vector<double> qys,qzs;
 
 
   Grid(PHAFD *);
   ~Grid();
   void create(const std::vector<std::string> &);
   void populate(const std::vector<std::string> &);
+
+  void set_qs(fftwArr::array3D<std::complex<double>> & );
 
   double dx() const;
   double dy() const;

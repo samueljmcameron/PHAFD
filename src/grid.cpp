@@ -448,6 +448,42 @@ void Grid::create_modelH(int Nx, int Ny, int Nz)
 }
 
 
+void Grid::set_qs(fftwArr::array3D<std::complex<double>> & ft_array)
+{
+
+  const int local0start = ft_array.get_local0start();
+
+  const int globalNy = grid->ft_boxgrid[1];
+  const int globalNz = grid->ft_boxgrid[2];
+
+  const double dy = domain->dqy();
+  const double dz = domain->dqz();
+
+  const int localNy = ft_array.Ny();
+  const int localNz = ft_array.Nz();
+
+  qys.resize(localNy);
+  qzs.resize(localNz);
+
+
+  for (int i = 0; i < localNz; i++)
+    if (i + local0start > globalNz/2) 
+      qzs[i] = -dz*(globalNz - i -local0start);
+    else 
+      qzs[i] = dz*(i+local0start);
+
+
+  for (int j = 0; j < localNy; j++)
+    if (j > globalNy/2) 
+      qys[j] = -dy * (globalNy - j);
+    else
+      qys[j] = dy * j;
+
+  return;
+
+  
+}
+
 void Grid::noisy_constant(fftwArr::array3D<double> * array,
 			  double average, double variance, int seed)
 {

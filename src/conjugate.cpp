@@ -43,7 +43,8 @@ void Conjugate::setup()
   }
   
 
-  set_qs();
+  grid->set_qs(*ft_array);
+  
 
   
   // I'm assuming that the complex array blocks will always be split in a certain
@@ -125,40 +126,6 @@ void Conjugate::setup()
 
 }
 
-
-/* Set the values of arrays for qx, qy, and qz */
-void Conjugate::set_qs()
-{
-
-
-  const int local0start = ft_array->get_local0start();
-
-  const int globalNy = grid->ft_boxgrid[1];
-  const int globalNz = grid->ft_boxgrid[2];
-
-  const double dy = domain->dqy();
-  const double dz = domain->dqz();
-  
-  qys.resize(localNy);
-  qzs.resize(localNz);
-
-
-  for (int i = 0; i < localNz; i++)
-    if (i + local0start > globalNz/2) 
-      qzs[i] = -dz*(globalNz - i -local0start);
-    else 
-      qzs[i] = dz*(i+local0start);
-
-
-  for (int j = 0; j < localNy; j++)
-    if (j > globalNy/2) 
-      qys[j] = -dy * (globalNy - j);
-    else
-      qys[j] = dy * j;
-
-  return;
-
-}
 
 void Conjugate::update()
 {

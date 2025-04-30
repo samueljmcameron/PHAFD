@@ -29,12 +29,12 @@ public:
 
   virtual void readCoeffs(const std::vector<std::string> &) = 0;
 
-  void copy_qs(std::vector<double> &qyret, std::vector<double> &qzret)
-  {
-    qyret = qys;
-    qzret = qzs;
-
-  };
+  //void copy_qs(std::vector<double> &qyret, std::vector<double> &qzret)
+  //{
+  //  qyret = qys;
+  //  qzret = qzs;
+  //
+  // };
 
 private:
   
@@ -49,7 +49,6 @@ protected:
   double complexprefactor, realprefactor, sqrtdt;
   
 
-  std::vector<double> qys,qzs;
 
   
   double dt;
@@ -75,8 +74,6 @@ protected:
   virtual void real_update(int,int,int) = 0;
   virtual void origin_update() = 0;
 
-  void set_qs();
-  
   void single(int);
   
   void first(int);

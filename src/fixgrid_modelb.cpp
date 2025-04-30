@@ -103,7 +103,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
 void FixGridModelB::setup()
 {
 
-  conjugate->copy_qs(qys,qzs);
+
   normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
   
 }
@@ -198,8 +198,8 @@ void FixGridModelB::point_update(int i , int j, int k)
 
   double qx,qy,qz,q2;
   
-  qz = qzs[i];
-  qy = qys[j];
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
   qx = domain->dqx()*k;
 
   q2 = qx*qx + qy*qy + qz*qz;

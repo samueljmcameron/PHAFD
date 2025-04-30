@@ -91,8 +91,8 @@ void ConjugateVolFrac::complex_update(int i , int j, int k)
 
   double qx,qy,qz,q2;
   
-  qz = qzs[i];
-  qy = qys[j];
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
   qx = domain->dqx()*k;
 
   q2 = qx*qx + qy*qy + qz*qz;
@@ -119,8 +119,8 @@ void ConjugateVolFrac::real_update(int i, int j, int k)
 
   double qx,qy,qz,q2;
 
-  qz = qzs[i];
-  qy = qys[j];
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
   qx = domain->dqx()*k;
   
   q2 = qx*qx + qy*qy + qz*qz;

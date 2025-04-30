@@ -44,8 +44,6 @@ private:
   double normalization;
   double mobility,temp,volFH,gamma;
 
-  std::vector<double> qys,qzs;
-
   std::unique_ptr<FixGridGradPhi> fixgridgradphi;
 
   void point_update(int,int,int);
