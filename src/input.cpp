@@ -233,6 +233,10 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridModelB>(phafd));
+	//} else if (firstword == "grid/modelh") {
+	//if (!grid->gridpopulated)
+	// throw std::runtime_error("Fix requires grid to be populated.");
+	//fixes.push_back(std::make_unique<FixGridModelH>(phafd));
 	
       }	else
 	throw std::runtime_error("Invalid fix.");
