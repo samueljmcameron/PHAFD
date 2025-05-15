@@ -976,6 +976,8 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
       append_binary_data(myfile,grid->gradphi[1].get());
     } else if (word == "gradphi_z") {
       append_binary_data(myfile,grid->gradphi[2].get());
+    } else if (word == "laplacephi") {
+      append_binary_data(myfile,grid->laplacephi.get());
     } else if (word == "vtherm_x") {
       append_binary_data(myfile,grid->vtherm[0].get());
     } else if (word == "vtherm_y") {

@@ -32,6 +32,8 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
     gradphi[i] = nullptr;
     ft_gradphi[i] = nullptr;
   }
+  laplacephi = nullptr;
+  ft_laplacephi = nullptr;
 
 
   /* velocity arrays */
@@ -41,6 +43,8 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   for (int i = 0; i < 3; i++) {
     velocity[i] = nullptr;
     ft_velocity[i] = nullptr;
+    vdet[i] = nullptr;
+    ft_vdet[i] = nullptr;
     ft_Znoise[i] = nullptr;
     vtherm[i] = nullptr;
     ft_vtherm[i] = nullptr;
@@ -72,13 +76,15 @@ Grid::~Grid() {
     for (int i = 0; i < 3; i++) {
       fftw_destroy_plan(backward_gradphi[i]);
     }
-
+    fftw_destroy_plan(backward_laplacephi);
   }
 
   if (velocity_set) {
     for (int i = 0; i < 3; i++) {
       fftw_destroy_plan(forward_velocity[i]);
       fftw_destroy_plan(backward_velocity[i]);
+      fftw_destroy_plan(forward_vdet[i]);
+      fftw_destroy_plan(backward_vdet[i]);
       fftw_destroy_plan(forward_vtherm[i]);
       fftw_destroy_plan(backward_vtherm[i]);
 
@@ -253,6 +259,14 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
   }
 
 
+  if (!laplacephi) 
+    laplacephi = std::make_unique<fftwArr::array3D<double>
+				 >(world,"laplacephi",Nx,Ny,Nz);
+  if (!ft_laplacephi)
+    ft_laplacephi = std::make_unique<fftwArr::array3D<std::complex<double>>
+				    >(world,"ft_laplacephi",Nx,Nz,Ny);
+
+  
   
   forward_phi = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,phi->data(),
 					 reinterpret_cast<fftw_complex*>
@@ -297,6 +311,11 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
 						 gradphi[1]->data(),world,// <---HERE!! NOT A BUG!
 						 FFTW_MPI_TRANSPOSED_IN);
 
+  backward_laplacephi = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
+						 reinterpret_cast<fftw_complex*>
+						 (ft_laplacephi->data()),
+						 laplacephi->data(),world,
+						 FFTW_MPI_TRANSPOSED_IN);
 
   
   return;
@@ -333,6 +352,16 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
       ft_velocity[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
 				       >(world,"ft_velocity_"+listxyz[i],Nx,Nz,Ny);
 
+
+    if (!vdet[i]) 
+      vdet[i] = std::make_unique<fftwArr::array3D<double>
+				 >(world,"vdet_"+listxyz[i],Nx,Ny,Nz);
+    
+
+    if (!ft_vdet[i])
+      ft_vdet[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
+				    >(world,"ft_vdet_"+listxyz[i],Nx,Nz,Ny);
+    
     if (!vtherm[i]) 
       vtherm[i] = std::make_unique<fftwArr::array3D<double>
 				    >(world,"vtherm_"+listxyz[i],Nx,Ny,Nz);
@@ -357,6 +386,15 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 						    (ft_velocity[i]->data()), velocity[i]->data(),
 						    world,FFTW_MPI_TRANSPOSED_IN);
 
+    forward_vdet[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vdet[i]->data(),
+						 reinterpret_cast<fftw_complex*>
+						 (ft_vdet[i]->data()),
+						 world, FFTW_MPI_TRANSPOSED_OUT);
+    
+    backward_vdet[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vdet[i]->data()), vdet[i]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
+    
     forward_vtherm[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vtherm[i]->data(),
 						 reinterpret_cast<fftw_complex*>
 						 (ft_vtherm[i]->data()),
@@ -367,6 +405,9 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 						  world,FFTW_MPI_TRANSPOSED_IN);
     
     
+  
+
+
   }
   backward_pressure = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
 					       reinterpret_cast<fftw_complex*>
@@ -424,6 +465,15 @@ void Grid::create_modelH(int Nx, int Ny, int Nz)
     backward_velocity[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
 						    (ft_velocity[i]->data()), velocity[i]->data(),
 						    world,FFTW_MPI_TRANSPOSED_IN);
+
+    forward_vdet[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vdet[i]->data(),
+						 reinterpret_cast<fftw_complex*>
+						 (ft_vdet[i]->data()),
+						 world, FFTW_MPI_TRANSPOSED_OUT);
+    
+    backward_vdet[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vdet[i]->data()), vdet[i]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
 
     forward_vtherm[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vtherm[i]->data(),
 						 reinterpret_cast<fftw_complex*>

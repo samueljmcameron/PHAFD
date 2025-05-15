@@ -28,29 +28,35 @@ public:
   std::unique_ptr<fftwArr::array3D<double>> phi; // concentration field
   std::unique_ptr<fftwArr::array3D<double>> chempot; // chemical potential
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> gradphi; // gradients
-
+  std::unique_ptr<fftwArr::array3D<double>> laplacephi; // chemical potential
+  
   // and their fourier transforms
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_phi;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_chempot;
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_gradphi;
-
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_laplacephi;
+  
   // and their fftw plans
   fftw_plan forward_phi, backward_phi;
   fftw_plan forward_chempot, backward_chempot;
   std::array<fftw_plan,3> backward_gradphi;
+  fftw_plan backward_laplacephi;
 
 
   /* velocity (Navier-stokes) arrays */
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> velocity; // fluid velocity
+  std::array<std::unique_ptr<fftwArr::array3D<double>>,3> vdet; // deterministic bit of fluid velocity
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> vtherm; // fluid thermal noise
   std::unique_ptr<fftwArr::array3D<double>> pressure;
   
   // and their fourier transforms
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_velocity;
+    std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_vdet;
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_vtherm;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_pressure;
 
   std::array<fftw_plan,3> forward_velocity, backward_velocity;
+  std::array<fftw_plan,3> forward_vdet, backward_vdet;
   std::array<fftw_plan,3> forward_vtherm, backward_vtherm;
   fftw_plan forward_pressure,backward_pressure;
   

@@ -1,5 +1,5 @@
 #include <algorithm>
-
+#include <iostream>
 #include "utility.hpp"
 
 #include "grid.hpp"
@@ -42,27 +42,28 @@ void FixGridLaplacePhi::setup()
 void FixGridLaplacePhi::start_of_step()
 {
 
-  if ((once == true && integrate->timestep == integrate->firststep) || !once) {
+
+  if ((once == true && integrate->timestep == integrate->firststep+1) || !once) {
     
-    // calculate the gradient of phi.
+    // calculate the laplacian of phi.
     fftw_execute(grid->forward_phi);
     
     const int local0start = grid->ft_phi->get_local0start();
     const int globalNy = grid->ft_boxgrid[1];
     const int globalNz = grid->ft_boxgrid[2];
     
-    const double dy = domain->dqy();
-    const double dz = domain->dqz();
-    const double dx = domain->dqx();
+    const double dqy = domain->dqy();
+    const double dqz = domain->dqz();
+    const double dqx = domain->dqx();
 
 
-    double qy,qz;
-    double q2;
+    double l,m,n;
+    double neg_q2;
     
     for (int i = 0; i < grid->ft_phi->Nz(); i++) {
       
       if (i + local0start > globalNz/2) 
-	l = dz*(-globalNz + i + local0start);
+	l = -globalNz + i + local0start;
       else
 	l = i + local0start;
       
@@ -77,26 +78,21 @@ void FixGridLaplacePhi::start_of_step()
 	  
 	  n = k;
 
-	  idqx*n;
+	  neg_q2 = -(dqx*n*dqx*n + dqy*m*dqy*m + dqz*l*dqz*l);
+
 	  
-	  
-	  (*grid->ft_laplacephi)(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
-	  (*grid->ft_gradphi[1])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
-	  (*grid->ft_gradphi[2])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
-	  
+	  (*grid->ft_laplacephi)(i,j,k) = (*grid->ft_phi)(i,j,k)*neg_q2;
+;
 	  
 	}
       }
     }
     
-    fftw_execute(grid->backward_gradphi[0]);
-    fftw_execute(grid->backward_gradphi[1]);
-    fftw_execute(grid->backward_gradphi[2]);
+    fftw_execute(grid->backward_laplacephi);
     
     double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-    (*grid->gradphi[0]) /= factor;
-    (*grid->gradphi[1]) /= factor;
-    (*grid->gradphi[2]) /= factor;
+    *grid->laplacephi /= factor;
+    
   }
 
 

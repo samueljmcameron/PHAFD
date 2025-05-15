@@ -42,7 +42,7 @@ void FixGridGradPhi::setup()
 void FixGridGradPhi::start_of_step()
 {
 
-  if ((once == true && integrate->timestep == integrate->firststep) || !once) {
+  if ((once == true && integrate->timestep == integrate->firststep+1) || !once) {
     
     // calculate the gradient of phi.
     fftw_execute(grid->forward_phi);
