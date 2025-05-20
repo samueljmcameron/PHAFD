@@ -17,8 +17,6 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   gridset = false;
   gridpopulated = false;
 
-  
-
 
   /* concentration arrays */
 
@@ -59,8 +57,6 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   ft_vtherm_dot_gradphi = nullptr;
   for (int i = 0; i < 3; i++) {
     ft_gradphitilde[i] = nullptr;
-    chempot_gradphi[i] = nullptr;
-    ft_chempot_gradphi[i] = nullptr;
   }
   
 }
@@ -115,6 +111,10 @@ void Grid::create(const std::vector<std::string> &v_line)
     } else  if (v_line.at(iarg) == "velocity") {
       create_velocity(Nx,Ny,Nz);
       iarg += 1;
+    } else  if (v_line.at(iarg) == "modelh") {
+      create_velocity(Nx,Ny,Nz);
+      create_concentration(Nx,Ny,Nz);
+      iarg += 1;
     } else {
       throw std::invalid_argument("Incompatible style type in grid_style.");
     }
@@ -143,6 +143,20 @@ void Grid::populate(const std::vector<std::string> &v_line)
       noisy_constant(phi.get(),average,variance,seed);
       
     } else if (new_v_line.at(1) == "velocity") {
+      velocity[0]->setZero();
+      velocity[1]->setZero();
+      velocity[2]->setZero();
+    } else if (new_v_line.at(1) == "modelh") {
+
+      
+      double average = std::stod(new_v_line.at(2));
+      double variance = std::stod(new_v_line.at(3));
+
+      int seed = std::stoi(new_v_line.at(4));
+      seed = utility::make_unique_seed(seed,world,commbrick->me,commbrick->nprocs);
+
+      noisy_constant(phi.get(),average,variance,seed);
+      
       velocity[0]->setZero();
       velocity[1]->setZero();
       velocity[2]->setZero();
@@ -178,6 +192,19 @@ void Grid::populate(const std::vector<std::string> &v_line)
       double phi0 = std::stod(new_v_line.at(5));
       
       sphere(phi.get(),radius,width,hi,phi0);
+      
+    } else if (new_v_line.at(1) == "modelh") {
+      double radius = std::stod(new_v_line.at(2));
+      double width = sqrt(std::stod(new_v_line.at(3)));
+      double hi = std::stod(new_v_line.at(4));
+      double phi0 = std::stod(new_v_line.at(5));
+      
+      sphere(phi.get(),radius,width,hi,phi0);
+
+      velocity[0]->setZero();
+      velocity[1]->setZero();
+      velocity[2]->setZero();
+
       
     } else {
       throw std::runtime_error("Invalid options for grid_populate.");
@@ -391,9 +418,6 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 						 (ft_vdet[i]->data()),
 						 world, FFTW_MPI_TRANSPOSED_OUT);
     
-    backward_vdet[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
-						  (ft_vdet[i]->data()), vdet[i]->data(),
-						  world,FFTW_MPI_TRANSPOSED_IN);
     
     forward_vtherm[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vtherm[i]->data(),
 						 reinterpret_cast<fftw_complex*>
@@ -415,6 +439,41 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 					       pressure->data(),world,
 					       FFTW_MPI_TRANSPOSED_IN);
 
+    backward_vdet[0] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vdet[0]->data()), vdet[0]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
+
+
+    backward_vdet[1] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vdet[1]->data()), vdet[2]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
+
+    backward_vdet[2] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+						  (ft_vdet[2]->data()), vdet[1]->data(),
+						  world,FFTW_MPI_TRANSPOSED_IN);
+
+    
+  if (!v_dot_gradphi) 
+    v_dot_gradphi = std::make_unique<fftwArr::array3D<double>
+				>(world,"v_dot_gradphi",Nx,Ny,Nz);
+  if (!ft_v_dot_gradphi)
+    ft_v_dot_gradphi = std::make_unique<fftwArr::array3D<std::complex<double>>
+				   >(world,"ft_v_dot_gradphi",Nx,Nz,Ny);
+
+    
+  forward_v_dot_gradphi
+    = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,v_dot_gradphi->data(),
+			       reinterpret_cast<fftw_complex*>
+			       (ft_v_dot_gradphi->data()),
+			       world, FFTW_MPI_TRANSPOSED_OUT);
+
+  backward_v_dot_gradphi
+    = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
+			       (ft_v_dot_gradphi->data()),
+			       v_dot_gradphi->data(),
+			       world,FFTW_MPI_TRANSPOSED_IN);
+
+  
   return;
   
 }

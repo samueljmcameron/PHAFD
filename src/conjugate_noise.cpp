@@ -68,8 +68,6 @@ void ConjugateNoise::reset_dt(double timestep)
   dt = timestep;
   double invLcubed = 1.0/(domain->period[0]*domain->period[1]*domain->period[2]);
 
-  normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
-
 
   complexprefactor = sqrt(12*temp*damping*invLcubed);
   realprefactor = sqrt(24*temp*damping*invLcubed);

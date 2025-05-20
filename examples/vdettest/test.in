@@ -3,7 +3,7 @@
 
 domain boxdims 256.0 256.0 256.0 boxorigin -128.0 -128.0 -128.0
 
-grid_style 128 128 128 modelh
+grid_style 256 256 256 modelh
 
 grid_populate sphere modelh 80.0 25.0 0.9 0.5
 
@@ -12,9 +12,15 @@ grid_populate sphere modelh 80.0 25.0 0.9 0.5
 fix grid/floryhuggins chempot temp 1.0 chi 1.0 volFH 1.0
 fix grid/gradphi grad immediate
 
-fix grid/velocity velocity 319809 218429 128990 1.0 1.0
+fix grid/vdet vdet 1.0
 
-dump realgrid grid output/field 1 attributes 4 phi velocity_x velocity_y velocity_z
+compute complex vx ft_vdet_x norm
+compute complex vy ft_vdet_y norm
+compute complex vz ft_vdet_z norm
+
+
+dump realgrid grid output/field 1 attributes 7 vdet_x vdet_y vdet_z gradphi_x gradphi_y gradphi_z phi
+dump fftgrid ftgrid output/ft_field 1 attributes 3 c_vx c_vy c_vz
 
 
 timestep 0

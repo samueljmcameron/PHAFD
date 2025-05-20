@@ -870,6 +870,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
 				  bool for_pvtp)
 {
 
+
   
   if (word.rfind("c_",0) == 0) {
 
@@ -978,12 +979,26 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
       append_binary_data(myfile,grid->gradphi[2].get());
     } else if (word == "laplacephi") {
       append_binary_data(myfile,grid->laplacephi.get());
+    } else if (word == "velocity_x") {
+      append_binary_data(myfile,grid->velocity[0].get());
+    } else if (word == "velocity_y") {
+      append_binary_data(myfile,grid->velocity[1].get());      
+    } else if (word == "velocity_z") {
+      append_binary_data(myfile,grid->velocity[2].get());
     } else if (word == "vtherm_x") {
       append_binary_data(myfile,grid->vtherm[0].get());
     } else if (word == "vtherm_y") {
       append_binary_data(myfile,grid->vtherm[1].get());      
     } else if (word == "vtherm_z") {
       append_binary_data(myfile,grid->vtherm[2].get());
+    } else if (word == "vdet_x") {
+      append_binary_data(myfile,grid->vdet[0].get());
+    } else if (word == "vdet_y") {
+      append_binary_data(myfile,grid->vdet[1].get());      
+    } else if (word == "vdet_z") {
+      append_binary_data(myfile,grid->vdet[2].get());
+    } else if (word == "v_dot_gradphi") {
+      append_binary_data(myfile,grid->v_dot_gradphi.get());
     } else {
       throw std::runtime_error("Dump error: Attribute does not exist.");
     }
@@ -1008,7 +1023,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
       throw std::runtime_error("Invalid per atom quantity in dump file.");
 
   } else {
-    throw std::runtime_error("Something wrong, should not get here. ");
+    throw std::runtime_error("If trying to output a ftgrid quantity, it must be done with a compute! ");
   }
   return;
 }

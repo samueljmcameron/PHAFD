@@ -8,7 +8,6 @@
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_vdet.hpp"
-#include "conjugate_noise.hpp"
 #include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
@@ -21,102 +20,85 @@ FixGridVdet::FixGridVdet(PHAFD *phafd) : Fix(phafd) {};
 void FixGridVdet::init(const std::vector<std::string> &v_line)
 /*
   v_line should take form:
-  fixname,seedx,seedy,seedz,viscosity,temperature
+  fixname,viscosity
  */
 {
 
   Fix::init(v_line);
 
-  std::vector<std::string> new_v_line;
+  viscosity = std::stod(v_line.at(1));
 
-  // build string vector for concentration
-
-  std::array<std::string,3> vlabels = {"vx","vy","vz"};
-
-  std::array<int,3> seeds;
-
-  int iarg = 1;
-  for (; iarg < 4; iarg++)
-    seeds.at(iarg-1) = utility::make_unique_seed(std::stoi(v_line.at(iarg)),
-						 world,commbrick->me,commbrick->nprocs);
-
-  viscosity = std::stod(v_line.at(4));
-  temp = std::stod(v_line.at(5));
-  
-  for (int i = 0; i < 3; i++) {
-    conjugate_vnoise.at(i) = std::make_unique<ConjugateNoise>(phafd);
-    new_v_line.clear();
-    new_v_line.push_back(vlabels.at(i));
-    new_v_line.push_back("seed");
-    new_v_line.push_back(std::to_string(seeds.at(i)));
-    new_v_line.push_back("viscosity");
-    new_v_line.push_back(std::to_string(viscosity));
-    new_v_line.push_back("temp");
-    new_v_line.push_back(std::to_string(temp));
-
-    
-    conjugate_vnoise.at(i)->readCoeffs(new_v_line);
+  if (v_line.size()==3) {
+    if (v_line.at(2) == "immediate") immediate_ifft = true;
+    else
+      throw std::runtime_error("invalid argument in fix/vdet");
   }
 
-
-  viscosity = conjugate_vnoise.at(0)->damping;
-  
-  ft_Znoise_x = grid->ft_Znoise[0].get();
-  ft_Znoise_y = grid->ft_Znoise[1].get();
-  ft_Znoise_z = grid->ft_Znoise[2].get();
-
+  vdet_x = grid->vdet[0].get();
+  vdet_y = grid->vdet[1].get();
+  vdet_z = grid->vdet[2].get();
   ft_vdet_x = grid->ft_vdet[0].get();
   ft_vdet_y = grid->ft_vdet[1].get();
   ft_vdet_z = grid->ft_vdet[2].get();
+
+  
   
 }
 
   
 void FixGridVdet::setup()
 {
-  conjugate_vnoise.at(0)->copy_qs(qys,qzs);
 
+  grid->set_qs(*ft_vdet_x);
+
+  
 }
 
-void FixGridVdet::reset_dt()
+
+
+void FixGridVdet::pre_final_integrate()
 {
 
-  dt = integrate->dt;
+  // store chemical potential x gradphi
+  for (int i = 0; i < grid->chempot->Nz(); i++) 
+    for (int j = 0; j < grid->chempot->Ny(); j++) 
+      for (int k = 0; k < grid->chempot->Nx(); k++) {
+	(*vdet_x)(i,j,k) = (*grid->gradphi[0])(i,j,k)*(*grid->chempot)(i,j,k);
+	(*vdet_y)(i,j,k) = (*grid->gradphi[1])(i,j,k)*(*grid->chempot)(i,j,k);
+	(*vdet_z)(i,j,k) = (*grid->gradphi[2])(i,j,k)*(*grid->chempot)(i,j,k);
+      }
 
-  for (auto &cv : conjugate_vnoise)
-    cv->reset_dt(dt);
-  
-}
+  // then do a fft to compute the fourier space version
 
+  fftw_execute(grid->forward_vdet[0]);
+  fftw_execute(grid->forward_vdet[1]);
+  fftw_execute(grid->forward_vdet[2]);
 
-void FixGridVdet::start_of_step()
-{
-  for (auto &cv : conjugate_vnoise)
-    cv->update();
+  // then multiply fourier space version by the Oseen tensor
 
+  int localNx = ft_vdet_x->Nx();
+  int localNy = ft_vdet_x->Ny();
+  int localNz = ft_vdet_x->Nz();
 
-  // and compute v_therm in fourier space;
-  compute_vdet();
-  // and inverse fourier transform to get vdet in real space
-  for (int i = 0; i < 3; i++) 
-    fftw_execute(grid->backward_vdet[i]);
-
-  
-}
-
-
-
-void FixGridVdet::compute_vdet() {
-
-  int localNx = ft_Znoise_x->Nx();
-  int localNy = ft_Znoise_x->Ny();
-  int localNz = ft_Znoise_x->Nz();
-  
-  for (int nz = 0; nz < localNz; nz++) 
-    for (int ny = 0; ny < localNy; ny++) 
+  for (int nz = 0; nz < localNz; nz ++)
+    for (int ny = 0; ny < localNy; ny ++)
       for (int nx = 0; nx < localNx; nx++)
 	set_vdet(nz,ny,nx);
 
+
+  if (immediate_ifft) {
+    for (int i = 0; i < 3; i++) 
+      fftw_execute(grid->backward_vdet[i]);
+  }
+
+
+}
+
+
+void FixGridVdet::post_final_integrate() {
+  if (immediate_ifft) return;
+  for (int i = 0; i < 3; i++) 
+    fftw_execute(grid->backward_vdet[i]);
 }
 
 
@@ -125,12 +107,16 @@ void FixGridVdet::compute_vdet() {
 void FixGridVdet::set_vdet(int i, int j, int k) {
 
   double qx,qy,qz,q2,Txx,Txy,Txz,Tyy,Tyz,Tzz;
+  double normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
+
+  std::complex<double> tmp_x,tmp_y,tmp_z;
 
 
-  qz = qzs[i];
-  qy = qys[j];
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
   qx = domain->dqx()*k;
-  
+
+
   q2 = qx*qx + qy*qy + qz*qz;
 
 
@@ -138,30 +124,33 @@ void FixGridVdet::set_vdet(int i, int j, int k) {
     (*ft_vdet_x)(i,j,k) = 0.0;
     (*ft_vdet_y)(i,j,k) = 0.0;
     (*ft_vdet_z)(i,j,k) = 0.0;
+
+
   } else {
 
 
 
     Txx = (1.0-qx*qx/q2)/(q2*viscosity);
-    Txy = (-qx*qy/q2)/(q2*viscosity);  
+    Txy = (-qx*qy/q2)/(q2*viscosity);
     Txz = (-qx*qz/q2)/(q2*viscosity);
-    Tyy = (1-qy*qy/q2)/(q2*viscosity);
+    Tyy = (1.0-qy*qy/q2)/(q2*viscosity);
     Tyz = (-qy*qz/q2)/(q2*viscosity);
-    Tzz = (1-qz*qz/q2)/(q2*viscosity);
+    Tzz = (1.0-qz*qz/q2)/(q2*viscosity);
 
+    tmp_x = (*ft_vdet_x)(i,j,k);
+    tmp_y = (*ft_vdet_y)(i,j,k);
+    tmp_z = (*ft_vdet_z)(i,j,k);
 
-    // need to do a swap here (qy <-> qz) since computing transposed
-    // fourier functions, the below LOOKS LIKE IT HAS BUGS BUT IT DOES NOT!!
-
-    (*ft_vdet_x)(i,j,k) = (Txx*(*ft_Znoise_x)(i,j,k)+Txz*(*ft_Znoise_y)(i,j,k)
-			      + Txy*(*ft_Znoise_z)(i,j,k))/dt;
-    (*ft_vdet_y)(i,j,k) = (Txz*(*ft_Znoise_x)(i,j,k)+Tzz*(*ft_Znoise_y)(i,j,k)
-			      + Tyz*(*ft_Znoise_z)(i,j,k))/dt;
-    (*ft_vdet_z)(i,j,k) = (Txy*(*ft_Znoise_x)(i,j,k)+Tyz*(*ft_Znoise_y)(i,j,k)
-			      + Tyy*(*ft_Znoise_z)(i,j,k))/dt;
-
+    (*ft_vdet_x)(i,j,k) = (Txx*tmp_x+Txy*tmp_z
+			   + Txz*tmp_y)*normalization;
+    (*ft_vdet_y)(i,j,k) = (Txy*tmp_x+Tyy*tmp_z
+			   + Tyz*tmp_y)*normalization;
+    (*ft_vdet_z)(i,j,k) = (Txz*tmp_x+Tyz*tmp_z
+			   + Tzz*tmp_y)*normalization;
+    
 
   }
+
   
   return ;
 

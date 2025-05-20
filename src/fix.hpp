@@ -39,6 +39,8 @@ public:
   bool averaging;
   bool this_step;
 
+
+
   std::set<std::string> dump_callers;
   std::vector<double> array;
 
@@ -53,6 +55,11 @@ protected:
   std::vector<int> start_indices,end_indices;
   void find_group(const std::string &)  ;
   double dt;
+
+  bool immediate_ifft; // true if a fix needs to call an inverse fft 
+                       // earlier than post_final_integrate - only set
+                       // internally by other fixes.
+  
 
 };
 

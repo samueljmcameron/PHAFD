@@ -38,6 +38,9 @@
 #include "compute_grid_clusters.hpp"
 #include "fixgrid_ave.hpp"
 #include "fixgrid_vtherm.hpp"
+#include "fixgrid_vdet.hpp"
+#include "fixgrid_velocity.hpp"
+#include "fixgrid_v_dot_gradphi.hpp"
 
 
 #include <string>
@@ -239,6 +242,19 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridModelB>(phafd));
+      } else if (firstword == "grid/vdet") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridVdet>(phafd));
+	
+      } else if (firstword == "grid/velocity") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridVelocity>(phafd));
+      } else if (firstword == "grid/v_dot_gradphi") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridVdotGradPhi>(phafd));
 	//} else if (firstword == "grid/modelh") {
 	//if (!grid->gridpopulated)
 	// throw std::runtime_error("Fix requires grid to be populated.");

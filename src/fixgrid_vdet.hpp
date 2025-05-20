@@ -1,6 +1,6 @@
 
-#ifndef PHAFD_FIXGRID_VTHERM_HPP
-#define PHAFD_FIXGRID_VTHERM_HPP
+#ifndef PHAFD_FIXGRID_VDET_HPP
+#define PHAFD_FIXGRID_VDET_HPP
 
 
 #include "fix.hpp"
@@ -14,44 +14,41 @@ namespace fftwArr {
 
 namespace PHAFD_NS {
 
-class ConjugateNoise;
-
-class FixGridVtherm : public Fix {
+class FixGridVdet : public Fix {
 public:
-  FixGridVtherm(PHAFD *);
+  FixGridVdet(PHAFD *);
 
   virtual void init(const std::vector<std::string> &) override;
   
   virtual void setup() override;
 
-  virtual void start_of_step() override;
+
+  virtual void pre_final_integrate() override;
   virtual void post_final_integrate() override;
-  
+  virtual void start_of_step() override {};  
   virtual void initial_integrate() override {};
   virtual void post_force() override {};
-  virtual void pre_final_integrate() override {};
+
   virtual void final_integrate() override {};
-  virtual void reset_dt() override;
+
+  virtual void reset_dt() override {};
 
   virtual void end_of_step() override {};
   
 private:
 
   void compute_vtherm();
-  void set_vtherm(int, int, int) ;
+  void set_vdet(int, int, int) ;
   
-  std::array<std::unique_ptr<ConjugateNoise>,3> conjugate_vnoise;
-
   bool didnotintegrate;
 
-  fftwArr::array3D<std::complex<double>> *ft_Znoise_x,*ft_Znoise_y, *ft_Znoise_z;
-  fftwArr::array3D<std::complex<double>> *ft_vtherm_x,*ft_vtherm_y, *ft_vtherm_z;
+  fftwArr::array3D<std::complex<double>> *ft_vdet_x,*ft_vdet_y, *ft_vdet_z;
+  fftwArr::array3D<double> *vdet_x,*vdet_y, *vdet_z;
   
   std::vector<double> qys,qzs;
 
   double viscosity,temp;
 
-  
 };
 
 }

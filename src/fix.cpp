@@ -11,6 +11,7 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
   
 
   per_grid = per_ftgrid = per_atom = scalar = vector = false;
+  immediate_ifft = false;
   averaging = false;
   numberofcomponents = 1;
   num_less_zero = num_great_zero = 0;

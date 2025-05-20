@@ -23,11 +23,11 @@ void FixGridGradPhi::init(const std::vector<std::string> &v_line)
 
   Fix::init(v_line);
 
-  if (v_line.size() == 2) {
-    if (v_line.at(1) == "once") once = true;
-    else if (v_line.at(1) == "every") once = false;
-  } else {
-    throw std::runtime_error("need to specify when to compute gradient in fix/gradphi");
+  for (int iarg = 1; iarg < v_line.size(); iarg++) {
+    if (v_line.at(iarg) == "once")  once = true;
+    else if (v_line.at(iarg) == "immediate") immediate_ifft = true;
+    else
+      throw std::runtime_error("invalid fix/gradphi");
   }
   
 }
@@ -46,6 +46,7 @@ void FixGridGradPhi::start_of_step()
     
     // calculate the gradient of phi.
     fftw_execute(grid->forward_phi);
+    const double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
     
     const int local0start = grid->ft_phi->get_local0start();
     const int globalNy = grid->ft_boxgrid[1];
@@ -76,26 +77,38 @@ void FixGridGradPhi::start_of_step()
 	  
 	  n = k;
 	  
-	  (*grid->ft_gradphi[0])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n;
-	  (*grid->ft_gradphi[1])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m;
-	  (*grid->ft_gradphi[2])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l;
+	  (*grid->ft_gradphi[0])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqx*n/factor;
+	  (*grid->ft_gradphi[1])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqy*m/factor;
+	  (*grid->ft_gradphi[2])(i,j,k) = (*grid->ft_phi)(i,j,k)*idqz*l/factor;
 	  
 	  
 	}
       }
     }
+
+    if (immediate_ifft) {
+      fftw_execute(grid->backward_gradphi[0]);
+      fftw_execute(grid->backward_gradphi[1]);
+      fftw_execute(grid->backward_gradphi[2]);
+    }
+
     
-    fftw_execute(grid->backward_gradphi[0]);
-    fftw_execute(grid->backward_gradphi[1]);
-    fftw_execute(grid->backward_gradphi[2]);
-    
-    double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-    (*grid->gradphi[0]) /= factor;
-    (*grid->gradphi[1]) /= factor;
-    (*grid->gradphi[2]) /= factor;
   }
 
 
 }
 
 
+
+void FixGridGradPhi::post_final_integrate() {
+
+  if (immediate_ifft) return;
+  
+  if ((once == true && integrate->timestep == integrate->firststep+1) || !once) {
+    fftw_execute(grid->backward_gradphi[0]);
+    fftw_execute(grid->backward_gradphi[1]);
+    fftw_execute(grid->backward_gradphi[2]);
+    
+  }
+
+}

@@ -42,6 +42,13 @@ void FixGridVtherm::init(const std::vector<std::string> &v_line)
 
   viscosity = std::stod(v_line.at(4));
   temp = std::stod(v_line.at(5));
+
+  if (v_line.size() == 7) {
+    if (v_line.at(6) == "immediate")
+      immediate_ifft = true;
+    else
+      throw std::runtime_error("invalid argument in fix/vtherm");
+  }
   
   for (int i = 0; i < 3; i++) {
     conjugate_vnoise.at(i) = std::make_unique<ConjugateNoise>(phafd);
@@ -74,7 +81,6 @@ void FixGridVtherm::init(const std::vector<std::string> &v_line)
   
 void FixGridVtherm::setup()
 {
-  conjugate_vnoise.at(0)->copy_qs(qys,qzs);
 
 }
 
@@ -97,11 +103,17 @@ void FixGridVtherm::start_of_step()
 
   // and compute v_therm in fourier space;
   compute_vtherm();
-  // and inverse fourier transform to get vtherm in real space
+
+
+
+}
+
+
+void FixGridVtherm::post_final_integrate() {
+
+  if (immediate_ifft) return;
   for (int i = 0; i < 3; i++) 
     fftw_execute(grid->backward_vtherm[i]);
-
-  
 }
 
 
@@ -117,6 +129,11 @@ void FixGridVtherm::compute_vtherm() {
       for (int nx = 0; nx < localNx; nx++)
 	set_vtherm(nz,ny,nx);
 
+  if (immediate_ifft)
+    for (int i = 0; i < 3; i++) 
+      fftw_execute(grid->backward_vtherm[i]);
+
+  
 }
 
 
@@ -127,8 +144,8 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
   double qx,qy,qz,q2,Txx,Txy,Txz,Tyy,Tyz,Tzz;
 
 
-  qz = qzs[i];
-  qy = qys[j];
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
   qx = domain->dqx()*k;
   
   q2 = qx*qx + qy*qy + qz*qz;
@@ -150,15 +167,12 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
     Tzz = (1-qz*qz/q2)/(q2*viscosity);
 
 
-    // need to do a swap here (qy <-> qz) since computing transposed
-    // fourier functions, the below LOOKS LIKE IT HAS BUGS BUT IT DOES NOT!!
-
-    (*ft_vtherm_x)(i,j,k) = (Txx*(*ft_Znoise_x)(i,j,k)+Txz*(*ft_Znoise_y)(i,j,k)
-			      + Txy*(*ft_Znoise_z)(i,j,k))/dt;
-    (*ft_vtherm_y)(i,j,k) = (Txz*(*ft_Znoise_x)(i,j,k)+Tzz*(*ft_Znoise_y)(i,j,k)
+    (*ft_vtherm_x)(i,j,k) = (Txx*(*ft_Znoise_x)(i,j,k)+Txy*(*ft_Znoise_y)(i,j,k)
+			      + Txz*(*ft_Znoise_z)(i,j,k))/dt;
+    (*ft_vtherm_y)(i,j,k) = (Txy*(*ft_Znoise_x)(i,j,k)+Tyy*(*ft_Znoise_y)(i,j,k)
 			      + Tyz*(*ft_Znoise_z)(i,j,k))/dt;
-    (*ft_vtherm_z)(i,j,k) = (Txy*(*ft_Znoise_x)(i,j,k)+Tyz*(*ft_Znoise_y)(i,j,k)
-			      + Tyy*(*ft_Znoise_z)(i,j,k))/dt;
+    (*ft_vtherm_z)(i,j,k) = (Txz*(*ft_Znoise_x)(i,j,k)+Tyz*(*ft_Znoise_y)(i,j,k)
+			      + Tzz*(*ft_Znoise_z)(i,j,k))/dt;
 
 
   }

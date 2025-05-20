@@ -1,0 +1,30 @@
+# set global parameters
+
+
+domain boxdims 256.0 256.0 256.0 boxorigin -128.0 -128.0 -128.0
+
+grid_style 64 64 64 velocity
+
+grid_populate constant velocity
+
+# can either use grid_setup to read in old data or create new grid data	
+
+fix grid/vtherm thermal 319809 218429 128990 0.89e-3 4.114
+
+compute complex vx ft_vtherm_x norm
+compute complex vy ft_vtherm_y norm
+compute complex vz ft_vtherm_z norm
+
+
+compute complex Zx ft_Znoise_x norm
+compute complex Zy ft_Znoise_y norm
+compute complex Zz ft_Znoise_z norm
+
+dump realgrid grid output/field 1 attributes 3 vtherm_x vtherm_y vtherm_z
+dump fftgrid ftgrid output/ft_field 1 attributes 6 c_vx c_vy c_vz c_Zx c_Zy c_Zz
+
+
+timestep 0
+dt 1e-4
+
+run 1

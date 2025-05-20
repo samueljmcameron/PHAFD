@@ -12,9 +12,16 @@ grid_populate sphere modelh 80.0 25.0 0.9 0.5
 fix grid/floryhuggins chempot temp 1.0 chi 1.0 volFH 1.0
 fix grid/gradphi grad immediate
 
-fix grid/velocity velocity 319809 218429 128990 1.0 1.0
+fix grid/v_dot_gradphi v_dot_gradphi 319809 218429 128990 1.0 0.0
 
-dump realgrid grid output/field 1 attributes 4 phi velocity_x velocity_y velocity_z
+
+compute complex v_dot_gradphi ft_v_dot_gradphi norm
+
+
+dump realgrid grid output/field 1 attributes 2 phi v_dot_gradphi
+
+dump fftgrid ftgrid output/ft_field 1 attributes 1 c_v_dot_gradphi
+
 
 
 timestep 0

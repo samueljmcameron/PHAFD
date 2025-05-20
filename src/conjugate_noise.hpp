@@ -30,8 +30,6 @@ private:
 
   std::uniform_real_distribution<double> real_dist;
 
-  double normalization;
-
   double dt;
 
   int seed;

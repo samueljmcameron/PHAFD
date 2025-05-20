@@ -59,6 +59,11 @@ public:
   std::array<fftw_plan,3> forward_vdet, backward_vdet;
   std::array<fftw_plan,3> forward_vtherm, backward_vtherm;
   fftw_plan forward_pressure,backward_pressure;
+
+  std::unique_ptr<fftwArr::array3D<double>> v_dot_gradphi;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_v_dot_gradphi;
+  fftw_plan forward_v_dot_gradphi, backward_v_dot_gradphi;
+
   
 
   /* Model H arrays (not already established) */
@@ -66,8 +71,6 @@ public:
   std::unique_ptr<fftwArr::array3D<double>> vtherm_dot_gradphi;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_vtherm_dot_gradphi;
 
-  std::array<std::unique_ptr<fftwArr::array3D<double>>,3> chempot_gradphi;
-  std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_chempot_gradphi;
 
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_Znoise;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_noise;

@@ -31,6 +31,14 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
     fftw3_arr = grid->ft_vtherm[1].get();
   } else if (arrname == "ft_vtherm_z") {
     fftw3_arr = grid->ft_vtherm[2].get();
+  } else if (arrname == "ft_vdet_x") {
+    fftw3_arr = grid->ft_vdet[0].get();
+  } else if (arrname == "ft_vdet_y") {
+    fftw3_arr = grid->ft_vdet[1].get();
+  } else if (arrname == "ft_vdet_z") {
+    fftw3_arr = grid->ft_vdet[2].get();
+  } else if (arrname == "ft_v_dot_gradphi") {
+    fftw3_arr = grid->ft_v_dot_gradphi.get();
   } else if (arrname == "ft_Znoise_x") {
     fftw3_arr = grid->ft_Znoise[0].get();
   } else if (arrname == "ft_Znoise_y") {
