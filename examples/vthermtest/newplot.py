@@ -36,6 +36,6 @@ for ni,(key,val) in enumerate(data[1].items()):
     ax.plot(qbins[1:],L**6*val[1:],'o',label=f"{key}")
 
     if key in ['c_Zx','c_Zy','c_Zz']:
-        ax.plot(qbins[1:],noise(qbins[1:],visc,dt,L),'k-')
+        ax.plot(qbins[1:],noise(qbins[1:],visc,dt,L)*N**6,'k-')
 
     plt.show()

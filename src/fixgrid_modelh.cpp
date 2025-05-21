@@ -8,7 +8,11 @@
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_modelh.hpp"
-#include "conjugate_volfrac.hpp"
+#include "fixgrid_gradphi.hpp"
+#include "fixgrid_velocity.hpp"
+#include "fixgrid_vdet.hpp"
+#include "fixgrid_vtherm.hpp"
+#include "conjugate_noise.hpp"
 #include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
@@ -20,169 +24,196 @@ FixGridModelH::FixGridModelH(PHAFD *phafd) : Fix(phafd) {};
 
 void FixGridModelH::init(const std::vector<std::string> &v_line)
 /*
-  v_line should take form:
-
-  fixname,seedc,seedx,seedy,seedz,mobility,viscosity,temperature
-
+  v_line should have form
+  
+  fixname,conj_seed, vseedx, vseedy, vseedz
+  
+  followed by the key value pairs
+  
+  mobility, value
+  temp, value
+  viscosity, value
+  
+  in some order.
  */
 {
 
   Fix::init(v_line);
 
-  std::vector<std::string> new_v_line;
-
-
-  int iarg = 1;
-  for (; iarg < 5; iarg++)
-    seeds.at(iarg-1) = std::stoi(v_line.at(iarg));
-
-
-  seeds.at(0) = utility::make_unique_seed(seeds.at(0),world,commbrick->me,commbrick->nprocs);
   
 
-  mobility = temp = volFH = gamma = viscosity = 1;
+
+
+  int conj_seed = utility::make_unique_seed(std::stoi(v_line.at(1)),
+					    world,commbrick->me,
+					    commbrick->nprocs);
+
+
+  std::vector<int> velocity_seeds;
+  int iarg = 2;
+  for (; iarg < 5; iarg ++) 
+    velocity_seeds.push_back(
+			     utility::make_unique_seed(
+				       std::stoi(v_line.at(iarg)
+						 ),
+				       world,commbrick->me,
+				       commbrick->nprocs)
+			     );
+
+  mobility = -1;
+  double temp = -1;
+  double viscosity = -1;
+
 
   while (iarg < v_line.size()) {
 
     if (v_line[iarg] == "mobility") {
       mobility = std::stod(v_line[iarg+1]);
       iarg += 2;
+
     } else if (v_line[iarg] == "temp") {
       temp = std::stod(v_line[iarg+1]);
-      
-      iarg += 2;
-    } else if (v_line[iarg] == "volFH") {
-      volFH = std::stod(v_line[iarg+1]);
-      iarg += 2;
-    } else if (v_line[iarg] == "gamma") {
-      gamma = std::stod(v_line[iarg+1]);
       iarg += 2;
     } else if (v_line[iarg] == "viscosity") {
-      gamma = std::stod(v_line[iarg+1]);
+      viscosity = std::stod(v_line[iarg+1]);
       iarg += 2;
     } else {
-      throw std::runtime_error("Error: invalid fix grid/modelb command");
+      throw std::runtime_error("Error: invalid fix grid/modelh command");
     }
   }
 
 
-  conjugate_phinoise = std::make_unique<ConjugateNoise>(phafd);
-  // build string vector for concentration noise
+  if (mobility < 0) 
+    throw std::runtime_error("Error: invalid mobility in fix grid/modelh command");
+
+  if (temp < 0) 
+    throw std::runtime_error("Error: invalid temp in fix grid/modelh command");
+
+  if (viscosity < 0) 
+    throw std::runtime_error("Error: invalid viscosity in fix grid/modelh command");
+  
+
+  
+  conjugate = std::make_unique<ConjugateNoise>(phafd);
+
+  std::vector<std::string> new_v_line;
   new_v_line.push_back("concentration");
   new_v_line.push_back("seed");
-  new_v_line.push_back(std::to_string(seeds.at(0)));
+  new_v_line.push_back(std::to_string(conj_seed));
+
   new_v_line.push_back("mobility");
   new_v_line.push_back(std::to_string(mobility));
   new_v_line.push_back("temp");
-  new_v_line.push_back(std::to_string(temp));
+  new_v_line.push_back(std::to_string(temp));  
 
-  conjugate_phinoise->readCoeffs(new_v_line);
+  
+  conjugate->readCoeffs(new_v_line);
 
 
+
+
+  local_fixes.push_back(std::make_unique<FixGridVelocity>(phafd));
+  
+  // clear the array of strings to rewrite it for velocities
   new_v_line.clear();
-  new_v_line.push_back(v_line.at(0) + std::string("_vtherm"));
-  for (int i = 1; i < 4; i++)
-    new_v_line.push_back(std::to_string(seeds.at(i)));
-  new_v_line.push_back("viscosity");
+
+  new_v_line.push_back(name + "_velocity");
+  for (auto &seed : velocity_seeds) 
+    new_v_line.push_back(std::to_string(seed));
+
   new_v_line.push_back(std::to_string(viscosity));
-  new_v_line.push_back("temp");
   new_v_line.push_back(std::to_string(temp));
+  new_v_line.push_back("immediate");
 
-  fixgridvtherm = std::make_unique<FixGridVtherm>(phafd);
-  fixgridvtherm->init(new_v_line);
-  
-  // re-write new_vline to include a fix for computing the gradient of phi
+  local_fixes.back()->init(new_v_line);
+
+  local_fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
+
+  // clear the array of strings to rewrite it for gradphi
+  new_v_line.clear();
+  new_v_line.push_back(name + "_gradphi");
+  new_v_line.push_back("immediate");
+
+  local_fixes.back()->init(new_v_line);
+
+  /*
+
+    fixgrid_v_dot_gradphi = std::make_unique<FixGridVdotGradPhi>(phafd);
+
+  // clear the array of strings to rewrite it for v_dot_gradphi
   new_v_line.clear();
 
-  new_v_line.push_back(v_line.at(0)+std::string("_gradphi"));
-  new_v_line.push_back("every");
-  fixgridgradphi = std::make_unique<FixGridGradPhi>(phafd);
-  fixgridgradphi->init(new_v_line);
+  new_v_line.push_back(name + "_v_dot_gradphi");
+  for (auto &seed : velocity_seeds) 
+    new_v_line.push_back(std::to_string(seed));
+
+  new_v_line.push_back(std::to_string(viscosity));
+  new_v_line.push_back(std::to_string(temp));
+  new_v_line.push_back("immediate");
 
   
+  fixgrid_v_dot_gradphi->init(new_v_line);  
+  */
+
+
 }
 
-  
+
 void FixGridModelH::setup()
 {
 
-  fixgridvtherm->setup();
+
   normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
 
+  for (auto &lf : local_fixes)
+    lf->setup();
 
+  
 }
 
 void FixGridModelH::reset_dt()
 {
 
   dt = integrate->dt;
-
-
-  conjugate_phinoise->reset_dt(dt);
-
-  
-  fixgridvtherm->reset_dt();
+  conjugate->reset_dt(dt);
+  for (auto &lf : local_fixes)
+    lf->reset_dt();
 }
 
 
 void FixGridModelH::start_of_step()
 {
-  // compute grad phi in real space, also phi in fourier space
-  fixgridgradphi->start_of_step();
+  for (auto &lf : local_fixes)
+    lf->start_of_step();
 
-  // compute noises in fourier space
-  conjugate_phinoise->update();
+}
 
-  // and compute v_therm in fourier space;
-  fixgridvtherm->start_of_step();
-
-  // then compute vtherm.gradphi in real space
-
-  compute_vtherm_dot_gradphi();
-  
-  // and the grad\tilde{phi} in real space
-  compute_gradphitilde();
-
-  // then compute the  vtherm.(gradphi+gradphitilde) in fourier space
-  compute_vtherm_dot_gradphi_plus_gradphitilde();
-  
+void FixGridModelH::initial_integrate()
+{
+  for (auto &lf : local_fixes)
+    lf->initial_integrate();
 
 }
 
 void FixGridModelH::post_force()
 {
 
-  double qx,qy,qz,q2;
-  
-  for (int i = 0; i < grid->chempot->Nz(); i++) {
-    qz = grid->qzs[i];
-    for (int j = 0; j < grid->chempot->Ny(); j++) {
-      qy = grid->qys[j];
-      for (int k = 0; k < grid->chempot->Nx(); k++) {
+  for (auto &lf : local_fixes)
+    lf->post_force();
 
-
-
-	qx = domain->dqx()*k;
-
-	q2 = qx*qx + qy*qy + qz*qz;
-
-	
-	(*grid->chempot)(i,j,k) 
-	  += temp/volFH*gamma*(*grid->laplace_phi)(i,j,k);
-      }
-    }
-  }
 }
+
 
 void FixGridModelH::pre_final_integrate()
 {
 
 
   fftw_execute(grid->forward_chempot);
+  for (auto &lf : local_fixes)
+    lf->pre_final_integrate();
 
-  compute_vdet();
 
-  didnotintegrate = true;
+  //didnotintegrate = true;
   return;
 }
 
@@ -190,8 +221,43 @@ void FixGridModelH::pre_final_integrate()
 void FixGridModelH::final_integrate()
 {
 
+  for (auto &lf : local_fixes)
+    lf->final_integrate();
+  
   conjugate->update();
-  didnotintegrate = false;
+
+  int local0start = grid->ft_phi->get_local0start();
+
+  int localNx = grid->ft_phi->Nx();
+  int localNy = grid->ft_phi->Ny();
+  int localNz = grid->ft_phi->Nz();
+
+  if (commbrick->me == 0) {
+    origin_update();
+
+    for (int nx = 1; nx < localNx; nx++)
+      point_update(0,0,nx);
+    
+    for (int ny = 1; ny < localNy; ny++)
+      for (int nx = 0; nx < localNx; nx++)
+	point_update(0,ny,nx);
+
+    
+    for (int nz = 1; nz < localNz; nz++)
+      for (int ny = 0; ny < localNy; ny++)
+	for (int nx = 0; nx < localNx; nx++)
+	  point_update(nz,ny,nx);
+
+  } else {
+    for (int nz = 0; nz < localNz; nz++)
+      for (int ny = 0; ny < localNy; ny++)
+	for (int nx = 0; nx < localNx; nx++)
+	  point_update(nz,ny,nx);
+
+
+  }
+  
+  //didnotintegrate = false;
   
   return;
 }
@@ -200,111 +266,74 @@ void FixGridModelH::final_integrate()
 void FixGridModelH::post_final_integrate()
 {
 
+
+  for (auto &lf : local_fixes)
+    lf->post_final_integrate();
+  
   fftw_execute(grid->backward_phi);
 
-  if (didnotintegrate) {
-    double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-    
-    (*grid->phi) /= factor;
-  }
+
+  int localNx = grid->phi->Nx();
+  int localNy = grid->phi->Ny();
+  int localNz = grid->phi->Nz();
+
+  for (int i = 0; i < localNz; i++)
+    for (int j = 0; j < localNy; j++)
+      for (int k = 0; k < localNx; k++)
+	for (int dim = 0; dim < 3; dim++)
+	  (*grid->phi)(i,j,k) +=
+	    (*grid->velocity[dim])(i,j,k)*(*grid->gradphi[dim])(i,j,k)*dt;
+
+
+  // if (didnotintegrate) {
+  //  double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
+  //  
+  //  (*grid->phi) /= factor;
+  //}
   
   return;
 }
 
 
-
-void FixGridModelH::compute_vtherm_dot_gradphi()
+void FixGridModelH::end_of_step()
 {
-
-
-  int localNx = vtherm_dot_gradphi->Nx();
-  int localNy = vtherm_dot_gradphi->Ny();
-  int localNz = vtherm_dot_gradphi->Nz();
-  
-  for (int i = 0; i < localNz; i++) 
-    for (int j = 0; j < localNy; j++) 
-      for (int k = 0; k < localNx; k++)
-	(*vtherm_dot_gradphi)(i,j,k) = (*vtherm[0])(i,j,k)*(*gradphi[0])(i,j,k)
-	  +(*vtherm[1])(i,j,k)*(*gradphi[1])(i,j,k)
-	  +(*vtherm[2])(i,j,k)*(*gradphi[2])(i,j,k);
-
-
-  fftw_execute(forward_vtherm_dot_gradphi);
+  for (auto &lf : local_fixes)
+    lf->end_of_step();
 
 }
 
 
-void FixGridModelH::compute_vtherm_dot_gradphi_plus_gradphitilde()
+void FixGridModelH::point_update(int i , int j, int k)
 {
 
-
-  int localNx = vtherm_dot_gradphi->Nx();
-  int localNy = vtherm_dot_gradphi->Ny();
-  int localNz = vtherm_dot_gradphi->Nz();
+  double qx,qy,qz,q2;
   
-  for (int i = 0; i < localNz; i++) 
-    for (int j = 0; j < localNy; j++) 
-      for (int k = 0; k < localNx; k++)
-	(*vtherm_dot_gradphi)(i,j,k)
-	  = (*vtherm[0])(i,j,k)*((*gradphi[0])(i,j,k)+(*gradphitilde[0])(i,j,k))
-	  +(*vtherm[1])(i,j,k)*((*gradphi[1])(i,j,k)+(*gradphitilde[1])(i,j,k))
-	  +(*vtherm[2])(i,j,k)*((*gradphi[2])(i,j,k)+(*gradphitilde[2])(i,j,k));
+  qz = grid->qzs[i];
+  qy = grid->qys[j];
+  qx = domain->dqx()*k;
+
+  q2 = qx*qx + qy*qy + qz*qz;
 
 
-  fftw_execute(forward_vtherm_dot_gradphi);
+  // partially update the fourier space phi, ignoring those pieces
+  // which are better off being in real space update.
 
+  // for example, not include v.grad(phi) part here because it is
+  // already present in real space.
+  (*grid->ft_phi)(i,j,k)
+    = ((*grid->ft_phi)(i,j,k)-mobility*q2*dt*(*grid->ft_chempot)(i,j,k)
+       + (*grid->ft_noise)(i,j,k))*normalization;
+  
+  return;
+  
 }
 
 
-
-void compute_gradphitilde()
+void FixGridModelH::origin_update()
 {
-  double normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
 
-  const int local0start = grid->ft_phi->get_local0start();
-  const int globalNy = grid->ft_boxgrid[1];
-  const int globalNz = grid->ft_boxgrid[2];
-  
-    
-  std::complex<double> idqx(0,domain->dqx());
-  std::complex<double> idqy(0,domain->dqy());
-  std::complex<double> idqz(0,domain->dqz());
-  
-  double l,m,n;
-  
-  
-  std::complex<double> tmp;
-  
-  for (int i = 0; i < grid->ft_phi->Nz(); i++) {
-    
-    if (i + local0start > globalNz/2) 
-      l = -globalNz + i + local0start;
-    else
-      l = i + local0start;
-    
-    for (int j = 0; j < grid->ft_phi->Ny(); j++) {
-      
-      if (j > globalNy/2)
-	m = -globalNy + j;
-      else
-	m = j;
-      
-      for (int k = 0; k < grid->ft_phi->Nx(); k++) {
-	
-	n = k;
-	tmp = ft_noise(i,j,k)+(ft_phi(i,j,k)-dt*ft_vtherm_dot_gradphi(i,j,k))*normalization;
-	
-	(*grid->ft_gradphitilde[0])(i,j,k) = tmp*idqx*n;
-	// SWAP HERE SINCE FFTW IS DOING A TRANSPOSED FT
-	(*grid->ft_gradphitilde[1])(i,j,k) = tmp*idqz*l; 
-	(*grid->ft_gradphitilde[2])(i,j,k) = tmp*idqy*m;
-	
-	
-      }
-    }
-  }
+  (*grid->ft_phi)(0,0,0) *= normalization;
 
-  for (int i = 0; i < 3; i++)
-    fftw_execute(backward_gradphitilde[i]);
-  
+  return;
 }
+

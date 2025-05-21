@@ -81,6 +81,7 @@ void FixGridVtherm::init(const std::vector<std::string> &v_line)
   
 void FixGridVtherm::setup()
 {
+  normalization = (grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2]);
 
 }
 
@@ -112,8 +113,10 @@ void FixGridVtherm::start_of_step()
 void FixGridVtherm::post_final_integrate() {
 
   if (immediate_ifft) return;
-  for (int i = 0; i < 3; i++) 
+  for (int i = 0; i < 3; i++) {
     fftw_execute(grid->backward_vtherm[i]);
+    (*grid->vtherm[i]) /= normalization;
+  }
 }
 
 
@@ -151,6 +154,11 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
   q2 = qx*qx + qy*qy + qz*qz;
 
 
+  double denom = viscosity;
+  if (immediate_ifft)
+    denom *= normalization;
+
+  
   if (q2 == 0) {
     (*ft_vtherm_x)(i,j,k) = 0.0;
     (*ft_vtherm_y)(i,j,k) = 0.0;
@@ -159,12 +167,12 @@ void FixGridVtherm::set_vtherm(int i, int j, int k) {
 
 
 
-    Txx = (1.0-qx*qx/q2)/(q2*viscosity);
-    Txy = (-qx*qy/q2)/(q2*viscosity);  
-    Txz = (-qx*qz/q2)/(q2*viscosity);
-    Tyy = (1-qy*qy/q2)/(q2*viscosity);
-    Tyz = (-qy*qz/q2)/(q2*viscosity);
-    Tzz = (1-qz*qz/q2)/(q2*viscosity);
+    Txx = (1.0-qx*qx/q2)/(q2*denom);
+    Txy = (-qx*qy/q2)/(q2*denom);  
+    Txz = (-qx*qz/q2)/(q2*denom);
+    Tyy = (1-qy*qy/q2)/(q2*denom);
+    Tyz = (-qy*qz/q2)/(q2*denom);
+    Tzz = (1-qz*qz/q2)/(q2*denom);
 
 
     (*ft_vtherm_x)(i,j,k) = (Txx*(*ft_Znoise_x)(i,j,k)+Txy*(*ft_Znoise_y)(i,j,k)

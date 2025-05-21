@@ -30,8 +30,8 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
     gradphi[i] = nullptr;
     ft_gradphi[i] = nullptr;
   }
-  laplacephi = nullptr;
-  ft_laplacephi = nullptr;
+  laplacianphi = nullptr;
+  ft_laplacianphi = nullptr;
 
 
   /* velocity arrays */
@@ -72,7 +72,7 @@ Grid::~Grid() {
     for (int i = 0; i < 3; i++) {
       fftw_destroy_plan(backward_gradphi[i]);
     }
-    fftw_destroy_plan(backward_laplacephi);
+    fftw_destroy_plan(backward_laplacianphi);
   }
 
   if (velocity_set) {
@@ -286,12 +286,12 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
   }
 
 
-  if (!laplacephi) 
-    laplacephi = std::make_unique<fftwArr::array3D<double>
-				 >(world,"laplacephi",Nx,Ny,Nz);
-  if (!ft_laplacephi)
-    ft_laplacephi = std::make_unique<fftwArr::array3D<std::complex<double>>
-				    >(world,"ft_laplacephi",Nx,Nz,Ny);
+  if (!laplacianphi) 
+    laplacianphi = std::make_unique<fftwArr::array3D<double>
+				 >(world,"laplacianphi",Nx,Ny,Nz);
+  if (!ft_laplacianphi)
+    ft_laplacianphi = std::make_unique<fftwArr::array3D<std::complex<double>>
+				    >(world,"ft_laplacianphi",Nx,Nz,Ny);
 
   
   
@@ -338,10 +338,10 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
 						 gradphi[1]->data(),world,// <---HERE!! NOT A BUG!
 						 FFTW_MPI_TRANSPOSED_IN);
 
-  backward_laplacephi = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
+  backward_laplacianphi = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
 						 reinterpret_cast<fftw_complex*>
-						 (ft_laplacephi->data()),
-						 laplacephi->data(),world,
+						 (ft_laplacianphi->data()),
+						 laplacianphi->data(),world,
 						 FFTW_MPI_TRANSPOSED_IN);
 
   

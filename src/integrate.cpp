@@ -114,7 +114,7 @@ void Integrate::run()
     for (auto &compute: computes)
       compute->start_of_step();
     
-    for (auto &fix: fixes)
+    for (auto &fix: fixes) // mostly fft of grid variables
       fix->start_of_step();
 
 
@@ -170,7 +170,8 @@ void Integrate::run()
       compute->in_fourier();
 
     
-    // updating stuff (including fourier transformed phi and chempot
+    // updating stuff (including fourier transformed phi and chempot and
+    // normalising these quantities appropriately)
     for (auto &fix : fixes)
       fix->final_integrate();
 

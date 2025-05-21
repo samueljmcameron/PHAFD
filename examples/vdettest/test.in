@@ -3,14 +3,14 @@
 
 domain boxdims 256.0 256.0 256.0 boxorigin -128.0 -128.0 -128.0
 
-grid_style 256 256 256 modelh
+grid_style 128 128 128 modelh
 
 grid_populate sphere modelh 80.0 25.0 0.9 0.5
 
 # can either use grid_setup to read in old data or create new grid data	
 
 fix grid/floryhuggins chempot temp 1.0 chi 1.0 volFH 1.0
-fix grid/gradphi grad immediate
+fix grid/gradphi grad immediate ftphi
 
 fix grid/vdet vdet 1.0
 

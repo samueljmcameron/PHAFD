@@ -16,7 +16,7 @@
 #include "fixgrid_gradphi.hpp"
 #include "fixgrid_modelb.hpp"
 #include "fixatom_drag.hpp"
-#include "fixgrid_laplacephi.hpp"
+#include "fixgrid_laplacianphi.hpp"
 #include "beadrodpmer/no_tether.hpp"
 #include "beadrodpmer/single_tether.hpp"
 #include "beadrodpmer/double_tether.hpp"
@@ -234,10 +234,10 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
-      } else if (firstword == "grid/laplacephi") {
+      } else if (firstword == "grid/laplacianphi") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
-	fixes.push_back(std::make_unique<FixGridLaplacePhi>(phafd));
+	fixes.push_back(std::make_unique<FixGridLaplacianPhi>(phafd));
       } else if (firstword == "grid/modelb") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");

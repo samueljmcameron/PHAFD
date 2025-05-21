@@ -7,9 +7,6 @@
 
 #include <memory>
 
-namespace psPDE {
-  class FixGridFloryHuggins;
-}
 
 
 namespace PHAFD_NS {
@@ -33,8 +30,9 @@ public:
   
 private:
 
-  double temp,volFH,chi;
-  
+  double chemical_potential(double);
+
+  double temp,volFH,chi,kappa;
 };
 
 }

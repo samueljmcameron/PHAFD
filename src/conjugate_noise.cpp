@@ -17,7 +17,7 @@ ConjugateNoise::ConjugateNoise(PHAFD *phafd)
 void ConjugateNoise::readCoeffs(const std::vector<std::string> &v_line)
 {
 
-  damping = temp = 1;
+  damping = temp = -1;
 
   
   if (v_line.at(0) == "concentration") {
@@ -55,6 +55,12 @@ void ConjugateNoise::readCoeffs(const std::vector<std::string> &v_line)
     }
   }
 
+  if (damping < 0)
+    throw std::runtime_error("Error: invalid damping in conjugate/noise command");
+
+  if (temp < 0)
+    throw std::runtime_error("Error: invalid damping in conjugate/noise command");
+  
 
   gen.seed(seed);
 
@@ -66,11 +72,15 @@ void ConjugateNoise::readCoeffs(const std::vector<std::string> &v_line)
 void ConjugateNoise::reset_dt(double timestep)
 {
   dt = timestep;
-  double invLcubed = 1.0/(domain->period[0]*domain->period[1]*domain->period[2]);
+  double invLcubed = 1.0/(domain->period[0]*domain->period[1]
+			  *domain->period[2]);
+
+  double un_normalization = (grid->ft_boxgrid[0]*grid->ft_boxgrid[1]
+			     *grid->ft_boxgrid[2]);
 
 
-  complexprefactor = sqrt(12*temp*damping*invLcubed);
-  realprefactor = sqrt(24*temp*damping*invLcubed);
+  complexprefactor = sqrt(12*temp*damping*invLcubed)*un_normalization;
+  realprefactor = sqrt(24*temp*damping*invLcubed)*un_normalization;
   
   sqrtdt = sqrt(dt);
 

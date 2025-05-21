@@ -50,6 +50,7 @@ void FixGridVdet::setup()
 {
 
   grid->set_qs(*ft_vdet_x);
+  normalization = (grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
 
   
 }
@@ -97,8 +98,23 @@ void FixGridVdet::pre_final_integrate()
 
 void FixGridVdet::post_final_integrate() {
   if (immediate_ifft) return;
+
+
+  /* IMPORTANT!!!! THE TWO OPERATIONS DONE BELOW MUST BE DONE
+     IN SEPARATE LOOPS, SINCE THE fftw_execute COMMAND SWAPS
+     vdet[1] AND vdet[2] !!!
+  */
+
+  
   for (int i = 0; i < 3; i++) 
     fftw_execute(grid->backward_vdet[i]);
+
+  /* DO NOT COMBINE THIS LOOP WITH THE ABOVE LOOP!!! */
+  for (int i = 0; i < 3; i++) {
+    (*grid->vdet[i]) /= normalization;
+  }
+
+  
 }
 
 
@@ -107,7 +123,6 @@ void FixGridVdet::post_final_integrate() {
 void FixGridVdet::set_vdet(int i, int j, int k) {
 
   double qx,qy,qz,q2,Txx,Txy,Txz,Tyy,Tyz,Tzz;
-  double normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
 
   std::complex<double> tmp_x,tmp_y,tmp_z;
 
@@ -118,6 +133,10 @@ void FixGridVdet::set_vdet(int i, int j, int k) {
 
 
   q2 = qx*qx + qy*qy + qz*qz;
+
+  double denom = viscosity;
+  if (immediate_ifft)
+    denom *= normalization;
 
 
   if (q2 == 0) {
@@ -130,23 +149,23 @@ void FixGridVdet::set_vdet(int i, int j, int k) {
 
 
 
-    Txx = (1.0-qx*qx/q2)/(q2*viscosity);
-    Txy = (-qx*qy/q2)/(q2*viscosity);
-    Txz = (-qx*qz/q2)/(q2*viscosity);
-    Tyy = (1.0-qy*qy/q2)/(q2*viscosity);
-    Tyz = (-qy*qz/q2)/(q2*viscosity);
-    Tzz = (1.0-qz*qz/q2)/(q2*viscosity);
+    Txx = (1.0-qx*qx/q2)/(q2*denom);
+    Txy = (-qx*qy/q2)/(q2*denom);
+    Txz = (-qx*qz/q2)/(q2*denom);
+    Tyy = (1.0-qy*qy/q2)/(q2*denom);
+    Tyz = (-qy*qz/q2)/(q2*denom);
+    Tzz = (1.0-qz*qz/q2)/(q2*denom);
 
     tmp_x = (*ft_vdet_x)(i,j,k);
     tmp_y = (*ft_vdet_y)(i,j,k);
     tmp_z = (*ft_vdet_z)(i,j,k);
 
     (*ft_vdet_x)(i,j,k) = (Txx*tmp_x+Txy*tmp_z
-			   + Txz*tmp_y)*normalization;
+			   + Txz*tmp_y);
     (*ft_vdet_y)(i,j,k) = (Txy*tmp_x+Tyy*tmp_z
-			   + Tyz*tmp_y)*normalization;
+			   + Tyz*tmp_y);
     (*ft_vdet_z)(i,j,k) = (Txz*tmp_x+Tyz*tmp_z
-			   + Tzz*tmp_y)*normalization;
+			   + Tzz*tmp_y);
     
 
   }

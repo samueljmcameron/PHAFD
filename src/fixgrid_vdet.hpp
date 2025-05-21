@@ -46,7 +46,7 @@ private:
   fftwArr::array3D<double> *vdet_x,*vdet_y, *vdet_z;
   
   std::vector<double> qys,qzs;
-
+  double normalization;
   double viscosity,temp;
 
 };

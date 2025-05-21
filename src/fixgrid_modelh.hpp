@@ -1,6 +1,6 @@
 
-#ifndef PHAFD_FIXGRID_MODELB_HPP
-#define PHAFD_FIXGRID_MODELB_HPP
+#ifndef PHAFD_FIXGRID_MODELH_HPP
+#define PHAFD_FIXGRID_MODELH_HPP
 
 
 #include "fix.hpp"
@@ -13,35 +13,36 @@ namespace fftwArr {
 }
 
 namespace PHAFD_NS {
-class FixGridGradPhi;
+
 class ConjugateNoise;
 
 
-class FixGridModelB : public Fix {
+class FixGridModelH : public Fix {
 public:
-  FixGridModelB(PHAFD *);
+  FixGridModelH(PHAFD *);
 
   virtual void init(const std::vector<std::string> &) override;
   
   virtual void setup() override;
-
-  virtual void start_of_step() override;
+  virtual void reset_dt() override;
   
-  virtual void initial_integrate() override {};
-  virtual void post_force() override {};
+  virtual void start_of_step() override;
+  virtual void initial_integrate() override;
+  virtual void post_force() override ;
   virtual void pre_final_integrate() override;
   virtual void final_integrate() override;
   virtual void post_final_integrate() override;
-  
-  virtual void reset_dt() override;
+  virtual void end_of_step() override ;
 
-  virtual void end_of_step() override {};
+  
 private:
 
   std::unique_ptr<ConjugateNoise> conjugate;
 
+  std::vector<std::unique_ptr<Fix>> local_fixes; // store velocity and gradphi fixes.
+
   double normalization;
-  double mobility,temp;
+  double mobility;
 
   void point_update(int,int,int);
 

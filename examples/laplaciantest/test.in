@@ -3,16 +3,19 @@
 
 domain boxdims 256.0 256.0 256.0 boxorigin -128.0 -128.0 -128.0
 
-grid_style 64 64 64 concentration
+grid_style 128 128 128 concentration
 
 grid_populate sphere concentration 60.0 50.0 1.0 0.3
 
 # can either use grid_setup to read in old data or create new grid data	
 
-fix grid/laplacephi laplace every
-fix grid/gradphi grad every
+fix grid/laplacianphi laplacian ftphi
+fix grid/gradphi grad
 
-dump realgrid grid output/field 1 attributes 5 phi laplacephi gradphi_x gradphi_y gradphi_z
+
+
+dump realgrid grid output/field 1 attributes 5 phi laplacianphi gradphi_x gradphi_y gradphi_z
+
 
 
 timestep 0

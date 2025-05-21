@@ -31,7 +31,7 @@ void FixGridFloryHuggins::init(const std::vector<std::string> &v_line)
 
 
   num_less_zero = num_great_zero = 0;
-  temp = volFH = chi = 1;
+  temp = volFH = chi = kappa = 1;
 
   int iarg = 0;
 
@@ -61,13 +61,11 @@ void FixGridFloryHuggins::setup()
 
 }
 
-  
+
 void FixGridFloryHuggins::post_force()
 {
 
 
-  
-  
   for (int i = 0; i < grid->chempot->Nz(); i++) 
     for (int j = 0; j < grid->chempot->Ny(); j++)
       for (int k = 0; k < grid->chempot->Nx(); k++) {
@@ -78,8 +76,15 @@ void FixGridFloryHuggins::post_force()
 	  (*grid->phi)(i,j,k) = 1-((*grid->phi)(i,j,k)-1);
 	  num_great_zero += 1;
 	}
-	(*grid->chempot)(i,j,k) 
-	  += temp/volFH*(log((*grid->phi)(i,j,k)/(1-(*grid->phi)(i,j,k)))+chi*(1-2*(*grid->phi)(i,j,k)));
+	(*grid->chempot)(i,j,k) += chemical_potential((*grid->phi)(i,j,k));
       }
+}
+
+
+
+double FixGridFloryHuggins::chemical_potential(double phi)
+{
+
+  return temp/volFH*(log(phi/(1-phi))+chi*(1-2*phi));
 
 }

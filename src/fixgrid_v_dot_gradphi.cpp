@@ -51,6 +51,8 @@ void FixGridVdotGradPhi::init(const std::vector<std::string> &v_line)
 void FixGridVdotGradPhi::setup()
 {
   velocity->setup();
+  normalization = (grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2]);
+
 
 }
 
@@ -85,12 +87,8 @@ void FixGridVdotGradPhi::pre_final_integrate()
       }
 
 
-  if (!immediate_ifft) {
+  if (!immediate_ifft) 
     fftw_execute(grid->forward_v_dot_gradphi);
-    double normalization = (grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
-
-    (*grid->ft_v_dot_gradphi) /= normalization;
-  }
 
 }
 
@@ -100,6 +98,8 @@ void FixGridVdotGradPhi::post_final_integrate()
   if (immediate_ifft)
     return;
   fftw_execute(grid->backward_v_dot_gradphi);
+  (*grid->v_dot_gradphi) /= normalization;
+
 }
 
 

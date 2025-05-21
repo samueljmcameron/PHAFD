@@ -18,10 +18,11 @@ public:
   virtual void setup() override;
 
   virtual void start_of_step() override;
+  virtual void post_force() override;
   virtual void post_final_integrate() override;
   
   virtual void initial_integrate() override {};
-  virtual void post_force() override {};
+
   virtual void pre_final_integrate() override {};
   virtual void final_integrate() override {};
 
@@ -30,8 +31,8 @@ public:
   virtual void end_of_step() override {};
 private:
 
-
-  bool once;
+  double normalization;
+  bool ftphi_flag;
 };
 
 }

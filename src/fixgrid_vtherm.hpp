@@ -49,6 +49,7 @@ private:
   
   std::vector<double> qys,qzs;
 
+  double normalization;
   double viscosity,temp;
 
   

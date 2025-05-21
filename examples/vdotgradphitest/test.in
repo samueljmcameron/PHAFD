@@ -10,9 +10,9 @@ grid_populate sphere modelh 80.0 25.0 0.9 0.5
 # can either use grid_setup to read in old data or create new grid data	
 
 fix grid/floryhuggins chempot temp 1.0 chi 1.0 volFH 1.0
-fix grid/gradphi grad immediate
+fix grid/gradphi grad immediate ftphi
 
-fix grid/v_dot_gradphi v_dot_gradphi 319809 218429 128990 1.0 0.0
+fix grid/v_dot_gradphi v_dot_gradphi 319809 218429 128990 1.0 1.0
 
 
 compute complex v_dot_gradphi ft_v_dot_gradphi norm

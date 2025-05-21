@@ -28,19 +28,19 @@ public:
   std::unique_ptr<fftwArr::array3D<double>> phi; // concentration field
   std::unique_ptr<fftwArr::array3D<double>> chempot; // chemical potential
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> gradphi; // gradients
-  std::unique_ptr<fftwArr::array3D<double>> laplacephi; // chemical potential
+  std::unique_ptr<fftwArr::array3D<double>> laplacianphi; // chemical potential
   
   // and their fourier transforms
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_phi;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_chempot;
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_gradphi;
-  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_laplacephi;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_laplacianphi;
   
   // and their fftw plans
   fftw_plan forward_phi, backward_phi;
   fftw_plan forward_chempot, backward_chempot;
   std::array<fftw_plan,3> backward_gradphi;
-  fftw_plan backward_laplacephi;
+  fftw_plan backward_laplacianphi;
 
 
   /* velocity (Navier-stokes) arrays */

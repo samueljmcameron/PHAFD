@@ -40,6 +40,7 @@ public:
   
 private:
 
+  double normalization;
   std::unique_ptr<FixGridVelocity> velocity;
   
 
