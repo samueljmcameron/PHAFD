@@ -212,5 +212,5 @@ int Domain::set_image() const
 }
 
 double Domain::dqx() { return 2*3.141592/period[0];};
-double Domain::dqy() { return 2*3.141592/period[2];};  
-double Domain::dqz() { return 2*3.141592/period[1];};
+double Domain::dqy() { return 2*3.141592/period[1];};  
+double Domain::dqz() { return 2*3.141592/period[2];};

@@ -13,7 +13,6 @@
 #include "fixatom_semiflexible.hpp"
 #include "fixgrid_conjugate.hpp"
 #include "fixgrid_floryhuggins.hpp"
-#include "fixgrid_gradphi.hpp"
 #include "fixgrid_modelb.hpp"
 #include "fixatom_drag.hpp"
 #include "fixgrid_laplacianphi.hpp"
@@ -41,7 +40,12 @@
 #include "fixgrid_vdet.hpp"
 #include "fixgrid_velocity.hpp"
 #include "fixgrid_v_dot_gradphi.hpp"
-
+#include "fixgrid_gradientsquare.hpp"
+#include "fixgrid_modelh.hpp"
+#include "fixgrid_modelb_mobility_dblquad.hpp"
+#include "fixgrid_laplacian.hpp"
+#include "fixgrid_divergence.hpp"
+#include "fixgrid_gradient.hpp"
 
 #include <string>
 #include <set>
@@ -224,16 +228,16 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridFloryHuggins>(phafd));	  
+      } else if (firstword == "grid/gradientsquare") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridGradientSquare>(phafd));	  
       } else if (firstword == "grid/vtherm") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridVtherm>(phafd));	  
       } else if (firstword == "grid/ave") {
 	fixes.push_back(std::make_unique<FixGridAve>(phafd));
-      } else if (firstword == "grid/gradphi") {
-	if (!grid->gridpopulated)
-	  throw std::runtime_error("Fix requires grid to be populated.");
-	fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
       } else if (firstword == "grid/laplacianphi") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
@@ -242,7 +246,15 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridModelB>(phafd));
-      } else if (firstword == "grid/vdet") {
+      } else if (firstword == "grid/modelh") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelH>(phafd));
+      } else if (firstword == "grid/modelb/mobility/dblquad") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelBMobilityDBLquad>(phafd));
+	} else if (firstword == "grid/vdet") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridVdet>(phafd));

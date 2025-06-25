@@ -8,7 +8,6 @@
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_modelb.hpp"
-#include "fixgrid_gradphi.hpp"
 #include "conjugate_noise.hpp"
 #include "fftw_arr/array3d.hpp"
 
@@ -36,7 +35,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
   
   Fix::init(v_line);
 
-
+  double temp;
   mobility = temp = -1;
 
 
@@ -55,23 +54,29 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
   new_v_line.push_back("seed");
   new_v_line.push_back(std::to_string(seed));
 
+
+
   int iarg = 2;
+
+
 
   while (iarg < v_line.size()) {
 
-    if (v_line[iarg] == "mobility") {
-      mobility = std::stod(v_line[iarg+1]);
-      new_v_line.push_back(v_line[iarg]);
-      new_v_line.push_back(v_line[iarg+1]);
+    if (v_line.at(iarg) == "mobility") {
+      new_v_line.push_back(v_line.at(iarg));
+      new_v_line.push_back(v_line.at(iarg+1));
+      mobility = std::stod(v_line.at(iarg+1));
       iarg += 2;
-    } else if (v_line[iarg] == "temp") {
-      new_v_line.push_back(v_line[iarg]);
-      new_v_line.push_back(v_line[iarg+1]);
+    } else if (v_line.at(iarg) == "temp") {
+      new_v_line.push_back(v_line.at(iarg));
+      new_v_line.push_back(v_line.at(iarg+1));
+      temp = std::stod(v_line.at(iarg+1));
       iarg += 2;
     } else {
       throw std::runtime_error("Error: invalid fix grid/modelb command");
     }
   }
+
 
   if (mobility < 0) 
     throw std::runtime_error("Error: invalid mobility in fix grid/modelb command");
@@ -185,7 +190,7 @@ void FixGridModelB::point_update(int i , int j, int k)
   (*grid->ft_phi)(i,j,k)
     = ((*grid->ft_phi)(i,j,k)-mobility*q2*dt*(*grid->ft_chempot)(i,j,k)
        + (*grid->ft_noise)(i,j,k))*normalization;
-  
+
   return;
   
 }

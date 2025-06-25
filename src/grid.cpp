@@ -28,10 +28,10 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   ft_chempot = nullptr;
   for (int i = 0; i < 3; i++) {
     gradphi[i] = nullptr;
-    ft_gradphi[i] = nullptr;
   }
   laplacianphi = nullptr;
   ft_laplacianphi = nullptr;
+  ft_noise = nullptr;
 
 
   /* velocity arrays */
@@ -69,9 +69,6 @@ Grid::~Grid() {
     fftw_destroy_plan(backward_phi);
     fftw_destroy_plan(forward_chempot);
     fftw_destroy_plan(backward_chempot);
-    for (int i = 0; i < 3; i++) {
-      fftw_destroy_plan(backward_gradphi[i]);
-    }
     fftw_destroy_plan(backward_laplacianphi);
   }
 
@@ -247,6 +244,7 @@ double Grid::dz() const
 
 
 
+
 void Grid::create_concentration(int Nx, int Ny, int Nz)
 {
   phi_set = true;
@@ -260,9 +258,10 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
     ft_phi = std::make_unique<fftwArr::array3D<std::complex<double>>
 			      >(world,"ft_concentration",Nx,Nz,Ny);
 
+
   if (!ft_noise)
     ft_noise = std::make_unique<fftwArr::array3D<std::complex<double>>
-			      >(world,"ft_noise",Nx,Nz,Ny);
+				>(world,"ft_noise",Nx,Nz,Ny);
 
 
 
@@ -279,10 +278,6 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
       gradphi[i] = std::make_unique<fftwArr::array3D<double>
 				    >(world,"gradphi_"+listxyz[i],Nx,Ny,Nz);
 
-    if (!ft_gradphi[i])
-      ft_gradphi[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
-				       >(world,"ft_gradphi_"+listxyz[i],Nx,Nz,Ny);
-
   }
 
 
@@ -292,7 +287,7 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
   if (!ft_laplacianphi)
     ft_laplacianphi = std::make_unique<fftwArr::array3D<std::complex<double>>
 				    >(world,"ft_laplacianphi",Nx,Nz,Ny);
-
+  
   
   
   forward_phi = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,phi->data(),
@@ -303,12 +298,15 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
   backward_phi = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
 					  (ft_phi->data()), phi->data(),
 					  world,FFTW_MPI_TRANSPOSED_IN);
+
   
   forward_chempot = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,
 					       chempot->data(),
 					       reinterpret_cast<fftw_complex*>
 					       (ft_chempot->data()),
 					       world, FFTW_MPI_TRANSPOSED_OUT);
+
+
   
   backward_chempot = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
 						reinterpret_cast<fftw_complex*>
@@ -317,26 +315,6 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
 						FFTW_MPI_TRANSPOSED_IN);
 
 
-
-  backward_gradphi[0] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
-						 reinterpret_cast<fftw_complex*>
-						 (ft_gradphi[0]->data()),
-						 gradphi[0]->data(),world,
-						 FFTW_MPI_TRANSPOSED_IN);
-
-
-  // NOTE HERE THE SWAP IN Z AND Y! THIS IS NOT A BUG!!!
-  backward_gradphi[1] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
-						 reinterpret_cast<fftw_complex*>
-						 (ft_gradphi[1]->data()),
-						 gradphi[2]->data(),world, // <---HERE!! NOT A BUG!
-						 FFTW_MPI_TRANSPOSED_IN);
-  // NOTE HERE THE SWAP IN Z AND Y! THIS IS NOT A BUG!!!
-  backward_gradphi[2] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
-						 reinterpret_cast<fftw_complex*>
-						 (ft_gradphi[2]->data()),
-						 gradphi[1]->data(),world,// <---HERE!! NOT A BUG!
-						 FFTW_MPI_TRANSPOSED_IN);
 
   backward_laplacianphi = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
 						 reinterpret_cast<fftw_complex*>
@@ -416,7 +394,8 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
     forward_vdet[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vdet[i]->data(),
 						 reinterpret_cast<fftw_complex*>
 						 (ft_vdet[i]->data()),
-						 world, FFTW_MPI_TRANSPOSED_OUT);
+					       world,
+					       FFTW_MPI_TRANSPOSED_OUT);
     
     
     forward_vtherm[i] = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,vtherm[i]->data(),
@@ -439,18 +418,14 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
 					       pressure->data(),world,
 					       FFTW_MPI_TRANSPOSED_IN);
 
-    backward_vdet[0] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
-						  (ft_vdet[0]->data()), vdet[0]->data(),
-						  world,FFTW_MPI_TRANSPOSED_IN);
 
-
-    backward_vdet[1] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
-						  (ft_vdet[1]->data()), vdet[2]->data(),
-						  world,FFTW_MPI_TRANSPOSED_IN);
-
-    backward_vdet[2] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,reinterpret_cast<fftw_complex*>
-						  (ft_vdet[2]->data()), vdet[1]->data(),
-						  world,FFTW_MPI_TRANSPOSED_IN);
+  for (int i = 0; i < 3 ; i++) 
+    backward_vdet[i] = fftw_mpi_plan_dft_c2r_3d(Nz,Ny,Nx,
+						reinterpret_cast<fftw_complex*>
+						(ft_vdet[i]->data()),
+						vdet[i]->data(),
+						world,
+						FFTW_MPI_TRANSPOSED_IN);
 
     
   if (!v_dot_gradphi) 

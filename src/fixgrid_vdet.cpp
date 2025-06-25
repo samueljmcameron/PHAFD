@@ -127,8 +127,8 @@ void FixGridVdet::set_vdet(int i, int j, int k) {
   std::complex<double> tmp_x,tmp_y,tmp_z;
 
 
-  qz = grid->qzs[i];
-  qy = grid->qys[j];
+  qy = grid->qzs[i];
+  qz = grid->qys[j];
   qx = domain->dqx()*k;
 
 
@@ -160,12 +160,12 @@ void FixGridVdet::set_vdet(int i, int j, int k) {
     tmp_y = (*ft_vdet_y)(i,j,k);
     tmp_z = (*ft_vdet_z)(i,j,k);
 
-    (*ft_vdet_x)(i,j,k) = (Txx*tmp_x+Txy*tmp_z
-			   + Txz*tmp_y);
-    (*ft_vdet_y)(i,j,k) = (Txy*tmp_x+Tyy*tmp_z
-			   + Tyz*tmp_y);
-    (*ft_vdet_z)(i,j,k) = (Txz*tmp_x+Tyz*tmp_z
-			   + Tzz*tmp_y);
+    (*ft_vdet_x)(i,j,k) = (Txx*tmp_x+Txy*tmp_y
+			   + Txz*tmp_z);
+    (*ft_vdet_y)(i,j,k) = (Txy*tmp_x+Tyy*tmp_y
+			   + Tyz*tmp_z);
+    (*ft_vdet_z)(i,j,k) = (Txz*tmp_x+Tyz*tmp_y
+			   + Tzz*tmp_z);
     
 
   }

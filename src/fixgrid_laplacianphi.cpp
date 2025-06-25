@@ -67,9 +67,9 @@ void FixGridLaplacianPhi::post_force()
   double dqx = domain->dqx();
   
   if (immediate_ifft) {
-    dqx /= normalization;
-    dqy /= normalization;
-    dqz /= normalization;
+    dqx /= sqrt(normalization);
+    dqy /= sqrt(normalization);
+    dqz /= sqrt(normalization);
   }
   
   double l,m,n;
@@ -94,7 +94,7 @@ void FixGridLaplacianPhi::post_force()
 	
 	n = k;
 	
-	neg_q2 = -(dqx*n*dqx*n + dqy*m*dqy*m + dqz*l*dqz*l);
+	neg_q2 = -(dqx*n*dqx*n + dqz*m*dqz*m + dqy*l*dqy*l);
 	
 	
 	(*grid->ft_laplacianphi)(i,j,k) = (*grid->ft_phi)(i,j,k)*neg_q2;

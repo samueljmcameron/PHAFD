@@ -8,7 +8,7 @@
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_modelh.hpp"
-#include "fixgrid_gradphi.hpp"
+#include "fixgrid_gradient.hpp"
 #include "fixgrid_velocity.hpp"
 #include "fixgrid_vdet.hpp"
 #include "fixgrid_vtherm.hpp"
@@ -127,7 +127,7 @@ void FixGridModelH::init(const std::vector<std::string> &v_line)
 
   local_fixes.back()->init(new_v_line);
 
-  local_fixes.push_back(std::make_unique<FixGridGradPhi>(phafd));
+  local_fixes.push_back(std::make_unique<FixGridGradient>(phafd));
 
   // clear the array of strings to rewrite it for gradphi
   new_v_line.clear();
@@ -168,7 +168,6 @@ void FixGridModelH::setup()
   for (auto &lf : local_fixes)
     lf->setup();
 
-  
 }
 
 void FixGridModelH::reset_dt()
@@ -186,12 +185,16 @@ void FixGridModelH::start_of_step()
   for (auto &lf : local_fixes)
     lf->start_of_step();
 
+
+  fftw_execute(grid->forward_phi);
 }
 
 void FixGridModelH::initial_integrate()
 {
   for (auto &lf : local_fixes)
     lf->initial_integrate();
+
+
 
 }
 
@@ -277,12 +280,15 @@ void FixGridModelH::post_final_integrate()
   int localNy = grid->phi->Ny();
   int localNz = grid->phi->Nz();
 
+
+
   for (int i = 0; i < localNz; i++)
     for (int j = 0; j < localNy; j++)
-      for (int k = 0; k < localNx; k++)
+      for (int k = 0; k < localNx; k++) 
 	for (int dim = 0; dim < 3; dim++)
-	  (*grid->phi)(i,j,k) +=
+	  (*grid->phi)(i,j,k) -=
 	    (*grid->velocity[dim])(i,j,k)*(*grid->gradphi[dim])(i,j,k)*dt;
+
 
 
   // if (didnotintegrate) {
@@ -299,6 +305,8 @@ void FixGridModelH::end_of_step()
 {
   for (auto &lf : local_fixes)
     lf->end_of_step();
+
+
 
 }
 

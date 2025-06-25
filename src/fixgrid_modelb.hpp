@@ -41,7 +41,7 @@ private:
   std::unique_ptr<ConjugateNoise> conjugate;
 
   double normalization;
-  double mobility,temp;
+  double mobility;
 
   void point_update(int,int,int);
 
