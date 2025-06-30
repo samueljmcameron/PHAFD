@@ -19,34 +19,24 @@ void ConjugateNoise::readCoeffs(const std::vector<std::string> &v_line)
 
   damping = temp = -1;
 
+
+
+  name = v_line.at(0);
   
-  if (v_line.at(0) == "concentration") {
-    ft_array = grid->ft_noise.get();
-  } else if (v_line.at(0) == "vx") {
-    ft_array = grid->ft_Znoise[0].get();
-  } else if (v_line.at(0) == "vy") {
-    ft_array = grid->ft_Znoise[1].get();
-  } else if (v_line.at(0) == "vz") {
-    ft_array = grid->ft_Znoise[2].get();
-  } else
-    throw std::runtime_error("Invalid keyword in conjugate/noise.");
-
-
-
   int iarg = 1;
 
   
   while (iarg < v_line.size()) {
 
-    if (v_line[iarg] == "mobility" || v_line[iarg] == "viscosity") {
-      damping = std::stod(v_line[iarg+1]);
+    if (v_line.at(iarg) == "mobility" || v_line.at(iarg) == "viscosity") {
+      damping = std::stod(v_line.at(iarg+1));
       iarg += 2;
 
-    } else if (v_line[iarg] == "temp") {
-      temp = std::stod(v_line[iarg+1]);
+    } else if (v_line.at(iarg) == "temp") {
+      temp = std::stod(v_line.at(iarg+1));
       iarg += 2;
-    } else if (v_line[iarg] == "seed") {
-      seed = std::stod(v_line[iarg+1]);
+    } else if (v_line.at(iarg) == "seed") {
+      seed = std::stod(v_line.at(iarg+1));
       iarg += 2;
       seed_flag = true;
       

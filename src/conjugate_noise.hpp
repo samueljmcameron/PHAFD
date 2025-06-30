@@ -26,9 +26,7 @@ public:
 private:
 
 
-  std::mt19937 gen;
 
-  std::uniform_real_distribution<double> real_dist;
 
   double dt;
 
@@ -39,6 +37,10 @@ private:
   virtual void real_update(int,int,int) override;
   virtual void origin_update() override;
 
+protected:
+  std::uniform_real_distribution<double> real_dist;
+  std::mt19937 gen;
+  
 };
 
 }

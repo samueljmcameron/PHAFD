@@ -74,12 +74,81 @@ void FixGridDivergence::setup()
 }
 
 
+void FixGridDivergence::calculate_divergence(const
+					     fftwArr::array3D<
+					     std::complex<double>>
+					     *fftw3_arr_x,
+					     const
+					     fftwArr::array3D<
+					     std::complex<double>>
+					     *fftw3_arr_y,
+					     const
+					     fftwArr::array3D<
+					     std::complex<double>>
+					     *fftw3_arr_z,
+					     bool invert_fftw)
 
-//template <class arr_type>
+// std::array<*fftwArr::array3D<std::complex<double>>,SIZE> fftw3_arr
+// or
+// std::vector<*fftwArr::array3D<std::complex<double>>> fftw3_arr
+{
+  
+  const int local0start = ft_divergence->get_local0start();
+  const int globalNy = grid->ft_boxgrid[1];
+  const int globalNz = grid->ft_boxgrid[2];
+
+  std::complex<double> idqx(0,domain->dqx());
+  std::complex<double> idqy(0,domain->dqy());
+  std::complex<double> idqz(0,domain->dqz());
+  
+
+  if (invert_fftw) {
+    idqx /= normalization;
+    idqy /= normalization;
+    idqz /= normalization;
+  }
+  
+  double l,m,n;
+  
+  for (int i = 0; i < ft_divergence->Nz(); i++) {
+    
+    if (i + local0start > globalNz/2) 
+      l = -globalNz + i + local0start;
+    else
+      l = i + local0start;
+    
+    for (int j = 0; j < ft_divergence->Ny(); j++) {
+      
+      if (j > globalNy/2)
+	m = -globalNy + j;
+      else
+	m = j;
+      
+      for (int k = 0; k < ft_divergence->Nx(); k++) {
+	
+	n = k;
+	// due to transposes,
+	// real space z is represented by qy
+	// real space y is represented by qz
+
+	(*ft_divergence)(i,j,k)
+	  = (*fftw3_arr_x)(i,j,k)*idqx*n
+	  + (*fftw3_arr_y)(i,j,k)*idqz*l
+	  + (*fftw3_arr_z)(i,j,k)*idqy*m;
+	
+      }
+    }
+  }
+
+  if (invert_fftw)
+    fftw_execute(backward_divergence);
+  
+}
+
+
 void FixGridDivergence::calculate_divergence(const
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,
 					     3> &fftw3_arr,
-					     //					     arr_type fftw3_arr,
 					     bool invert_fftw)
 
 // std::array<*fftwArr::array3D<std::complex<double>>,SIZE> fftw3_arr

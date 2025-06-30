@@ -68,9 +68,9 @@ void FixGridVtherm::init(const std::vector<std::string> &v_line)
 
   viscosity = conjugate_vnoise.at(0)->damping;
   
-  ft_Znoise_x = grid->ft_Znoise[0].get();
-  ft_Znoise_y = grid->ft_Znoise[1].get();
-  ft_Znoise_z = grid->ft_Znoise[2].get();
+  ft_Znoise_x = conjugate_vnoise.at(0)->ft_array.get();
+  ft_Znoise_y = conjugate_vnoise.at(1)->ft_array.get();
+  ft_Znoise_z = conjugate_vnoise.at(2)->ft_array.get();
 
   ft_vtherm_x = grid->ft_vtherm[0].get();
   ft_vtherm_y = grid->ft_vtherm[1].get();

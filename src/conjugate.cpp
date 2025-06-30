@@ -13,7 +13,9 @@ Conjugate::Conjugate(PHAFD *phafd)
 
 }
 
-
+Conjugate::~Conjugate()
+{
+}
 void Conjugate::reset_dt(double timestep) {
 
   dt = timestep;
@@ -23,6 +25,14 @@ void Conjugate::reset_dt(double timestep) {
 
 void Conjugate::setup()
 {
+  
+  int Nx = grid->boxgrid[0];
+  int Ny = grid->boxgrid[1];
+  int Nz = grid->boxgrid[2];
+
+  if (!ft_array)
+    ft_array = std::make_unique<fftwArr::array3D<std::complex<double>>
+				>(world,name,Nx,Nz,Ny);
 
   localNy = ft_array->Ny();
   localNz = ft_array->Nz();

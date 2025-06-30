@@ -19,9 +19,6 @@ ConjugateVolFrac::ConjugateVolFrac(PHAFD *phafd)
 
   
   seed_flag = false;
-  ft_array = ft_phi;
-  
-  setup();
   
 }
 
@@ -34,6 +31,8 @@ void ConjugateVolFrac::readCoeffs(const std::vector<std::string> &v_line)
 
   int iarg = 0;
 
+  name = "volfrac";
+  
   while (iarg < v_line.size()) {
 
     if (v_line[iarg] == "mobility") {
@@ -65,6 +64,8 @@ void ConjugateVolFrac::readCoeffs(const std::vector<std::string> &v_line)
   gen.seed(seed);
 
   
+  
+  setup();
   
 
 }

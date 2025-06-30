@@ -37,6 +37,10 @@ public:
   void calculate_divergence(const std::array<std::unique_ptr<
 			    fftwArr::array3D<std::complex<double>>>,3> &,
 			    bool invert_fftw=true);
+  void calculate_divergence(const fftwArr::array3D<std::complex<double>> *,
+			    const fftwArr::array3D<std::complex<double>> *,
+			    const fftwArr::array3D<std::complex<double>> *,
+			    bool invert_fftw=true);
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_divergence;
   std::unique_ptr<fftwArr::array3D<double>> divergence;
   

@@ -4,6 +4,7 @@
 #include <string>
 #include <complex>
 #include <vector>
+#include <memory>
 
 #include "domain.hpp"
 #include "grid.hpp"
@@ -21,22 +22,24 @@ class Conjugate : protected Pointers
   
 public:
   Conjugate(PHAFD *);
-
+  ~Conjugate();
 
   virtual void reset_dt(double);
   void setup();
   void update();
 
   virtual void readCoeffs(const std::vector<std::string> &) = 0;
-
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_array;
+  
 private:
   
   const int nblocks;
   int me,nprocs;
 
 protected:
-  
-  fftwArr::array3D<std::complex<double>> *ft_array;
+
+  std::string name;
+
 
   
   double complexprefactor, realprefactor, sqrtdt;

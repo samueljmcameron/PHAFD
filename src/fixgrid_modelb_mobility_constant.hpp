@@ -1,6 +1,6 @@
 
-#ifndef PHAFD_FIXGRID_MODELB_MOBILITY_DBLQUAD_HPP
-#define PHAFD_FIXGRID_MODELB_MOBILITY_DBLQUAD_HPP
+#ifndef PHAFD_FIXGRID_MODELB_MOBILITY_CONSTANT_HPP
+#define PHAFD_FIXGRID_MODELB_MOBILITY_CONSTANT_HPP
 
 
 #include "fixgrid_modelb_mobility_base.hpp"
@@ -13,9 +13,9 @@ namespace fftwArr {
 
 namespace PHAFD_NS {
 
-class FixGridModelBMobilityDBLquad : public FixGridModelBMobilityBase {
+class FixGridModelBMobilityConstant : public FixGridModelBMobilityBase {
 public:
-  FixGridModelBMobilityDBLquad(PHAFD *);
+  FixGridModelBMobilityConstant(PHAFD *);
 
   virtual void init(const std::vector<std::string> &) override;
   

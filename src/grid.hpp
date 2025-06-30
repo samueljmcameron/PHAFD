@@ -71,8 +71,8 @@ public:
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_vtherm_dot_gradphi;
 
 
-  std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_Znoise;
-  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_noise;
+
+
   std::array<std::unique_ptr<fftwArr::array3D<std::complex<double>>>,3> ft_gradphitilde;
 
   
@@ -99,9 +99,9 @@ private:
   void sinusoidal_grid(const std::string &,double);
   void create_concentration(int , int , int);
   void create_velocity(int , int , int);
-  void create_noise(int, int, int);
+
   void noisy_constant(fftwArr::array3D<double>*, double,double, int);
-  void constant_noise(double,double,int);
+
   void create_modelH(int, int, int);
   void flat_interface(fftwArr::array3D<double>*, double,double,double,double, int);
   void sphere(fftwArr::array3D<double>*,double, double , double ,

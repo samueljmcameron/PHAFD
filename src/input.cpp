@@ -43,6 +43,7 @@
 #include "fixgrid_gradientsquare.hpp"
 #include "fixgrid_modelh.hpp"
 #include "fixgrid_modelb_mobility_dblquad.hpp"
+#include "fixgrid_modelb_mobility_constant.hpp"
 #include "fixgrid_laplacian.hpp"
 #include "fixgrid_divergence.hpp"
 #include "fixgrid_gradient.hpp"
@@ -254,7 +255,11 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridModelBMobilityDBLquad>(phafd));
-	} else if (firstword == "grid/vdet") {
+      } else if (firstword == "grid/modelb/mobility/constant") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelBMobilityConstant>(phafd));
+      } else if (firstword == "grid/vdet") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridVdet>(phafd));

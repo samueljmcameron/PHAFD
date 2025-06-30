@@ -16,7 +16,7 @@ namespace fftwArr {
 
 namespace PHAFD_NS {
 class FixGridGradient;
-class ConjugateNoise;
+class ConjugateNoiseNoQ;
 class FixGridDivergence;
 
 
@@ -42,7 +42,8 @@ public:
   virtual void end_of_step() override {};
 private:
 
-  std::unique_ptr<ConjugateNoise> conjugate;
+  double temp; // temperature (necessary for stochastic drift part)
+  std::array<std::unique_ptr<ConjugateNoiseNoQ>,3> conjugate_noise;
 
   std::unique_ptr<FixGridGradient> gradfix;
   std::unique_ptr<FixGridDivergence> divfix;
@@ -59,17 +60,36 @@ private:
 	     3> ft_flux;
 
   std::array<fftw_plan,3> forward_flux;
-  
+  void compute_stochastic_drift();
+  void compute_usual_drift();
+  void add_noise_to_phi();
+  bool plan_set;
+  std::array<fftwArr::array3D<std::complex<double>> *,3> ft_rnoises;
+  std::array<std::unique_ptr<fftwArr::array3D<double>> ,3> rnoises;
 
+  //std::unique_ptr<fftwArr::array3D<double>> noise;
+  // std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_noise;
+
+  //fftw_plan forward_noise;
+  
+  std::array<fftw_plan,3> backward_rnoises;
+  double inv_vol_element;
+  fftw_plan forward_mobility_deriv, forward_sqrt_mobility;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_sqrt_mobility;
+  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_mobility_deriv;
+
+  
 protected:
   std::unique_ptr<fftwArr::array3D<double>> sqrt_mobility;
+
   std::unique_ptr<fftwArr::array3D<double>> mobility_deriv;
+
   std::array<std::unique_ptr<fftwArr::array3D<double>>,3> grad_sqrt_mobility;
 
   virtual void calculate_sqrt_mobility() = 0;
+  virtual void calculate_mobility_deriv() = 0;
 
-private:
-  bool plan_set;
+
 
   
 };

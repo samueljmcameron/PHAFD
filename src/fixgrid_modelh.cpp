@@ -330,7 +330,7 @@ void FixGridModelH::point_update(int i , int j, int k)
   // already present in real space.
   (*grid->ft_phi)(i,j,k)
     = ((*grid->ft_phi)(i,j,k)-mobility*q2*dt*(*grid->ft_chempot)(i,j,k)
-       + (*grid->ft_noise)(i,j,k))*normalization;
+       + (*conjugate->ft_array)(i,j,k))*normalization;
   
   return;
   

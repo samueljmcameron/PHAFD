@@ -39,12 +39,6 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
     fftw3_arr = grid->ft_vdet[2].get();
   } else if (arrname == "ft_v_dot_gradphi") {
     fftw3_arr = grid->ft_v_dot_gradphi.get();
-  } else if (arrname == "ft_Znoise_x") {
-    fftw3_arr = grid->ft_Znoise[0].get();
-  } else if (arrname == "ft_Znoise_y") {
-    fftw3_arr = grid->ft_Znoise[1].get();
-  } else if (arrname == "ft_Znoise_z") {
-    fftw3_arr = grid->ft_Znoise[2].get();
   }  else {
     throw std::runtime_error("Invalid array to compute in compute modulus.");
   }

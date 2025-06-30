@@ -31,7 +31,7 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
   }
   laplacianphi = nullptr;
   ft_laplacianphi = nullptr;
-  ft_noise = nullptr;
+
 
 
   /* velocity arrays */
@@ -43,7 +43,6 @@ Grid::Grid(PHAFD *phafd) : Pointers(phafd) {
     ft_velocity[i] = nullptr;
     vdet[i] = nullptr;
     ft_vdet[i] = nullptr;
-    ft_Znoise[i] = nullptr;
     vtherm[i] = nullptr;
     ft_vtherm[i] = nullptr;
   }
@@ -259,11 +258,6 @@ void Grid::create_concentration(int Nx, int Ny, int Nz)
 			      >(world,"ft_concentration",Nx,Nz,Ny);
 
 
-  if (!ft_noise)
-    ft_noise = std::make_unique<fftwArr::array3D<std::complex<double>>
-				>(world,"ft_noise",Nx,Nz,Ny);
-
-
 
   if (!chempot) 
     chempot = std::make_unique<fftwArr::array3D<double>
@@ -348,9 +342,6 @@ void Grid::create_velocity(int Nx, int Ny, int Nz)
       velocity[i] = std::make_unique<fftwArr::array3D<double>
 				    >(world,"velocity_"+listxyz[i],Nx,Ny,Nz);
 
-    if (!ft_Znoise[i])
-      ft_Znoise[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
-				       >(world,"ft_Znoise_"+listxyz[i],Nx,Nz,Ny);
 
     
     if (!ft_velocity[i])
@@ -474,13 +465,6 @@ void Grid::create_modelH(int Nx, int Ny, int Nz)
 
 
   
-  for (int i = 0; i < 3; i++) {
-
-    if (!ft_Znoise[i])
-      ft_Znoise[i] = std::make_unique<fftwArr::array3D<std::complex<double>>
-				       >(world,"ft_Znoise_"+listxyz[i],Nx,Nz,Ny);
-
-  }
 
 
   for (int i = 0; i < 3; i++) {
