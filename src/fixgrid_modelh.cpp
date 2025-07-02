@@ -266,36 +266,32 @@ void FixGridModelH::final_integrate()
 }
 
 
-void FixGridModelH::post_final_integrate()
+void FixGridModelH::post_final_integrate(bool invert_fft)
 {
 
 
   for (auto &lf : local_fixes)
-    lf->post_final_integrate();
-  
-  fftw_execute(grid->backward_phi);
+    lf->post_final_integrate(invert_fft);
+
+  if (invert_fft) {
+    fftw_execute(grid->backward_phi);
 
 
-  int localNx = grid->phi->Nx();
-  int localNy = grid->phi->Ny();
-  int localNz = grid->phi->Nz();
-
-
-
-  for (int i = 0; i < localNz; i++)
-    for (int j = 0; j < localNy; j++)
-      for (int k = 0; k < localNx; k++) 
-	for (int dim = 0; dim < 3; dim++)
-	  (*grid->phi)(i,j,k) -=
-	    (*grid->velocity[dim])(i,j,k)*(*grid->gradphi[dim])(i,j,k)*dt;
+    int localNx = grid->phi->Nx();
+    int localNy = grid->phi->Ny();
+    int localNz = grid->phi->Nz();
 
 
 
-  // if (didnotintegrate) {
-  //  double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-  //  
-  //  (*grid->phi) /= factor;
-  //}
+    for (int i = 0; i < localNz; i++)
+      for (int j = 0; j < localNy; j++)
+	for (int k = 0; k < localNx; k++) 
+	  for (int dim = 0; dim < 3; dim++)
+	    (*grid->phi)(i,j,k) -=
+	      (*grid->velocity[dim])(i,j,k)*(*grid->gradphi[dim])(i,j,k)*dt;
+    
+  }
+
   
   return;
 }

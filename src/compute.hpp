@@ -3,8 +3,15 @@
 
 
 #include <set>
+#include <complex>
 
 #include "pointers.hpp"
+
+namespace fftwArr {
+  template<typename>
+  class array3D;
+}
+
 
 namespace PHAFD_NS {
 
@@ -13,9 +20,8 @@ class Compute : protected Pointers
 public:
   Compute(PHAFD *);
 
-  std::vector<double> array;
   std::string name;
-
+  std::vector<double> array;
   virtual void init(const std::vector<std::string> &);
   virtual void in_fourier() = 0;
   virtual void end_of_step() = 0;
@@ -33,7 +39,13 @@ public:
 
   bool this_step;
   std::set<std::string> dump_callers;
-  int Nx,Ny,Nz;
+
+
+  std::vector<fftwArr::array3D<double> *> realFFTWarray;
+  std::vector<fftwArr::array3D<std::complex<double>> *> complexFFTWarray;
+
+  
+  //int localNx,localNy,localNz;
 
   int numberofcomponents; // number of components in the array (e.g. 1 for scalar, 3 for vector, etc.)
   

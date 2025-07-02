@@ -16,6 +16,7 @@ class ComputeComplex : public Compute
 {
 public:
   ComputeComplex(PHAFD *);
+  ~ComputeComplex();
 
 
   virtual void init(const std::vector<std::string> &) override;
@@ -23,8 +24,11 @@ public:
   virtual void end_of_step() override {};
 
   
+  
 private:
   fftwArr::array3D<std::complex<double>> *fftw3_arr;
+  int localNx,localNy,localNz;
+  std::unique_ptr<fftwArr::array3D<double>> output;
 
   std::string which_quant;
 

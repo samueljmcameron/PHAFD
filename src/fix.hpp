@@ -3,8 +3,15 @@
 
 #include <vector>
 #include <string>
+#include <complex>
 #include <set>
 #include "pointers.hpp"
+
+namespace fftwArr {
+  template<typename>
+  class array3D;
+}
+
 
 namespace PHAFD_NS {
 
@@ -22,7 +29,7 @@ public:
   virtual void post_force() = 0;
   virtual void pre_final_integrate() = 0;
   virtual void final_integrate() = 0;
-  virtual void post_final_integrate() = 0;
+  virtual void post_final_integrate(bool invert_fft=true) = 0;
 
   virtual void reset_dt();
   virtual void start_of_step();
@@ -44,7 +51,15 @@ public:
   std::set<std::string> dump_callers;
   std::vector<double> array;
 
-  int Nx,Ny,Nz;
+  // want to include an fftw complex array, an fftw real array,
+  // a 3D fftw complex and a 3D fftw real array for outputting.
+  // include them as pointers, then point to whatever arrays are relevant
+  // in the fix child class
+
+  std::vector<fftwArr::array3D<double> *> realFFTWarray;
+  std::vector<fftwArr::array3D<std::complex<double>> *> complexFFTWarray;
+
+
   int numberofcomponents; // same as compute
 
   int num_less_zero,num_great_zero;

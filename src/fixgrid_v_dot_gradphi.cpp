@@ -93,12 +93,14 @@ void FixGridVdotGradPhi::pre_final_integrate()
 }
 
 
-void FixGridVdotGradPhi::post_final_integrate()
+void FixGridVdotGradPhi::post_final_integrate(bool invert_fft)
 {
   if (immediate_ifft)
     return;
-  fftw_execute(grid->backward_v_dot_gradphi);
-  (*grid->v_dot_gradphi) /= normalization;
+  if (invert_fft) {
+    fftw_execute(grid->backward_v_dot_gradphi);
+    (*grid->v_dot_gradphi) /= normalization;
+  }
 
 }
 

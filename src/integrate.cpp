@@ -77,6 +77,80 @@ void Integrate::setup()
 
   // note that this will dump out zero vectors for almost everything as nothing has been
   // computed yet
+
+
+  // do a timestep essentially but without the integration itself (necessary
+  // for output
+
+  for (auto &compute: computes)
+    compute->start_of_step();
+  
+  for (auto &fix: fixes) // mostly fft of grid variables
+    fix->start_of_step();
+  
+  
+  for (auto &dump : dumps)
+    dump->start_of_step();
+  
+  
+  if (atoms->ntypes >= 0) {
+    
+    if (neighbor->decide()) {
+      domain->pbc();
+      commbrick->borders();
+      neighbor->build();
+    } else {
+      commbrick->forward_comm();
+    }
+    
+    
+    atoms->Fs.setZero();
+  }
+  
+  for (auto & pair : pairs)
+    pair->compute();
+  
+  commbrick->reverse_comm();
+  
+  if (grid->chempot != nullptr)
+    grid->chempot->setZero();
+  if (atoms->ntypes >= 0)
+    atoms->Fs.setZero();
+  
+  for (auto & pair : pairs)
+    pair->compute();
+  
+  if (atoms->ntypes >= 0) 
+    commbrick->reverse_comm();
+  
+  // additional terms from e.g. chemical potential, which are added to grid->chempot
+  for (auto &fix: fixes)
+    fix->post_force();
+  
+  
+  // mainly just fourier transforming phi and chempot
+  for (auto &fix : fixes)
+    fix->pre_final_integrate();
+  
+  
+  // computes which act on fourier space grids
+  for (auto &compute : computes)
+    compute->in_fourier();
+  
+  
+  
+  // mainly just inverse fourier transforming
+  for (auto &fix : fixes)
+    fix->post_final_integrate(false);
+  
+  for (auto &compute : computes)
+    compute->end_of_step();
+  
+  for (auto &fix : fixes)
+    fix->end_of_step();
+  
+  
+  
   for (auto &dump :dumps)
     if (timestep % dump->every == 0) {
       if (commbrick->me == 0)

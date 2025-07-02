@@ -110,13 +110,14 @@ void FixGridVtherm::start_of_step()
 }
 
 
-void FixGridVtherm::post_final_integrate() {
+void FixGridVtherm::post_final_integrate(bool invert_fft) {
 
   if (immediate_ifft) return;
-  for (int i = 0; i < 3; i++) {
-    fftw_execute(grid->backward_vtherm[i]);
-    (*grid->vtherm[i]) /= normalization;
-  }
+  if (invert_fft) 
+    for (int i = 0; i < 3; i++) {
+      fftw_execute(grid->backward_vtherm[i]);
+      (*grid->vtherm[i]) /= normalization;
+    }
 }
 
 

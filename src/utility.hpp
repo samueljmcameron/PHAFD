@@ -6,6 +6,14 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "phafd.hpp"
+#include <complex>
+
+
+namespace fftwArr {
+  template<typename>
+  class array3D;
+}
 
 namespace PHAFD_NS {
 
@@ -22,6 +30,18 @@ namespace PHAFD_NS {
 
     int make_unique_seed(int,const MPI_Comm &, int, int);
 
+    int find_brackets(std::string &);
+
+    int find_index(std::string id, const std::vector<std::string> &);
+    
+    void find_array_component(const std::string &,
+			      PHAFD *,
+			      fftwArr::array3D<double>* );
+
+    void find_array_component(const std::string &,
+			      PHAFD *,
+			      fftwArr::array3D<std::complex<double>>* );
+    
   }
 
 union ubuf {

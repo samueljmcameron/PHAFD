@@ -24,7 +24,7 @@ public:
 
 
   virtual void pre_final_integrate() override;
-  virtual void post_final_integrate() override;
+  virtual void post_final_integrate(bool invert_fft = true) override;
   virtual void start_of_step() override {};  
   virtual void initial_integrate() override {};
   virtual void post_force() override {};

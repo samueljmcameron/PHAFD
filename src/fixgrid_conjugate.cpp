@@ -75,7 +75,6 @@ void FixGridConjugate<T>::pre_final_integrate()
 
   fftw_execute(grid->forward_chempot);
 
-  didnotintegrate = true;
   return;
 }
 
@@ -85,23 +84,17 @@ void FixGridConjugate<T>::final_integrate()
 
 
   conjugate->update();
-  didnotintegrate = false;
   
   return;
 }
 
 template <typename T>
-void FixGridConjugate<T>::post_final_integrate()
+void FixGridConjugate<T>::post_final_integrate(bool invert_fft)
 {
 
-  fftw_execute(grid->backward_phi);
+  if (invert_fft)
+    fftw_execute(grid->backward_phi);
 
-  if (didnotintegrate) {
-    double factor = grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2];
-    
-    (*grid->phi) /= factor;
-  }
-  
   return;
 }
 

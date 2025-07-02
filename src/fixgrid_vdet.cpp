@@ -96,7 +96,7 @@ void FixGridVdet::pre_final_integrate()
 }
 
 
-void FixGridVdet::post_final_integrate() {
+void FixGridVdet::post_final_integrate(bool invert_fft) {
   if (immediate_ifft) return;
 
 
@@ -105,13 +105,14 @@ void FixGridVdet::post_final_integrate() {
      vdet[1] AND vdet[2] !!!
   */
 
-  
-  for (int i = 0; i < 3; i++) 
-    fftw_execute(grid->backward_vdet[i]);
-
-  /* DO NOT COMBINE THIS LOOP WITH THE ABOVE LOOP!!! */
-  for (int i = 0; i < 3; i++) {
-    (*grid->vdet[i]) /= normalization;
+  if (invert_fft) {
+    for (int i = 0; i < 3; i++) 
+      fftw_execute(grid->backward_vdet[i]);
+    
+    /* DO NOT COMBINE THIS LOOP WITH THE ABOVE LOOP!!! */
+    for (int i = 0; i < 3; i++) {
+      (*grid->vdet[i]) /= normalization;
+    }
   }
 
   

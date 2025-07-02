@@ -1,4 +1,6 @@
 #include "compute.hpp"
+#include "fftw_arr/array3d.hpp"
+
 
 using namespace PHAFD_NS;
 

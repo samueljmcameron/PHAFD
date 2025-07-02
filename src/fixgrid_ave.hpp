@@ -23,7 +23,7 @@ public:
   virtual void post_force() override {};
   virtual void pre_final_integrate() override {};
   virtual void final_integrate() override {};
-  virtual void post_final_integrate() override {};
+  virtual void post_final_integrate(bool /* flag */) override {};
   
 
   virtual void start_of_step() override;
@@ -32,7 +32,7 @@ public:
 private:
 
   int every, repeat, freq;
-
+  int localNx,localNy,localNz;
   int step_counter,next_freq;
 
   std::vector<int> savesteps;

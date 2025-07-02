@@ -3,6 +3,7 @@
 #include "fix.hpp"
 
 #include "integrate.hpp"
+#include "fftw_arr/array3d.hpp"
 
 using namespace PHAFD_NS;
 
@@ -15,6 +16,7 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
   averaging = false;
   numberofcomponents = 1;
   num_less_zero = num_great_zero = 0;
+  
 };
 
 

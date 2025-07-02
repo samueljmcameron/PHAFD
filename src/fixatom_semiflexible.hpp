@@ -21,7 +21,7 @@ public:
   virtual void post_force() override {};
   virtual void pre_final_integrate() override {};
   virtual void final_integrate() override;
-  virtual void post_final_integrate() override {};
+  virtual void post_final_integrate(bool /* flag */) override {};
 
   virtual void end_of_step() override {};
 

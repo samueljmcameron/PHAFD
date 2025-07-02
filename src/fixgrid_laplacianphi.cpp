@@ -48,10 +48,12 @@ void FixGridLaplacianPhi::start_of_step() {
 
 }
 
-void FixGridLaplacianPhi::post_final_integrate() {
+void FixGridLaplacianPhi::post_final_integrate(bool invert_fft) {
   if (immediate_ifft) return;
-  fftw_execute(grid->backward_laplacianphi);
-  (*grid->laplacianphi) /= normalization;
+  if (invert_fft) {
+    fftw_execute(grid->backward_laplacianphi);
+    (*grid->laplacianphi) /= normalization;
+  }
 
 }
 

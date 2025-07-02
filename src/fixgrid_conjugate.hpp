@@ -24,7 +24,7 @@ public:
   virtual void post_force() override {};
   virtual void pre_final_integrate() override;
   virtual void final_integrate() override;
-  virtual void post_final_integrate() override;
+  virtual void post_final_integrate(bool invert_fft=true) override;
   
   virtual void reset_dt() override;
 
@@ -33,7 +33,7 @@ private:
 
   std::unique_ptr<T> conjugate;
 
-  bool didnotintegrate;
+
 };
 
 }

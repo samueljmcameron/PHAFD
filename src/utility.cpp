@@ -1,6 +1,9 @@
 
 #include "utility.hpp"
-
+#include "phafd.hpp"
+#include "fftw_arr/array3d.hpp"
+#include "compute.hpp"
+#include "fix.hpp"
 #include <random>
 
 #include <algorithm>
@@ -233,3 +236,164 @@ int PHAFD_NS::utility::make_unique_seed(int baseseed,const MPI_Comm &comm,
   return processor_seeds.at(id);
 
 }
+
+
+
+int PHAFD_NS::utility::find_brackets(std::string &id)
+/*
+
+  Check if "[%d]" is in string. If it is, return %d. If not,
+  return -1. Also removes "[%d]" from the string (if it exists).
+
+
+ */
+{
+  std::size_t pos = id.find("[");
+      
+  int arr_comp_num = -1;
+	
+  if (pos != std::string::npos) {
+    
+    std::size_t spos = id.find("]");
+    if (spos == std::string::npos)
+      throw std::runtime_error("No closing bracket on ID "
+			       + id);
+    arr_comp_num = std::stoi(id.substr(pos,spos-pos));
+    id = id.substr(0,pos);
+  }
+  return arr_comp_num;
+}
+
+
+int PHAFD_NS::utility::
+find_index(std::string id,const std::vector<std::string> &names)
+{
+  
+  int index = 0;
+  
+  for (auto &name : names) {
+    
+    if (id == name) {
+      break;
+    }
+    index += 1;
+  }
+  if (index == names.size())
+    throw std::runtime_error("ID " + id
+			     + std::string("doesn't exist."));
+
+  return index;
+}
+
+void PHAFD_NS::utility::
+find_array_component(const std::string &arrname,
+		     PHAFD *phafd,
+		     fftwArr::array3D<double> * array)
+{
+  if (arrname.rfind("c_",0) == 0) {
+
+    std::string cid = arrname.substr(2);
+
+    int arr_comp_num = find_brackets(cid);
+
+    int index = find_index(std::string(cid),Compute::NAMES);
+
+    if (arr_comp_num == -1) {
+      if (phafd->fixes.at(index)->realFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of ID "
+				 + cid);
+      else
+	arr_comp_num = 0;
+    }
+
+    
+    array = phafd->computes.at(index)->realFFTWarray.at(arr_comp_num);
+
+    
+  } else if (arrname.rfind("f_",0) == 0) {
+    
+    std::string fid = arrname.substr(2);
+    
+    int arr_comp_num = find_brackets(fid);
+
+    int index = find_index(std::string(fid),Fix::NAMES);
+
+
+    if (arr_comp_num == -1) {
+      if (phafd->fixes.at(index)->realFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of ID "
+				 + fid);
+      else
+	arr_comp_num = 0;
+    }
+    
+    array = phafd->fixes.at(index)->realFFTWarray.at(arr_comp_num);
+
+    
+  } else
+    array = nullptr;
+
+  return;
+}
+
+
+void PHAFD_NS::utility::
+find_array_component(const std::string &arrname,
+		     PHAFD *phafd,
+		     fftwArr::array3D<std::complex<double>> * array)
+{
+  if (arrname.rfind("c_",0) == 0) {
+
+    std::string cid = arrname.substr(2);
+
+    int arr_comp_num = find_brackets(cid);
+
+    int index = find_index(std::string(cid),Compute::NAMES);
+
+    if (arr_comp_num == -1) {
+      if (phafd->fixes.at(index)->complexFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of ID "
+				 + cid);
+      else
+	arr_comp_num = 0;
+    }
+
+    
+    array = phafd->computes.at(index)->complexFFTWarray.at(arr_comp_num);
+
+    
+  } else if (arrname.rfind("f_",0) == 0) {
+    
+    std::string fid = arrname.substr(2);
+    
+    int arr_comp_num = find_brackets(fid);
+
+    int index = find_index(std::string(fid),Fix::NAMES);
+
+
+    if (arr_comp_num == -1) {
+      if (phafd->fixes.at(index)->complexFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of ID "
+				 + fid);
+      else
+	arr_comp_num = 0;
+    }
+    
+    array = phafd->fixes.at(index)->complexFFTWarray.at(arr_comp_num);
+
+    
+  } else
+    array = nullptr;
+
+  return;
+}
+
+
+//template void PHAFD_NS::utility::find_array_component<
+//  fftwArr::array3D<double>>(const std::string &,PHAFD *,
+//			    fftwArr::array3D<double> *);
+
+//template void PHAFD_NS::utility::find_array_component<
+//  fftwArr::array3D<std::complex<double>
+//		   >>(const std::string &,PHAFD *,
+//		      fftwArr::array3D<std::complex<double>> *);

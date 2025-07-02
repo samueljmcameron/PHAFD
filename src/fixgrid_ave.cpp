@@ -58,9 +58,9 @@ void FixGridAve::init(const std::vector<std::string> &v_line)
       throw std::invalid_argument("Need per_grid or per_ftgrid compute for fixgridave.");
 
 
-    Nx = compute->Nx;
-    Ny = compute->Ny;
-    Nz = compute->Nz;
+    localNx = -1;//compute->localNx;
+    localNy = -1;//compute->localNy;
+    localNz = -1;//compute->localNz;
 
 
     
@@ -82,13 +82,13 @@ void FixGridAve::init(const std::vector<std::string> &v_line)
       throw std::invalid_argument("Need per_grid or per_ftgrid fix for fixgridave.");
 
 
-    Nx = fix->Nx;
-    Ny = fix->Ny;
-    Nz = fix->Nz;
+    localNx = -1;//fix->localNx;
+    localNy = -1;//fix->localNy;
+    localNz = -1;//fix->localNz;
     
   }
 
-  array.resize(Nx*Ny*Nz);
+  array.resize(localNx*localNy*localNz);
 
 
 

@@ -29,6 +29,7 @@ public:
 private:
   fftwArr::array3D<double> *fftw3_arr;
 
+  int localNx,localNy,localNz;
   std::string condition;
   std::vector<int> intarray,lefts,rights;
 

@@ -8,9 +8,9 @@
 
 using namespace PHAFD_NS;
 
-#define INTARR(i,j,k) (intarray[(k)+((i)*Ny+(j))*Nx])
-#define RIGHTS(j,k) (rights[(j)*Ny+(k)])
-#define LEFTS(j,k) (lefts[(j)*Ny+(k)])
+#define INTARR(i,j,k) (intarray[(k)+((i)*localNy+(j))*localNx])
+#define RIGHTS(j,k) (rights[(j)*localNy+(k)])
+#define LEFTS(j,k) (lefts[(j)*localNy+(k)])
 #define MIN(A,B) ((A) < (B) ? (A) : (B))
 
 
@@ -48,16 +48,16 @@ void ComputeGridClusters::init(const std::vector<std::string> &v_line) {
     throw std::runtime_error("Must specify lt or gt for compute grid cluster.");
   
 
-  Nz = fftw3_arr->Nz();
-  Ny = fftw3_arr->Ny();
-  Nx = fftw3_arr->Nx();
+  localNz = fftw3_arr->Nz();
+  localNy = fftw3_arr->Ny();
+  localNx = fftw3_arr->Nx();
   
-  array.resize(Nx*Ny*(Nz+2));
+  array.resize(localNx*localNy*(localNz+2));
 
-  intarray.resize(Nx*Ny*Nz);
+  intarray.resize(localNx*localNy*localNz);
   
-  lefts.resize(Nx*Ny);
-  rights.resize(Nx*Ny);
+  lefts.resize(localNx*localNy);
+  rights.resize(localNx*localNy);
 
 
   
@@ -74,11 +74,11 @@ void ComputeGridClusters::end_of_step()
 
   if (condition == "lt") {
   
-    for (int i = 0; i < Nz; i++) {
-      for (int j = 0; j < Ny; j++) {
-	for (int k = 0; k < Nx; k++) {
+    for (int i = 0; i < localNz; i++) {
+      for (int j = 0; j < localNy; j++) {
+	for (int k = 0; k < localNx; k++) {
 	  if ((*fftw3_arr)(i,j,k) < threshold)
-	    INTARR(i,j,k) = i+local_start + (j*Nx + k)*Ny;
+	    INTARR(i,j,k) = i+local_start + (j*localNx + k)*localNy;
 	  else
 	    INTARR(i,j,k) = -1;
 	}
@@ -86,11 +86,11 @@ void ComputeGridClusters::end_of_step()
     }
   } else {
 
-    for (int i = 0; i < Nz; i++) {
-      for (int j = 0; j < Ny; j++) {
-	for (int k = 0; k < Nx; k++) {
+    for (int i = 0; i < localNz; i++) {
+      for (int j = 0; j < localNy; j++) {
+	for (int k = 0; k < localNx; k++) {
 	  if ((*fftw3_arr)(i,j,k) > threshold)
-	    INTARR(i,j,k) = i+local_start + (j*Nx + k)*Ny;
+	    INTARR(i,j,k) = i+local_start + (j*localNx + k)*localNy;
 	  else
 	    INTARR(i,j,k) = -1;
 	}
@@ -120,9 +120,9 @@ void ComputeGridClusters::end_of_step()
     while (true) {
       done = true;
 
-      for (int i = 0; i < Nz; i++) {
-	for (int j = 0; j < Ny; j++) {
-	  for (int k = 0; k < Nx; k++) {
+      for (int i = 0; i < localNz; i++) {
+	for (int j = 0; j < localNy; j++) {
+	  for (int k = 0; k < localNx; k++) {
 
 	    
 	    // if not part of cluster, don't care
@@ -133,7 +133,7 @@ void ComputeGridClusters::end_of_step()
 	    for (int iindex = i-1; iindex <= i+1; iindex += 2) {
 	      if (iindex == -1)
 		clusint = &LEFTS(j,k);
-	      else if (iindex == Nz)
+	      else if (iindex == localNz)
 		clusint = &RIGHTS(j,k);
 	      else
 		clusint = &INTARR(iindex,j,k);
@@ -153,8 +153,8 @@ void ComputeGridClusters::end_of_step()
 
 	    for (int jindex = j-1; jindex <= j+1; jindex += 2) {
 	      if (jindex == -1)
-		clusint = &INTARR(i,Ny-1,k);
-	      else if (jindex == Ny)
+		clusint = &INTARR(i,localNy-1,k);
+	      else if (jindex == localNy)
 		clusint = &INTARR(i,0,k);
 	      else
 		clusint = &INTARR(i,jindex,k);
@@ -169,8 +169,8 @@ void ComputeGridClusters::end_of_step()
 
 	    for (int kindex = k-1; kindex <= k+1; kindex += 2) {
 	      if (kindex == -1)
-		clusint = &INTARR(i,j,Nx-1);
-	      else if (kindex == Nx)
+		clusint = &INTARR(i,j,localNx-1);
+	      else if (kindex == localNx)
 		clusint = &INTARR(i,j,0);
 	      else
 		clusint = &INTARR(i,j,kindex);
@@ -206,22 +206,22 @@ void ComputeGridClusters::end_of_step()
 
   int count = 0;
   if (commbrick->me != 0) {
-    for (int j = 0; j < Ny; j++)
-      for (int k = 0; k < Nx; k++)
+    for (int j = 0; j < localNy; j++)
+      for (int k = 0; k < localNx; k++)
 	array[count++] = LEFTS(j,k);
   }
   
-  for (int i = 0; i < Nz; i++) {
-    for (int j = 0; j < Ny; j++) {
-      for (int k = 0; k < Nx; k++) {
+  for (int i = 0; i < localNz; i++) {
+    for (int j = 0; j < localNy; j++) {
+      for (int k = 0; k < localNx; k++) {
 	array[count++] = INTARR(i,j,k);
       }
     }
   }
 
   if (commbrick->me != commbrick->nprocs-1) {
-    for (int j = 0; j < Ny; j++)
-      for (int k = 0; k < Nx; k++)
+    for (int j = 0; j < localNy; j++)
+      for (int k = 0; k < localNx; k++)
 	array[count++] = RIGHTS(j,k);
   }
   
@@ -248,8 +248,9 @@ void ComputeGridClusters::send_to_neighbors()
     sendid = me+1;
   }
 
-  MPI_Sendrecv(&INTARR(Nz-1,0,0),Nx*Ny,MPI_INT,sendid,0,
-	       lefts.data(),Nx*Ny,MPI_INT,recvid,0,world,MPI_STATUS_IGNORE);
+  MPI_Sendrecv(&INTARR(localNz-1,0,0),localNx*localNy,MPI_INT,sendid,0,
+	       lefts.data(),localNx*localNy,MPI_INT,recvid,0,world,
+	       MPI_STATUS_IGNORE);
   
   
   // now send to left/recv from right
@@ -266,8 +267,9 @@ void ComputeGridClusters::send_to_neighbors()
     sendid = me -1;
   }
 
-  MPI_Sendrecv(&INTARR(0,0,0),Nx*Ny,MPI_INT,sendid,0,
-	       rights.data(),Nx*Ny,MPI_INT,recvid,0,world,MPI_STATUS_IGNORE);
+  MPI_Sendrecv(&INTARR(0,0,0),localNx*localNy,MPI_INT,sendid,0,
+	       rights.data(),localNx*localNy,MPI_INT,recvid,0,world,
+	       MPI_STATUS_IGNORE);
   
 }
 /*
@@ -294,17 +296,17 @@ void ComputeGridClusters::receive_from_neighbors()
 
 
 
-  for (int j = 0; j < Ny; j++) {
-    for (int k = 0; k < Nx; k++) {
+  for (int j = 0; j < localNy; j++) {
+    for (int k = 0; k < localNx; k++) {
 
-      RIGHTS(j,k) = INTARR(Nz-1,j,k);
+      RIGHTS(j,k) = INTARR(localNz-1,j,k);
       LEFTS(j,k) = INTARR(0,j,k);
 
     }
   }
   
-  MPI_Sendrecv(rights.data(),Nx*Ny,MPI_INT,sendid,0,
-	       &INTARR(0,0,0),Nx*Ny,
+  MPI_Sendrecv(rights.data(),localNx*localNy,MPI_INT,sendid,0,
+	       &INTARR(0,0,0),localNx*localNy,
 	       MPI_INT,recvid,0,world,MPI_STATUS_IGNORE);  
 
 
@@ -325,8 +327,8 @@ void ComputeGridClusters::receive_from_neighbors()
 
 
 
-  MPI_Sendrecv(lefts.data(),Nx*Ny,MPI_INT,sendid,0,
-	       &INTARR(Nz-1,0,0),Nx*Ny,
+  MPI_Sendrecv(lefts.data(),localNx*localNy,MPI_INT,sendid,0,
+	       &INTARR(localNz-1,0,0),localNx*localNy,
 	       MPI_INT,recvid,0,world,MPI_STATUS_IGNORE);
   
   

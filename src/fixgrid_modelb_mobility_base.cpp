@@ -360,12 +360,14 @@ void FixGridModelBMobilityBase::final_integrate()
 }
 
 
-void FixGridModelBMobilityBase::post_final_integrate()
+void FixGridModelBMobilityBase::post_final_integrate(bool invert_fft)
 {
 
-  fftw_execute(grid->backward_phi);
+  if (invert_fft) {
+    fftw_execute(grid->backward_phi);
 
-  add_noise_to_phi();
+    add_noise_to_phi();
+  }
   
   return;
 }

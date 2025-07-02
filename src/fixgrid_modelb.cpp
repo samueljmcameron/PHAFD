@@ -87,7 +87,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
   
   conjugate->readCoeffs(new_v_line);
   
-
+  complexFFTWarray.push_back(conjugate->ft_array.get());
 }
 
 
@@ -164,10 +164,11 @@ void FixGridModelB::final_integrate()
 }
 
 
-void FixGridModelB::post_final_integrate()
+void FixGridModelB::post_final_integrate(bool invert_fft)
 {
+  if (invert_fft)
 
-  fftw_execute(grid->backward_phi);
+    fftw_execute(grid->backward_phi);
   
   return;
 }

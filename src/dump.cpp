@@ -2,7 +2,7 @@
 #include <iostream>
 #include "dump.hpp"
 #include "comm_brick.hpp"
-
+#include "utility.hpp"
 #include "domain.hpp"
 #include "grid.hpp"
 #include "fix.hpp"
@@ -176,7 +176,7 @@ void Dump::setup()
       
       
       std::string cid = word.substr(2);
-      
+      utility::find_brackets(cid);
       int index = 0;
       
       for (auto &name : Compute::NAMES) {
@@ -195,7 +195,7 @@ void Dump::setup()
     } else if (word.rfind("f_",0) == 0) {
       
       std::string fid = word.substr(2);
-      
+      utility::find_brackets(fid);      
       int index = 0;
       
       for (auto &name : Fix::NAMES) {
@@ -876,7 +876,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
 
 
     std::string cid = word.substr(2);
-    
+    int arr_comp_num = utility::find_brackets(cid);  
     int index = 0;
 
     for (auto &name : Compute::NAMES) {
@@ -890,20 +890,33 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
     if (index == computes.size())
       throw std::runtime_error("Cannot write dump, compute ID " + cid
 			       + std::string("doesn't exist."));
+    if (arr_comp_num == -1 && (dump_type == "ftgrid" || dump_type == "grid")) {
+      if (computes.at(index)->realFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of "
+				 "compute ID "
+				 + cid);
+      else
+	arr_comp_num = 0;
+    }
 
 
     if (dump_type == "ftgrid") {
       if (!computes.at(index)->per_ftgrid)
 	throw std::runtime_error("Cannot write dump, compute ID " + cid
 				 + std::string("is not a per_ftgrid quantity."));
-
       append_binary_data(myfile,computes.at(index)->array.data());
+      //append_binary_data(myfile,
+      //			 computes.at(index)
+      //			 ->realFFTWarray[arr_comp_num]);
 
     } else if (dump_type == "grid") {
       if (!computes.at(index)->per_grid)
 	throw std::runtime_error("Cannot write dump, compute ID " + cid
 				 + std::string("is not a per_grid quantity."));
       append_binary_data(myfile,computes.at(index)->array.data());
+      //      append_binary_data(myfile,
+      //			 computes.at(index)
+      //			 ->realFFTWarray[arr_comp_num]);
 
     } else if (dump_type == "atom") {
       if (!computes.at(index)->per_atom)
@@ -919,7 +932,7 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
   } else if (word.rfind("f_",0) == 0) {
 
     std::string fid = word.substr(2);
-
+    int arr_comp_num = utility::find_brackets(fid);
     int index = 0;
     
     for (auto &name : Fix::NAMES) {
@@ -934,21 +947,34 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
       throw std::runtime_error("Cannot write dump, fix ID " + fid
 			       + std::string("doesn't exist."));
 
-
+    if (arr_comp_num == -1 && (dump_type == "ftgrid" || dump_type == "grid")) {
+      if (fixes.at(index)->realFFTWarray.size() != 1)
+	throw std::runtime_error("Must specify which component of "
+				 "fix ID "
+				 + fid);
+      else
+	arr_comp_num = 0;
+    }
 
     if (dump_type == "ftgrid") {
       if (!fixes.at(index)->per_ftgrid)
 	throw std::runtime_error("Cannot write dump, fix ID " + fid
 				 + std::string("is not a per_ftgrid quantity."));
-      
-      append_binary_data(myfile,fixes.at(index)->array.data());
+      append_binary_data(myfile,computes.at(index)->array.data());
+      //      append_binary_data(myfile,
+      //			 fixes.at(index)
+      //			 ->realFFTWarray[arr_comp_num]);
       
     } else if (dump_type == "grid") {
       if (!fixes.at(index)->per_grid)
 	throw std::runtime_error("Cannot write dump, fix ID " + fid
 				 + std::string("is not a per_grid quantity."));
+      append_binary_data(myfile,computes.at(index)->array.data());
+      //      append_binary_data(myfile,
+      //			 fixes.at(index)
+      //			 ->realFFTWarray[arr_comp_num]);
       
-      append_binary_data(myfile,fixes.at(index)->array.data());
+
     } else if (dump_type == "atom") {
       if (!fixes.at(index)->per_atom)
 	throw std::runtime_error("Cannot write dump, fix ID " + fid
