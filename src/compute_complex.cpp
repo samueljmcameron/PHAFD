@@ -68,13 +68,13 @@ void ComputeComplex::init(const std::vector<std::string> &v_line) {
   if (!output) 
     output = std::make_unique<fftwArr::array3D<double>
 			      >(world,name + std::string("_output"),
-				grid->boxgrid[0],
+				localNx,
 				grid->boxgrid[1],
 				grid->boxgrid[2]);
 
   array.resize(localNx*localNy*localNz);
   realFFTWarray.push_back(output.get());
-  
+
 }
 
 
@@ -88,31 +88,31 @@ void ComputeComplex::in_fourier()
     for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
 	for (int k = 0; k < localNx; k++)
-	  //	  (*output)(i,j,k) = std::abs((*fftw3_arr)(i,j,k))*prefac;
-	  array[count++] = std::abs((*fftw3_arr)(i,j,k))*prefac;
+	  (*output)(i,j,k) = std::abs((*fftw3_arr)(i,j,k))*prefac;
+	  //array[count++] = std::abs((*fftw3_arr)(i,j,k))*prefac;
 
   } else if (which_quant == "norm") {
   
     for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
 	for (int k = 0; k < localNx; k++) 
-	  //	  (*output)(i,j,k) = std::norm((*fftw3_arr)(i,j,k))*prefac*prefac;
-	  array[count++] = std::norm((*fftw3_arr)(i,j,k))*prefac*prefac;
+	  (*output)(i,j,k) = std::norm((*fftw3_arr)(i,j,k))*prefac*prefac;
+    //array[count++] = std::norm((*fftw3_arr)(i,j,k))*prefac*prefac;
 
   } else if (which_quant == "real") {
   
     for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
 	for (int k = 0; k < localNx; k++)
-	  //	  (*output)(i,j,k) = (*fftw3_arr)(i,j,k).real()*prefac;
-	  array[count++] = (*fftw3_arr)(i,j,k).real()*prefac;
+	  (*output)(i,j,k) = (*fftw3_arr)(i,j,k).real()*prefac;
+    //array[count++] = (*fftw3_arr)(i,j,k).real()*prefac;
   } else if (which_quant == "imag") {
   
     for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
 	for (int k = 0; k < localNx; k++)
-	  //	  (*output)(i,j,k) = (*fftw3_arr)(i,j,k).imag()*prefac;
-	  array[count++] = (*fftw3_arr)(i,j,k).imag()*prefac;
+	  (*output)(i,j,k) = (*fftw3_arr)(i,j,k).imag()*prefac;
+    //array[count++] = (*fftw3_arr)(i,j,k).imag()*prefac;
   }
   
 }

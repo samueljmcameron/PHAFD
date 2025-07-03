@@ -33,14 +33,19 @@ namespace PHAFD_NS {
     int find_brackets(std::string &);
 
     int find_index(std::string id, const std::vector<std::string> &);
+
+    template <class T>
+    void type_of_output(std::string, std::string ,T *);
     
     void find_array_component(const std::string &,
 			      PHAFD *,
-			      fftwArr::array3D<double>* );
+			      fftwArr::array3D<double>* ,
+			      std::string check_output="");
 
     void find_array_component(const std::string &,
 			      PHAFD *,
-			      fftwArr::array3D<std::complex<double>>* );
+			      fftwArr::array3D<std::complex<double>>*,
+			      std::string check_output="");
     
   }
 

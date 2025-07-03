@@ -285,10 +285,50 @@ find_index(std::string id,const std::vector<std::string> &names)
   return index;
 }
 
+
+template <class T>
+void PHAFD_NS::utility::type_of_output(std::string check_type,
+				       std::string id,T * cls)
+{
+  bool anerror = false;
+  if (check_type == "grid") {
+
+
+    if (!cls->per_grid)
+      anerror = true;
+  
+  } else if (check_type == "ftgrid") {
+    if (!cls->per_ftgrid)
+      anerror = true;
+  
+  } else if (check_type == "atom") {
+    if (!cls->per_atom)
+      anerror = true;
+  
+  } else if (check_type == "vector") {
+    if (!cls->vector)
+      anerror = true;
+  
+  } else if (check_type == "scalar") {
+    if (!cls->scalar)
+      anerror = true;
+
+
+    
+  } else if (check_type != "")
+    throw std::runtime_error("invalid check_type on ID " + id);
+  if (anerror)
+    throw std::runtime_error("ID " + id +
+			     std::string(" does not have ")
+			     + check_type + std::string(" quantity."));
+  
+}
+
 void PHAFD_NS::utility::
 find_array_component(const std::string &arrname,
 		     PHAFD *phafd,
-		     fftwArr::array3D<double> * array)
+		     fftwArr::array3D<double> * array,
+		     std::string check_output)
 {
   if (arrname.rfind("c_",0) == 0) {
 
@@ -298,17 +338,18 @@ find_array_component(const std::string &arrname,
 
     int index = find_index(std::string(cid),Compute::NAMES);
 
+    auto cmp = phafd->computes.at(index).get();
+
     if (arr_comp_num == -1) {
-      if (phafd->fixes.at(index)->realFFTWarray.size() != 1)
+      if (cmp->realFFTWarray.size() != 1)
 	throw std::runtime_error("Must specify which component of ID "
 				 + cid);
       else
 	arr_comp_num = 0;
     }
 
-    
-    array = phafd->computes.at(index)->realFFTWarray.at(arr_comp_num);
-
+    PHAFD_NS::utility::type_of_output(check_output,cid,cmp);
+    array = cmp->realFFTWarray.at(arr_comp_num);
     
   } else if (arrname.rfind("f_",0) == 0) {
     
@@ -318,16 +359,17 @@ find_array_component(const std::string &arrname,
 
     int index = find_index(std::string(fid),Fix::NAMES);
 
-
+    auto fx = phafd->fixes.at(index).get();
     if (arr_comp_num == -1) {
-      if (phafd->fixes.at(index)->realFFTWarray.size() != 1)
+      if (fx->realFFTWarray.size() != 1)
 	throw std::runtime_error("Must specify which component of ID "
 				 + fid);
       else
 	arr_comp_num = 0;
     }
     
-    array = phafd->fixes.at(index)->realFFTWarray.at(arr_comp_num);
+    PHAFD_NS::utility::type_of_output(check_output,fid,fx);
+    array = fx->realFFTWarray.at(arr_comp_num);
 
     
   } else
@@ -340,55 +382,63 @@ find_array_component(const std::string &arrname,
 void PHAFD_NS::utility::
 find_array_component(const std::string &arrname,
 		     PHAFD *phafd,
-		     fftwArr::array3D<std::complex<double>> * array)
+		     fftwArr::array3D<std::complex<double>> * array,
+		     std::string check_output)
 {
   if (arrname.rfind("c_",0) == 0) {
-
+    
     std::string cid = arrname.substr(2);
-
+    
     int arr_comp_num = find_brackets(cid);
-
+    
     int index = find_index(std::string(cid),Compute::NAMES);
 
+    auto cmp = phafd->computes.at(index).get();
+
     if (arr_comp_num == -1) {
-      if (phafd->fixes.at(index)->complexFFTWarray.size() != 1)
+      if (cmp->complexFFTWarray.size() != 1)
 	throw std::runtime_error("Must specify which component of ID "
 				 + cid);
       else
 	arr_comp_num = 0;
     }
-
     
-    array = phafd->computes.at(index)->complexFFTWarray.at(arr_comp_num);
-
+    PHAFD_NS::utility::type_of_output(check_output,cid,cmp);    
+    array = cmp->complexFFTWarray.at(arr_comp_num);
+    
     
   } else if (arrname.rfind("f_",0) == 0) {
     
     std::string fid = arrname.substr(2);
     
     int arr_comp_num = find_brackets(fid);
-
+    
     int index = find_index(std::string(fid),Fix::NAMES);
-
-
+    
+    auto fx = phafd->fixes.at(index).get();    
     if (arr_comp_num == -1) {
-      if (phafd->fixes.at(index)->complexFFTWarray.size() != 1)
+      if (fx->complexFFTWarray.size() != 1)
 	throw std::runtime_error("Must specify which component of ID "
 				 + fid);
       else
 	arr_comp_num = 0;
     }
     
-    array = phafd->fixes.at(index)->complexFFTWarray.at(arr_comp_num);
-
+    PHAFD_NS::utility::type_of_output(check_output,fid,fx);
+    array = fx->complexFFTWarray.at(arr_comp_num);
+    
     
   } else
     array = nullptr;
-
+  
   return;
 }
 
+template void PHAFD_NS::utility::type_of_output<
+  PHAFD_NS::Compute>(std::string ,std::string ,Compute *);
 
+template void PHAFD_NS::utility::type_of_output<
+  PHAFD_NS::Fix>(std::string , std::string ,Fix *);
 //template void PHAFD_NS::utility::find_array_component<
 //  fftwArr::array3D<double>>(const std::string &,PHAFD *,
 //			    fftwArr::array3D<double> *);

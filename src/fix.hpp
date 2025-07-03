@@ -39,6 +39,7 @@ public:
   inline static std::vector<std::string> NAMES;
 
   std::string name;
+  /* see compute.hpp for meaning (same as there) */
   bool per_grid;
   bool per_ftgrid;
   bool per_atom;
@@ -51,10 +52,7 @@ public:
   std::set<std::string> dump_callers;
   std::vector<double> array;
 
-  // want to include an fftw complex array, an fftw real array,
-  // a 3D fftw complex and a 3D fftw real array for outputting.
-  // include them as pointers, then point to whatever arrays are relevant
-  // in the fix child class
+  /* see compute.hpp for meaning (same as there) */
 
   std::vector<fftwArr::array3D<double> *> realFFTWarray;
   std::vector<fftwArr::array3D<std::complex<double>> *> complexFFTWarray;

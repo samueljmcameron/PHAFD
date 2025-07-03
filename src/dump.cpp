@@ -545,20 +545,8 @@ void Dump::write_lammps_dump()
 	
 	
 	std::string cid = word.substr(2);
-	
-	int index = 0;
-	
-	for (auto &name : Compute::NAMES) {
-	  
-	  if (cid == name) {
-	    break;
-	  }
-	  index += 1;
-	}
-	
-	if (index == computes.size())
-	  throw std::runtime_error("Cannot write dump, compute ID " + cid
-				   + std::string("doesn't exist."));
+
+	int index = utility::find_index(cid,Compute::NAMES);
 	
 	nc = computes.at(index)->numberofcomponents;
 	
@@ -566,19 +554,7 @@ void Dump::write_lammps_dump()
 	
 	std::string fid = word.substr(2);
 	
-	int index = 0;
-	
-	for (auto &name : Fix::NAMES) {
-	  if (fid == name) {
-	    break;
-	  }
-	  index += 1;
-	}
-	
-	
-	if (index == fixes.size())
-	  throw std::runtime_error("Cannot write dump, fix ID " + fid
-				   + std::string("doesn't exist."));
+	int index = utility::find_index(fid,Fix::NAMES);
 	
 	nc = fixes.at(index)->numberofcomponents;
 	
@@ -605,19 +581,7 @@ void Dump::write_lammps_dump()
 	
 	std::string cid = word.substr(2);
 	
-	int index = 0;
-	
-	for (auto &name : Compute::NAMES) {
-	  
-	  if (cid == name) {
-	    break;
-	  }
-	  index += 1;
-	}
-	
-	if (index == computes.size())
-	  throw std::runtime_error("Cannot write dump, compute ID " + cid
-				   + std::string("doesn't exist."));
+	int index = utility::find_index(cid,Compute::NAMES);
 	
 	int nc = computes.at(index)->numberofcomponents;
 	for (int component = 0; component < nc; component ++ )
@@ -627,19 +591,7 @@ void Dump::write_lammps_dump()
 	
 	std::string fid = word.substr(2);
 	
-	int index = 0;
-	
-	for (auto &name : Fix::NAMES) {
-	  if (fid == name) {
-	    break;
-	  }
-	  index += 1;
-	}
-	
-	
-	if (index == fixes.size())
-	  throw std::runtime_error("Cannot write dump, fix ID " + fid
-				   + std::string("doesn't exist."));
+	int index = utility::find_index(fid,Fix::NAMES);
 	
 	int nc = fixes.at(index)->numberofcomponents;
 	for (int component = 0; component < nc; component ++ )
@@ -870,125 +822,63 @@ void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
 				  bool for_pvtp)
 {
 
-
-  
   if (word.rfind("c_",0) == 0) {
 
 
     std::string cid = word.substr(2);
     int arr_comp_num = utility::find_brackets(cid);  
-    int index = 0;
+    int index = utility::find_index(std::string(cid),Compute::NAMES);
 
-    for (auto &name : Compute::NAMES) {
-
-      if (cid == name) {
-	break;
+    auto cmp = computes.at(index).get();
+    PHAFD_NS::utility::type_of_output(dump_type,cid,cmp);
+      
+    if (dump_type == "ftgrid" || dump_type == "grid") {
+      if (arr_comp_num == -1) {
+	if (cmp->realFFTWarray.size() != 1)
+	  throw std::runtime_error("Must specify which component of "
+				   "compute ID "
+				   + cid);
+	else
+	  arr_comp_num = 0;
       }
-      index += 1;
-    }
-
-    if (index == computes.size())
-      throw std::runtime_error("Cannot write dump, compute ID " + cid
-			       + std::string("doesn't exist."));
-    if (arr_comp_num == -1 && (dump_type == "ftgrid" || dump_type == "grid")) {
-      if (computes.at(index)->realFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of "
-				 "compute ID "
-				 + cid);
-      else
-	arr_comp_num = 0;
-    }
 
 
-    if (dump_type == "ftgrid") {
-      if (!computes.at(index)->per_ftgrid)
-	throw std::runtime_error("Cannot write dump, compute ID " + cid
-				 + std::string("is not a per_ftgrid quantity."));
-      append_binary_data(myfile,computes.at(index)->array.data());
-      //append_binary_data(myfile,
-      //			 computes.at(index)
-      //			 ->realFFTWarray[arr_comp_num]);
-
-    } else if (dump_type == "grid") {
-      if (!computes.at(index)->per_grid)
-	throw std::runtime_error("Cannot write dump, compute ID " + cid
-				 + std::string("is not a per_grid quantity."));
-      append_binary_data(myfile,computes.at(index)->array.data());
-      //      append_binary_data(myfile,
-      //			 computes.at(index)
-      //			 ->realFFTWarray[arr_comp_num]);
+      append_binary_data(myfile,
+			 cmp->realFFTWarray[arr_comp_num]);
 
     } else if (dump_type == "atom") {
-      if (!computes.at(index)->per_atom)
-	throw std::runtime_error("Cannot write dump, compute ID " + cid
-				 + std::string("is not a per_atom quantity."));
-      write_ascii_data(myfile,word,computes.at(index)->array,
-		       computes.at(index)->numberofcomponents,for_pvtp);
+      write_ascii_data(myfile,word,cmp->array,
+		       cmp->numberofcomponents,for_pvtp);
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
-
-    
     
   } else if (word.rfind("f_",0) == 0) {
 
     std::string fid = word.substr(2);
     int arr_comp_num = utility::find_brackets(fid);
-    int index = 0;
-    
-    for (auto &name : Fix::NAMES) {
-      if (fid == name) {
-	break;
+    int index = utility::find_index(std::string(fid),Fix::NAMES);
+
+    auto fx = fixes.at(index).get();
+    if (dump_type == "ftgrid" || dump_type == "grid") {
+      if (arr_comp_num == -1 ) {
+	if (fx->realFFTWarray.size() != 1)
+	  throw std::runtime_error("Must specify which component of "
+				   "fix ID "
+				   + fid);
+	else
+	  arr_comp_num = 0;
       }
-      index += 1;
-    }
 
-    
-    if (index == fixes.size())
-      throw std::runtime_error("Cannot write dump, fix ID " + fid
-			       + std::string("doesn't exist."));
-
-    if (arr_comp_num == -1 && (dump_type == "ftgrid" || dump_type == "grid")) {
-      if (fixes.at(index)->realFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of "
-				 "fix ID "
-				 + fid);
-      else
-	arr_comp_num = 0;
-    }
-
-    if (dump_type == "ftgrid") {
-      if (!fixes.at(index)->per_ftgrid)
-	throw std::runtime_error("Cannot write dump, fix ID " + fid
-				 + std::string("is not a per_ftgrid quantity."));
-      append_binary_data(myfile,computes.at(index)->array.data());
-      //      append_binary_data(myfile,
-      //			 fixes.at(index)
-      //			 ->realFFTWarray[arr_comp_num]);
-      
-    } else if (dump_type == "grid") {
-      if (!fixes.at(index)->per_grid)
-	throw std::runtime_error("Cannot write dump, fix ID " + fid
-				 + std::string("is not a per_grid quantity."));
-      append_binary_data(myfile,computes.at(index)->array.data());
-      //      append_binary_data(myfile,
-      //			 fixes.at(index)
-      //			 ->realFFTWarray[arr_comp_num]);
+      append_binary_data(myfile,
+      			 fx->realFFTWarray[arr_comp_num]);
       
 
     } else if (dump_type == "atom") {
-      if (!fixes.at(index)->per_atom)
-	throw std::runtime_error("Cannot write dump, fix ID " + fid
-				 + std::string("is not a per_atom quantity."));
-      
-      write_ascii_data(myfile,word,fixes.at(index)->array,
-		       fixes.at(index)->numberofcomponents,for_pvtp);
+      write_ascii_data(myfile,word,fx->array,
+		       fx->numberofcomponents,for_pvtp);
       
     } else
       throw std::runtime_error("Something wrong, should not get here. ");
-
-    
-
-
     
   } else if (dump_type == "grid") {
 
@@ -1263,6 +1153,7 @@ void Dump::append_binary_data(std::fstream &myfile,
 
 }
 
+/* This is now deprecated. */
 void Dump::append_binary_data(std::fstream &myfile,const double *array) {
 
 
