@@ -77,7 +77,7 @@ void FixGridLaplacian::calculate_laplacian(const fftwArr::array3D<std::complex<d
     = (grid->boxgrid[0]*grid->boxgrid[1]*grid->boxgrid[2]);
 
   
-  const int local0start = fftw3_arr->get_local0start();
+  local0start = fftw3_arr->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
   const int globalNz = grid->ft_boxgrid[2];
   

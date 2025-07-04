@@ -37,12 +37,12 @@ namespace PHAFD_NS {
     template <class T>
     void type_of_output(std::string, std::string ,T *);
     
-    void find_array_component(const std::string &,
+    void find_array_component(std::string ,
 			      PHAFD *,
 			      fftwArr::array3D<double>* ,
 			      std::string check_output="");
 
-    void find_array_component(const std::string &,
+    void find_array_component(std::string ,
 			      PHAFD *,
 			      fftwArr::array3D<std::complex<double>>*,
 			      std::string check_output="");

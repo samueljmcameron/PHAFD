@@ -21,7 +21,7 @@ public:
   Compute(PHAFD *);
 
   std::string name;
-  std::vector<double> array;
+
   virtual void init(const std::vector<std::string> &);
   virtual void in_fourier() = 0;
   virtual void end_of_step() = 0;
@@ -47,33 +47,16 @@ public:
 
 
   /*
-    realFFTWarray is a vector of arrays which can be used in two ways:
-    (1) to store an array for future fix/compute calculations
-    (2) to store an array which is output to a dump file, EITHER agrid
-        or ftgrid type!
-
-    In either case, the array size is EITHER has indices up to (Nx,Ny,Nz)
-    or  (Nx/2+1,Ny,Nz) (in theory it could be used to store any sized
-    3D array, but these are two typical cases). This might be confusing as
-    most other arrays of this type are always (Nx,Ny,Nz). But this is necessary
-    for outputting ftgrid type data to dump, since this ftgrid data must be
-    of the latter size.
+    vectors here are used to pass info to another compute or fix only,
+    they are not output to e.g. dump files
   */
   std::vector<fftwArr::array3D<double> *> realFFTWarray;
-
-
-  /*
-    complexFFTWarray is a vector of arrays which is just used to store
-    complex data types, but it CANNOT be output to dump files as only
-    real arrays can be output to dump files (by design).
-  */
   std::vector<fftwArr::array3D<std::complex<double>> *> complexFFTWarray;
 
-  
-  //int localNx,localNy,localNz;
-
+  // array is what is output to dump files.
+  std::vector<double> array;
   int numberofcomponents; // number of components in the array (e.g. 1 for scalar, 3 for vector, etc.)
-  
+  int localNx,localNy,localNz,local0start;  
 };
 
 }

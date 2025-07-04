@@ -169,50 +169,46 @@ void Dump::init(const std::vector<std::string> &v_line ) {
 }
 
 void Dump::setup()
+/*
+  Make sure all computes and fixes are being executed on the dump
+  time steps, and that the number of components in the arrays
+  of said fixes and computes are stored in a map.
+*/
 {
 
   for (auto &word : attributes) {
     if (word.rfind("c_",0) == 0) {
       
-      
       std::string cid = word.substr(2);
-      utility::find_brackets(cid);
-      int index = 0;
+      int index = utility::find_index(std::string(cid),Compute::NAMES);
       
-      for (auto &name : Compute::NAMES) {
+      auto cmp = computes.at(index).get();
 
-	if (cid == name) {
-	  break;
-	}
-	index += 1;
-      }
-      if (index == computes.size())
-	throw std::runtime_error("Cannot write dump, compute ID " + cid
-				 + std::string("doesn't exist."));
+      cmp->dump_callers.insert(name);
 
-      computes.at(index)->dump_callers.insert(name);
+      ncomponents[word] = cmp->numberofcomponents;
       
     } else if (word.rfind("f_",0) == 0) {
       
       std::string fid = word.substr(2);
-      utility::find_brackets(fid);      
-      int index = 0;
-      
-      for (auto &name : Fix::NAMES) {
-	if (fid == name) {
-	  break;
-	}
-	index += 1;
-      }
-      
-      
-      if (index == fixes.size())
-	throw std::runtime_error("Cannot write dump, fix ID " + fid
-				 + std::string("doesn't exist."));
 
-      fixes.at(index)->dump_callers.insert(name);
-    }
+      int index = utility::find_index(std::string(fid),Fix::NAMES);
+
+      auto fx = fixes.at(index).get();
+      
+      fx->dump_callers.insert(name);
+      
+      ncomponents[word] = fx->numberofcomponents;
+
+      
+    } else ncomponents[word] = 1;
   }
+
+  if (commbrick->me ==0)
+    for (auto &word : attributes) {
+      std::cout << "word = " << word << ", ncomponents[word] = "
+		<< ncomponents.at(word) << std::endl;
+    }
 
   if (dump_type=="lammpsatom") {
     create_lammps_style_file();
@@ -220,6 +216,10 @@ void Dump::setup()
 }
 
 void Dump::start_of_step()
+/*
+  Find all computes and fixes that must be called and be sure
+  to call them.
+ */
 {
 
   if (integrate->timestep % every == 0) {
@@ -234,6 +234,7 @@ void Dump::start_of_step()
 }
 
 void Dump::require_calculations()
+/* Niche function for loop cyclisation calculations only. */
 {
   for (auto &compute : computes)
     if (compute->dump_callers.find(name) != compute->dump_callers.end())
@@ -327,6 +328,7 @@ void Dump::write_collection_middle()
 
 
 void Dump::create_instance_name()
+/* create names for .vti and .pvti files */
 {
 
   instance_name = base_name + std::string("_p") + std::to_string(commbrick->me)
@@ -346,6 +348,7 @@ void Dump::create_instance_name()
 }
 
 void Dump::create_lammps_style_file()
+/* create name specifically for lammps style file */
 {
   instance_name = base_name + std::string("_p") + std::to_string(commbrick->me)
     +std::string(".") + fext;
@@ -700,19 +703,21 @@ void Dump::write_grid_timestep()
 	 << "\">" << std::endl
 	 << "<Piece Extent=\"0 " << Nx-1 << " 0 "
 	 << Ny-1 << " " << zstart << " " << zend << "\">" << std::endl
-	 << "<PointData Scalars=\"scalars\">" << std::endl;
+	 << "<PointData Scalars=\"scalars\" Vectors=\"vectors\">"
+	 << std::endl;
 
-  int counter = 0;
+  int offset = 0;
 
   for (auto &word : attributes) {
-    
-    int offset = counter*(bytelength+sizeof(bytelength));
+
     
     myfile << "<DataArray Name=\"" << word
+	   << "\" NumberOfComponents=\"" << ncomponents.at(word)
 	   << "\" type=\"Float64\" format=\"appended\" "
 	   << "offset=\"" << offset << "\"/>" << std::endl;
-    
-    counter++;
+
+    offset += (bytelength*ncomponents.at(word)+sizeof(bytelength));
+
     
   }
 
@@ -789,10 +794,12 @@ void Dump::write_grid_timestep_pvti()
 	   <<"Origin=\"" << boxlo[0] << " " << boxlo[1] << " " << boxlo[2] << " \" "
 	   << "Spacing=\"" << dx << " " << dy << " " << dz << "\""
 	   << " GhostLevel=\"1\">" << std::endl
-	   << "<PPointData Scalars=\"scalars\">" << std::endl;
+	   << "<PPointData Scalars=\"scalars\" Vectors=\"vectors\">"
+	   << std::endl;
     
     for (auto &word : attributes) 
       myfile << "<PDataArray Name=\"" << word
+	     << "\" NumberOfComponents=\"" << ncomponents.at(word)
 	     << "\" type=\"Float64\"/>" << std::endl;
 
     
@@ -820,64 +827,47 @@ void Dump::write_grid_timestep_pvti()
 
 void Dump::process_attribute_name(std::fstream &myfile,const std::string &word,
 				  bool for_pvtp)
+/*
+  Given attribute name, write the data for the attribute to file.
+ */
 {
 
   if (word.rfind("c_",0) == 0) {
 
 
     std::string cid = word.substr(2);
-    int arr_comp_num = utility::find_brackets(cid);  
     int index = utility::find_index(std::string(cid),Compute::NAMES);
 
     auto cmp = computes.at(index).get();
     PHAFD_NS::utility::type_of_output(dump_type,cid,cmp);
-      
-    if (dump_type == "ftgrid" || dump_type == "grid") {
-      if (arr_comp_num == -1) {
-	if (cmp->realFFTWarray.size() != 1)
-	  throw std::runtime_error("Must specify which component of "
-				   "compute ID "
-				   + cid);
-	else
-	  arr_comp_num = 0;
-      }
 
-
-      append_binary_data(myfile,
-			 cmp->realFFTWarray[arr_comp_num]);
-
-    } else if (dump_type == "atom") {
-      write_ascii_data(myfile,word,cmp->array,
+    if (dump_type == "ftgrid" || dump_type == "grid")
+      append_binary_data(myfile,cmp->array.data(),
+			 cmp->numberofcomponents);
+    
+    else if (dump_type == "atom") 
+    write_ascii_data(myfile,word,cmp->array,
 		       cmp->numberofcomponents,for_pvtp);
-    } else
+    else
       throw std::runtime_error("Something wrong, should not get here. ");
     
   } else if (word.rfind("f_",0) == 0) {
 
     std::string fid = word.substr(2);
-    int arr_comp_num = utility::find_brackets(fid);
     int index = utility::find_index(std::string(fid),Fix::NAMES);
 
     auto fx = fixes.at(index).get();
-    if (dump_type == "ftgrid" || dump_type == "grid") {
-      if (arr_comp_num == -1 ) {
-	if (fx->realFFTWarray.size() != 1)
-	  throw std::runtime_error("Must specify which component of "
-				   "fix ID "
-				   + fid);
-	else
-	  arr_comp_num = 0;
-      }
+    if (dump_type == "ftgrid" || dump_type == "grid")
 
-      append_binary_data(myfile,
-      			 fx->realFFTWarray[arr_comp_num]);
+      append_binary_data(myfile,fx->array.data(),
+			 fx->numberofcomponents);
       
 
-    } else if (dump_type == "atom") {
+    else if (dump_type == "atom") 
       write_ascii_data(myfile,word,fx->array,
 		       fx->numberofcomponents,for_pvtp);
       
-    } else
+    else
       throw std::runtime_error("Something wrong, should not get here. ");
     
   } else if (dump_type == "grid") {
@@ -1153,18 +1143,21 @@ void Dump::append_binary_data(std::fstream &myfile,
 
 }
 
-/* This is now deprecated. */
-void Dump::append_binary_data(std::fstream &myfile,const double *array) {
+
+void Dump::append_binary_data(std::fstream &myfile,const double *array,
+			      int nc) {
 
 
   int recvid, sendid;
   int me = commbrick->me;
   int nprocs = commbrick->nprocs;
 
-  myfile.write((char*)&bytelength,sizeof(bytelength));
+  unsigned int totalbytes = bytelength*nc;
+
+  myfile.write((char*)&(totalbytes),sizeof(totalbytes));
   
-  if (arr_recv.size() != Nx*Ny)
-    arr_recv.resize(Nx*Ny);
+  if (arr_recv.size() != Nx*Ny*nc)
+    arr_recv.resize(Nx*Ny*nc);
   
   // send to right/recv from left first
 
@@ -1182,14 +1175,16 @@ void Dump::append_binary_data(std::fstream &myfile,const double *array) {
   }
 
 
-  MPI_Sendrecv(&(array[Nx*Ny*(Nz-1)]),Nx*Ny, MPI_DOUBLE,sendid,0,
-	       arr_recv.data(),Nx*Ny,MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+  MPI_Sendrecv(&(array[Nx*Ny*(Nz-1)*nc]),
+	       Nx*Ny*nc, MPI_DOUBLE,sendid,0,
+	       arr_recv.data(),Nx*Ny*nc,
+	       MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
 
   if (me != 0)
-    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny);
+    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny*nc);
 
 
-  myfile.write((char*)&(array[0]),sizeof(double)*Nx*Ny*Nz);
+  myfile.write((char*)&(array[0]),sizeof(double)*Nx*Ny*Nz*nc);
 
   // now send to left/recv from right
   if (me == 0) {
@@ -1206,12 +1201,13 @@ void Dump::append_binary_data(std::fstream &myfile,const double *array) {
   }
 
   
-  MPI_Sendrecv(&(array[0]),Nx*Ny,MPI_DOUBLE,sendid,0,
-	       arr_recv.data(),Nx*Ny,MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
+  MPI_Sendrecv(&(array[0]),Nx*Ny*nc,MPI_DOUBLE,sendid,0,
+	       arr_recv.data(),Nx*Ny*nc,
+	       MPI_DOUBLE,recvid,0,world,MPI_STATUS_IGNORE);
   
   if (me != nprocs-1)
 
-    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny);
+    myfile.write((char*)&(arr_recv[0]),sizeof(double)*Nx*Ny*nc);
 
 
 }

@@ -50,15 +50,17 @@ public:
 
 
   std::set<std::string> dump_callers;
-  std::vector<double> array;
 
   /* see compute.hpp for meaning (same as there) */
 
   std::vector<fftwArr::array3D<double> *> realFFTWarray;
+
   std::vector<fftwArr::array3D<std::complex<double>> *> complexFFTWarray;
 
-
+  std::vector<double> array;
   int numberofcomponents; // same as compute
+  int localNx,localNy,localNz,local0start;  
+  
 
   int num_less_zero,num_great_zero;
 

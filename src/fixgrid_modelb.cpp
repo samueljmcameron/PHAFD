@@ -128,12 +128,14 @@ void FixGridModelB::final_integrate()
 {
   
   conjugate->update();
+  local0start = grid->ft_phi->get_local0start();
 
-  int local0start = grid->ft_phi->get_local0start();
+  localNx = grid->ft_phi->Nx();
+  localNy = grid->ft_phi->Ny();
+  localNz = grid->ft_phi->Nz();
 
-  int localNx = grid->ft_phi->Nx();
-  int localNy = grid->ft_phi->Ny();
-  int localNz = grid->ft_phi->Nz();
+
+
   
   if (commbrick->me == 0) {
     origin_update();

@@ -32,7 +32,6 @@ public:
 private:
 
   int every, repeat, freq;
-  int localNx,localNy,localNz;
   int step_counter,next_freq;
 
   std::vector<int> savesteps;

@@ -124,9 +124,9 @@ void FixGridVtherm::post_final_integrate(bool invert_fft) {
 
 void FixGridVtherm::compute_vtherm() {
 
-  int localNx = ft_Znoise_x->Nx();
-  int localNy = ft_Znoise_x->Ny();
-  int localNz = ft_Znoise_x->Nz();
+  localNx = ft_Znoise_x->Nx();
+  localNy = ft_Znoise_x->Ny();
+  localNz = ft_Znoise_x->Nz();
   
   for (int nz = 0; nz < localNz; nz++) 
     for (int ny = 0; ny < localNy; ny++) 

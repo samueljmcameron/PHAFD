@@ -70,7 +70,7 @@ void ComputeGridClusters::end_of_step()
 
   int *clusint;
 
-  int local_start = fftw3_arr->get_local0start();
+  local0start = fftw3_arr->get_local0start();
 
   if (condition == "lt") {
   
@@ -78,7 +78,7 @@ void ComputeGridClusters::end_of_step()
       for (int j = 0; j < localNy; j++) {
 	for (int k = 0; k < localNx; k++) {
 	  if ((*fftw3_arr)(i,j,k) < threshold)
-	    INTARR(i,j,k) = i+local_start + (j*localNx + k)*localNy;
+	    INTARR(i,j,k) = i+local0start + (j*localNx + k)*localNy;
 	  else
 	    INTARR(i,j,k) = -1;
 	}
@@ -90,7 +90,7 @@ void ComputeGridClusters::end_of_step()
       for (int j = 0; j < localNy; j++) {
 	for (int k = 0; k < localNx; k++) {
 	  if ((*fftw3_arr)(i,j,k) > threshold)
-	    INTARR(i,j,k) = i+local_start + (j*localNx + k)*localNy;
+	    INTARR(i,j,k) = i+local0start + (j*localNx + k)*localNy;
 	  else
 	    INTARR(i,j,k) = -1;
 	}

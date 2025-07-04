@@ -77,9 +77,9 @@ void FixGridVdet::pre_final_integrate()
 
   // then multiply fourier space version by the Oseen tensor
 
-  int localNx = ft_vdet_x->Nx();
-  int localNy = ft_vdet_x->Ny();
-  int localNz = ft_vdet_x->Nz();
+  localNx = ft_vdet_x->Nx();
+  localNy = ft_vdet_x->Ny();
+  localNz = ft_vdet_x->Nz();
 
   for (int nz = 0; nz < localNz; nz ++)
     for (int ny = 0; ny < localNy; ny ++)

@@ -51,6 +51,7 @@ protected:
 
 
   std::vector<std::string> attributes;
+  std::map<std::string,int> ncomponents;
 
 private:
   void create_instance_name();
@@ -75,7 +76,8 @@ private:
   void append_binary_data(std::fstream &,
 			  fftwArr::array3D<double> * ); 
 
-  void append_binary_data(std::fstream &,const double *);
+  void append_binary_data(std::fstream &,const double *,
+			  int nc);
   
   std::string which_atoms;
 

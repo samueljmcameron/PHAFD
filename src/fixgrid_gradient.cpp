@@ -89,7 +89,7 @@ void FixGridGradient::calculate_gradient(const
 					 *fftw3_arr,
 					 bool invert_fftw) {
   
-  const int local0start = fftw3_arr->get_local0start();
+  local0start = fftw3_arr->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
   const int globalNz = grid->ft_boxgrid[2];
   

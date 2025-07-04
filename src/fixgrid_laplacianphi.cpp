@@ -60,7 +60,7 @@ void FixGridLaplacianPhi::post_final_integrate(bool invert_fft) {
 void FixGridLaplacianPhi::post_force()
 {
 
-  const int local0start = grid->ft_phi->get_local0start();
+  local0start = grid->ft_phi->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
   const int globalNz = grid->ft_boxgrid[2];
   

@@ -229,11 +229,11 @@ void FixGridModelH::final_integrate()
   
   conjugate->update();
 
-  int local0start = grid->ft_phi->get_local0start();
+  local0start = grid->ft_phi->get_local0start();
 
-  int localNx = grid->ft_phi->Nx();
-  int localNy = grid->ft_phi->Ny();
-  int localNz = grid->ft_phi->Nz();
+  localNx = grid->ft_phi->Nx();
+  localNy = grid->ft_phi->Ny();
+  localNz = grid->ft_phi->Nz();
 
   if (commbrick->me == 0) {
     origin_update();
@@ -277,9 +277,10 @@ void FixGridModelH::post_final_integrate(bool invert_fft)
     fftw_execute(grid->backward_phi);
 
 
-    int localNx = grid->phi->Nx();
-    int localNy = grid->phi->Ny();
-    int localNz = grid->phi->Nz();
+    // CAREFUL HERE!! NEED TO ENSURE LOCAL are correct if outputting to array
+    localNx = grid->phi->Nx();
+    localNy = grid->phi->Ny();
+    localNz = grid->phi->Nz();
 
 
 

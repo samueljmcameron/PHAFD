@@ -27,8 +27,6 @@ public:
   
 private:
   fftwArr::array3D<std::complex<double>> *fftw3_arr;
-  int localNx,localNy,localNz;
-  std::unique_ptr<fftwArr::array3D<double>> output;
 
   std::string which_quant;
 

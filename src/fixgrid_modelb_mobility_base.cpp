@@ -286,9 +286,9 @@ void FixGridModelBMobilityBase::add_noise_to_phi()
 
   gradfix->calculate_gradient(ft_sqrt_mobility.get());
   
-  int localNx = grid->phi->Nx();
-  int localNy = grid->phi->Ny();
-  int localNz = grid->phi->Nz();
+  localNx = grid->phi->Nx();
+  localNy = grid->phi->Ny();
+  localNz = grid->phi->Nz();
 
   for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
@@ -324,12 +324,12 @@ void FixGridModelBMobilityBase::pre_final_integrate()
 
 void FixGridModelBMobilityBase::final_integrate()
 {
+  // CAREFUL HERE! What is being output by fix? That is what sets local values. //
 
-  int local0start = grid->ft_phi->get_local0start();
-
-  int localNx = grid->ft_phi->Nx();
-  int localNy = grid->ft_phi->Ny();
-  int localNz = grid->ft_phi->Nz();
+  local0start = grid->ft_phi->get_local0start();
+  localNx = grid->ft_phi->Nx();
+  localNy = grid->ft_phi->Ny();
+  localNz = grid->ft_phi->Nz();
   
   if (commbrick->me == 0) {
     origin_update();

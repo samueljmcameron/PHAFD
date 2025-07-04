@@ -93,7 +93,7 @@ void FixGridDivergence::calculate_divergence(const
 // std::vector<*fftwArr::array3D<std::complex<double>>> fftw3_arr
 {
   
-  const int local0start = ft_divergence->get_local0start();
+  local0start = ft_divergence->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
   const int globalNz = grid->ft_boxgrid[2];
 
@@ -156,7 +156,7 @@ void FixGridDivergence::calculate_divergence(const
 // std::vector<*fftwArr::array3D<std::complex<double>>> fftw3_arr
 {
   
-  const int local0start = ft_divergence->get_local0start();
+  local0start = ft_divergence->get_local0start();
   const int globalNy = grid->ft_boxgrid[1];
   const int globalNz = grid->ft_boxgrid[2];
 

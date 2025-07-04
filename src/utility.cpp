@@ -250,7 +250,7 @@ int PHAFD_NS::utility::find_brackets(std::string &id)
 {
   std::size_t pos = id.find("[");
       
-  int arr_comp_num = -1;
+  int arr_comp_num;
 	
   if (pos != std::string::npos) {
     
@@ -260,7 +260,11 @@ int PHAFD_NS::utility::find_brackets(std::string &id)
 			       + id);
     arr_comp_num = std::stoi(id.substr(pos,spos-pos));
     id = id.substr(0,pos);
-  }
+  } else
+    throw std::runtime_error("Expected bracketed expression in ID "
+			     + id);
+
+
   return arr_comp_num;
 }
 
@@ -325,28 +329,19 @@ void PHAFD_NS::utility::type_of_output(std::string check_type,
 }
 
 void PHAFD_NS::utility::
-find_array_component(const std::string &arrname,
-		     PHAFD *phafd,
+find_array_component(std::string arrname, PHAFD *phafd,
 		     fftwArr::array3D<double> * array,
 		     std::string check_output)
 {
+  int arr_comp_num = find_brackets(arrname);
+  
   if (arrname.rfind("c_",0) == 0) {
 
     std::string cid = arrname.substr(2);
 
-    int arr_comp_num = find_brackets(cid);
-
     int index = find_index(std::string(cid),Compute::NAMES);
 
     auto cmp = phafd->computes.at(index).get();
-
-    if (arr_comp_num == -1) {
-      if (cmp->realFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of ID "
-				 + cid);
-      else
-	arr_comp_num = 0;
-    }
 
     PHAFD_NS::utility::type_of_output(check_output,cid,cmp);
     array = cmp->realFFTWarray.at(arr_comp_num);
@@ -360,13 +355,6 @@ find_array_component(const std::string &arrname,
     int index = find_index(std::string(fid),Fix::NAMES);
 
     auto fx = phafd->fixes.at(index).get();
-    if (arr_comp_num == -1) {
-      if (fx->realFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of ID "
-				 + fid);
-      else
-	arr_comp_num = 0;
-    }
     
     PHAFD_NS::utility::type_of_output(check_output,fid,fx);
     array = fx->realFFTWarray.at(arr_comp_num);
@@ -380,28 +368,20 @@ find_array_component(const std::string &arrname,
 
 
 void PHAFD_NS::utility::
-find_array_component(const std::string &arrname,
-		     PHAFD *phafd,
+find_array_component(std::string arrname, PHAFD *phafd,
 		     fftwArr::array3D<std::complex<double>> * array,
 		     std::string check_output)
 {
+
+  int arr_comp_num = find_brackets(arrname);
+  
   if (arrname.rfind("c_",0) == 0) {
     
     std::string cid = arrname.substr(2);
     
-    int arr_comp_num = find_brackets(cid);
-    
     int index = find_index(std::string(cid),Compute::NAMES);
 
     auto cmp = phafd->computes.at(index).get();
-
-    if (arr_comp_num == -1) {
-      if (cmp->complexFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of ID "
-				 + cid);
-      else
-	arr_comp_num = 0;
-    }
     
     PHAFD_NS::utility::type_of_output(check_output,cid,cmp);    
     array = cmp->complexFFTWarray.at(arr_comp_num);
@@ -410,19 +390,10 @@ find_array_component(const std::string &arrname,
   } else if (arrname.rfind("f_",0) == 0) {
     
     std::string fid = arrname.substr(2);
-    
-    int arr_comp_num = find_brackets(fid);
-    
+      
     int index = find_index(std::string(fid),Fix::NAMES);
     
     auto fx = phafd->fixes.at(index).get();    
-    if (arr_comp_num == -1) {
-      if (fx->complexFFTWarray.size() != 1)
-	throw std::runtime_error("Must specify which component of ID "
-				 + fid);
-      else
-	arr_comp_num = 0;
-    }
     
     PHAFD_NS::utility::type_of_output(check_output,fid,fx);
     array = fx->complexFFTWarray.at(arr_comp_num);
