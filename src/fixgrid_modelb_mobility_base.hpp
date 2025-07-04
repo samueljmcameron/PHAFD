@@ -62,7 +62,7 @@ private:
   std::array<fftw_plan,3> forward_flux;
   void compute_stochastic_drift();
   void compute_usual_drift();
-  void add_noise_to_phi();
+  void add_noise_to_flux();
   bool plan_set;
   std::array<fftwArr::array3D<std::complex<double>> *,3> ft_rnoises;
   std::array<std::unique_ptr<fftwArr::array3D<double>> ,3> rnoises;
@@ -74,8 +74,7 @@ private:
   
   std::array<fftw_plan,3> backward_rnoises;
   double inv_vol_element;
-  fftw_plan forward_mobility_deriv, forward_sqrt_mobility;
-  std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_sqrt_mobility;
+  fftw_plan forward_mobility_deriv;
   std::unique_ptr<fftwArr::array3D<std::complex<double>>> ft_mobility_deriv;
 
   
@@ -88,6 +87,7 @@ protected:
 
   virtual void calculate_sqrt_mobility() = 0;
   virtual void calculate_mobility_deriv() = 0;
+
 
 
 

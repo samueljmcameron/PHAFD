@@ -89,6 +89,15 @@ void FixGridModelBMobilityBase::init(const std::vector<std::string> &v_line)
   divfix = std::make_unique<FixGridDivergence>(phafd);
   divfix->init(new_v_line);
 
+  per_grid = true;
+
+  local0start = grid->phi->get_local0start();
+  localNx = grid->phi->Nx();
+  localNy = grid->phi->Ny();
+  localNz = grid->phi->Nz();
+  numberofcomponents=3;
+
+  array.resize(localNx*localNy*localNz*numberofcomponents);
 
   
 }
@@ -104,7 +113,6 @@ FixGridModelBMobilityBase::~FixGridModelBMobilityBase()
       fftw_destroy_plan(backward_rnoises[dim]);
 
     fftw_destroy_plan(forward_mobility_deriv);
-    fftw_destroy_plan(forward_sqrt_mobility);
     
   }
 
@@ -165,17 +173,6 @@ void FixGridModelBMobilityBase::setup()
     sqrt_mobility = std::make_unique<fftwArr::array3D<double>>
       (world,"sqrt_mobility" +  name,Nx,Ny,Nz);
 
-  if (!ft_sqrt_mobility)
-    ft_sqrt_mobility
-      = std::make_unique<fftwArr::array3D<std::complex<double>>>
-      (world,"ft_sqrt_mobility" +  name,Nx,Ny,Nz);
-
-  
-  forward_sqrt_mobility
-    = fftw_mpi_plan_dft_r2c_3d(Nz,Ny,Nx,sqrt_mobility->data(),
-				 reinterpret_cast<fftw_complex*>
-				 (ft_sqrt_mobility->data()),
-				 world, FFTW_MPI_TRANSPOSED_OUT);
 
 
   if (!mobility_deriv)
@@ -221,7 +218,6 @@ void FixGridModelBMobilityBase::start_of_step()
   // can compute the forward fourier transforms
   fftw_execute(grid->forward_phi);
   fftw_execute(forward_mobility_deriv);
-  fftw_execute(forward_sqrt_mobility);
 
   
 
@@ -241,7 +237,7 @@ void FixGridModelBMobilityBase::compute_stochastic_drift()
 	
 	for (int dim = 0; dim < 3; dim ++) // store stochastic drift term
 	  (*flux[dim])(i,j,k)
-	    = temp*(*gradfix->gradient[dim])(i,j,k)*inv_vol_element;
+	    = -temp*(*gradfix->gradient[dim])(i,j,k)*inv_vol_element;
 
       }
 
@@ -263,43 +259,47 @@ void FixGridModelBMobilityBase::compute_usual_drift()
 	prefac = (*sqrt_mobility)(i,j,k)*(*sqrt_mobility)(i,j,k);
 
 	for (int dim = 0; dim < 3; dim ++) // store mobility*gradient
-	  (*flux[dim])(i,j,k) += prefac*(*gradfix->gradient[dim])(i,j,k);
+	  (*flux[dim])(i,j,k) -= prefac*(*gradfix->gradient[dim])(i,j,k);
 
 
       }
 }
 
-void FixGridModelBMobilityBase::add_noise_to_phi()
+void FixGridModelBMobilityBase::add_noise_to_flux()
 {
 
 
   for (int dim = 0; dim < 3; dim++)
     conjugate_noise.at(dim)->update();
 
-  divfix->calculate_divergence(ft_rnoises[0],ft_rnoises[1],
-			       ft_rnoises[2]);
+  //divfix->calculate_divergence(ft_rnoises[0],ft_rnoises[1],
+  //			       ft_rnoises[2]);
 
   // must do this after all ft_rnoises calculations are done.
   for (int dim = 0; dim < 3; dim++)
     fftw_execute(backward_rnoises[dim]);
 
-
-  gradfix->calculate_gradient(ft_sqrt_mobility.get());
   
-  localNx = grid->phi->Nx();
-  localNy = grid->phi->Ny();
-  localNz = grid->phi->Nz();
 
   for (int i = 0; i < localNz; i++)
       for (int j = 0; j < localNy; j++)
 	for (int k = 0; k < localNx; k++) {
 	  for (int dim = 0; dim < 3; dim++)
-	    (*grid->phi)(i,j,k)
-	      += (*gradfix->gradient[dim])(i,j,k)*(*rnoises[dim])(i,j,k)*normalization;
+	    (*flux[dim])(i,j,k)
+	      -= (*sqrt_mobility)(i,j,k)
+	      *(*rnoises[dim])(i,j,k)*normalization/dt;
+	}
 
-	  (*grid->phi)(i,j,k)
-	    += (*sqrt_mobility)(i,j,k)*(*divfix->divergence)(i,j,k);
-	}  
+  if (this_step) {
+    int count = 0;
+    for (int i = 0; i < localNz; i++)
+      for (int j = 0; j < localNy; j++)
+	for (int k = 0; k < localNx; k++) {
+	  array[count++] = (*flux[0])(i,j,k);
+	  array[count++] = (*flux[1])(i,j,k);
+	  array[count++] = (*flux[2])(i,j,k);
+	}
+  }
 }
 
 void FixGridModelBMobilityBase::pre_final_integrate()
@@ -309,6 +309,8 @@ void FixGridModelBMobilityBase::pre_final_integrate()
   compute_stochastic_drift();
   // whereas usual drift adds to flux
   compute_usual_drift();
+  // and also the noise does too
+  add_noise_to_flux();
 
   // fourier transform flux to then get divergence of it
   for (int dim = 0; dim < 3; dim++)
@@ -324,33 +326,32 @@ void FixGridModelBMobilityBase::pre_final_integrate()
 
 void FixGridModelBMobilityBase::final_integrate()
 {
-  // CAREFUL HERE! What is being output by fix? That is what sets local values. //
 
-  local0start = grid->ft_phi->get_local0start();
-  localNx = grid->ft_phi->Nx();
-  localNy = grid->ft_phi->Ny();
-  localNz = grid->ft_phi->Nz();
+
+  int ft_localNx = grid->ft_phi->Nx();
+  int ft_localNy = grid->ft_phi->Ny();
+  int ft_localNz = grid->ft_phi->Nz();
   
   if (commbrick->me == 0) {
     origin_update();
 
-    for (int nx = 1; nx < localNx; nx++)
+    for (int nx = 1; nx < ft_localNx; nx++)
       point_update(0,0,nx);
     
-    for (int ny = 1; ny < localNy; ny++)
-      for (int nx = 0; nx < localNx; nx++)
+    for (int ny = 1; ny < ft_localNy; ny++)
+      for (int nx = 0; nx < ft_localNx; nx++)
 	point_update(0,ny,nx);
 
     
-    for (int nz = 1; nz < localNz; nz++)
-      for (int ny = 0; ny < localNy; ny++)
-	for (int nx = 0; nx < localNx; nx++)
+    for (int nz = 1; nz < ft_localNz; nz++)
+      for (int ny = 0; ny < ft_localNy; ny++)
+	for (int nx = 0; nx < ft_localNx; nx++)
 	  point_update(nz,ny,nx);
 
   } else {
-    for (int nz = 0; nz < localNz; nz++)
-      for (int ny = 0; ny < localNy; ny++)
-	for (int nx = 0; nx < localNx; nx++)
+    for (int nz = 0; nz < ft_localNz; nz++)
+      for (int ny = 0; ny < ft_localNy; ny++)
+	for (int nx = 0; nx < ft_localNx; nx++)
 	  point_update(nz,ny,nx);
 
 
@@ -363,11 +364,9 @@ void FixGridModelBMobilityBase::final_integrate()
 void FixGridModelBMobilityBase::post_final_integrate(bool invert_fft)
 {
 
-  if (invert_fft) {
+  if (invert_fft) 
     fftw_execute(grid->backward_phi);
 
-    add_noise_to_phi();
-  }
   
   return;
 }
@@ -380,7 +379,7 @@ void FixGridModelBMobilityBase::point_update(int i , int j, int k)
 {
 
   (*grid->ft_phi)(i,j,k)
-    = ((*grid->ft_phi)(i,j,k)+dt*(*divfix->ft_divergence)(i,j,k))*normalization;
+    = ((*grid->ft_phi)(i,j,k)-dt*(*divfix->ft_divergence)(i,j,k))*normalization;
        // + (*grid->ft_noise)(i,j,k))*normalization;
   
   return;
