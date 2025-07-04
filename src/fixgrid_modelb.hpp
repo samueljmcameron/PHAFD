@@ -13,7 +13,7 @@ namespace fftwArr {
 }
 
 namespace PHAFD_NS {
-class FixGridGradPhi;
+class FixGridGradient;
 class ConjugateNoise;
 
 
@@ -37,6 +37,8 @@ public:
 
   virtual void end_of_step() override {};
 private:
+  
+  std::unique_ptr<FixGridGradient> gradfix;
 
   std::unique_ptr<ConjugateNoise> conjugate;
 

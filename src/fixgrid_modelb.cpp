@@ -8,6 +8,7 @@
 #include "comm_brick.hpp"
 #include "integrate.hpp"
 #include "fixgrid_modelb.hpp"
+#include "fixgrid_gradient.hpp"
 #include "conjugate_noise.hpp"
 #include "fftw_arr/array3d.hpp"
 
@@ -32,7 +33,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
  */
 {
 
-  
+  per_grid = true;
   Fix::init(v_line);
 
   double temp;
@@ -88,12 +89,30 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
   conjugate->readCoeffs(new_v_line);
   
   complexFFTWarray.push_back(conjugate->ft_array.get());
+
+  local0start = grid->phi->get_local0start();
+  localNx = grid->phi->Nx();
+  localNy = grid->phi->Ny();
+  localNz = grid->phi->Nz();
+
+  numberofcomponents=3;
+  array.resize(localNx*localNy*localNz*numberofcomponents);
+
+  new_v_line.clear();
+  new_v_line.push_back(name+"_gradient");
+
+  gradfix = std::make_unique<FixGridGradient>(phafd);
+  gradfix->init(new_v_line);
+
+  
+  
 }
 
 
 void FixGridModelB::setup()
 {
 
+  gradfix->setup();
   normalization = 1.0/(grid->ft_boxgrid[0]*grid->ft_boxgrid[1]*grid->ft_boxgrid[2]);
   
 }
@@ -119,6 +138,18 @@ void FixGridModelB::pre_final_integrate()
 
 
   fftw_execute(grid->forward_chempot);
+  if (this_step) {
+    gradfix->calculate_gradient(grid->ft_chempot.get());
+    int count = 0;
+    for (int i = 0; i < localNz; i++)
+      for (int j = 0; j < localNy; j++)
+	for (int k = 0; k < localNx; k++) {
+	  array[count++] = -mobility*(*gradfix->gradient[0])(i,j,k);
+	  array[count++] = -mobility*(*gradfix->gradient[1])(i,j,k);
+	  array[count++] = -mobility*(*gradfix->gradient[2])(i,j,k);
+	}
+  }
+    
 
   return;
 }
@@ -128,11 +159,11 @@ void FixGridModelB::final_integrate()
 {
   
   conjugate->update();
-  local0start = grid->ft_phi->get_local0start();
+  int ft_local0start = grid->ft_phi->get_local0start();
 
-  localNx = grid->ft_phi->Nx();
-  localNy = grid->ft_phi->Ny();
-  localNz = grid->ft_phi->Nz();
+  int ft_localNx = grid->ft_phi->Nx();
+  int ft_localNy = grid->ft_phi->Ny();
+  int ft_localNz = grid->ft_phi->Nz();
 
 
 
@@ -140,23 +171,23 @@ void FixGridModelB::final_integrate()
   if (commbrick->me == 0) {
     origin_update();
 
-    for (int nx = 1; nx < localNx; nx++)
+    for (int nx = 1; nx < ft_localNx; nx++)
       point_update(0,0,nx);
     
-    for (int ny = 1; ny < localNy; ny++)
-      for (int nx = 0; nx < localNx; nx++)
+    for (int ny = 1; ny < ft_localNy; ny++)
+      for (int nx = 0; nx < ft_localNx; nx++)
 	point_update(0,ny,nx);
 
     
-    for (int nz = 1; nz < localNz; nz++)
-      for (int ny = 0; ny < localNy; ny++)
-	for (int nx = 0; nx < localNx; nx++)
+    for (int nz = 1; nz < ft_localNz; nz++)
+      for (int ny = 0; ny < ft_localNy; ny++)
+	for (int nx = 0; nx < ft_localNx; nx++)
 	  point_update(nz,ny,nx);
 
   } else {
-    for (int nz = 0; nz < localNz; nz++)
-      for (int ny = 0; ny < localNy; ny++)
-	for (int nx = 0; nx < localNx; nx++)
+    for (int nz = 0; nz < ft_localNz; nz++)
+      for (int ny = 0; ny < ft_localNy; ny++)
+	for (int nx = 0; nx < ft_localNx; nx++)
 	  point_update(nz,ny,nx);
 
 
