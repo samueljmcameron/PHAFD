@@ -47,6 +47,8 @@
 #include "fixgrid_laplacian.hpp"
 #include "fixgrid_divergence.hpp"
 #include "fixgrid_gradient.hpp"
+#include "fix_output_file.hpp"
+#include "compute_ft_spherical_bin.hpp"
 
 #include <string>
 #include <set>
@@ -268,6 +270,10 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridVelocity>(phafd));
+      } else if (firstword == "output/file") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixOutputFile>(phafd));
       } else if (firstword == "grid/v_dot_gradphi") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
@@ -302,6 +308,9 @@ void Input::read()
       else if (firstword == "grid/cluster")
 	
 	computes.push_back(std::make_unique<ComputeGridClusters>(phafd));
+      else if (firstword == "ft/spherical/bin")
+	
+	computes.push_back(std::make_unique<ComputeFtSphericalBin>(phafd));
       else
 	throw std::runtime_error("Invalid compute.");
       

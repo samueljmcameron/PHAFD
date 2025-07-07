@@ -256,11 +256,11 @@ int PHAFD_NS::utility::find_brackets(std::string &id)
     
     std::size_t spos = id.find("]");
     if (spos == std::string::npos)
-      throw std::runtime_error("No closing bracket on ID "
+      throw std::invalid_argument("No closing bracket on ID "
 			       + id);
     arr_comp_num = std::stoi(id.substr(pos,spos-pos));
     id = id.substr(0,pos);
-  } else
+  } else 
     throw std::runtime_error("Expected bracketed expression in ID "
 			     + id);
 
