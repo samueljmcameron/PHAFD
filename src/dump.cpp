@@ -233,6 +233,26 @@ void Dump::start_of_step()
   }
 }
 
+
+
+void Dump::end_of_step()
+/*
+  Find all computes and fixes that were called and be sure
+  to turn them off.
+ */
+{
+
+  if (integrate->timestep % every == 0) {
+    for (auto &compute : computes)
+      if (compute->dump_callers.find(name) != compute->dump_callers.end())
+	compute->this_step = false;
+    
+    for (auto & fix : fixes)
+      if (fix->dump_callers.find(name) != fix->dump_callers.end())
+	fix->this_step = false;
+  }
+}
+
 void Dump::require_calculations()
 /* Niche function for loop cyclisation calculations only. */
 {

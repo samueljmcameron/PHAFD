@@ -30,6 +30,7 @@ public:
   void write_collection_header();
   void write_collection_footer();
   void write_collection_middle();
+  void end_of_step();
   
   inline static std::vector<std::string> NAMES;
 

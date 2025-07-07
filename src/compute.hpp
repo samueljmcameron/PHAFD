@@ -24,9 +24,9 @@ public:
 
   virtual void init(const std::vector<std::string> &);
   virtual void in_fourier() = 0;
+  virtual void start_of_step();
   virtual void end_of_step() = 0;
 
-  void start_of_step();
   
   inline static std::vector<std::string> NAMES;
   bool per_grid; // this is true when the compute can output onto a grid dump
@@ -42,7 +42,7 @@ public:
 
   bool clusterscomputed;
 
-  bool this_step;
+  bool this_step; // usually this is set externally by other fixes/dumps
   std::set<std::string> dump_callers;
 
 

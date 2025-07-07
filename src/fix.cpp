@@ -16,7 +16,7 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
   averaging = false;
   numberofcomponents = 1;
   num_less_zero = num_great_zero = 0;
-  
+  this_step = false;  
 };
 
 
@@ -73,5 +73,5 @@ void Fix::reset_dt()
 
 void Fix::start_of_step()
 {
-  this_step = false;
+
 }

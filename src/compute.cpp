@@ -9,6 +9,8 @@ Compute::Compute(PHAFD *phafd) : Pointers(phafd) {
   per_grid = per_ftgrid = per_atom = scalar = vector =  false;
   clusterscomputed = false;
   numberofcomponents = 1;
+  this_step = false;
+  
 }
 
 
@@ -29,5 +31,5 @@ void Compute::init(const std::vector<std::string> &v_line) {
 
 void Compute::start_of_step()
 {
-  this_step = false;
+
 }

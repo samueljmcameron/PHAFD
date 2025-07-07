@@ -45,7 +45,7 @@ public:
   bool per_atom;
   bool scalar,vector;
   bool averaging;
-  bool this_step;
+  bool this_step; // usually this is set externally by other fixes/dumps
 
 
 

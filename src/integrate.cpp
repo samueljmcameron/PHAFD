@@ -162,7 +162,8 @@ void Integrate::setup()
       
     }
   
-
+  for (auto &dump : dumps)
+    dump->end_of_step();
 }
 
 void Integrate::run()
@@ -283,7 +284,10 @@ void Integrate::run()
 	dump->write_collection_footer();
       
       throw std::runtime_error("NAN encountered in phi.");
-    }    
+    }
+
+    for (auto &dump : dumps)
+      dump->end_of_step();
     
   }
 
@@ -473,7 +477,8 @@ void Integrate::run_until_touching(double touch_point,bool continue_running,int 
       }
     }
     
-    
+    for (auto &dump : dumps)
+      dump->end_of_step(); 
     
   }
 
@@ -524,5 +529,8 @@ void Integrate::finalise()
     
   }
 
+  for (auto &dump : dumps)
+    dump->end_of_step();
+  
   return;
 }
