@@ -44,7 +44,6 @@ private:
   std::vector<int> counts, global_counts;
 
   int nbins;
-  int globalNy,globalNz;
   double dqbins;
 };
   

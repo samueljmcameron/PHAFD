@@ -85,10 +85,6 @@ void ComputeFtSphericalBin::init(const std::vector<std::string> &v_line) {
       input_component = 0;
   }
 
-
-  globalNy = grid->ft_boxgrid[1];
-  globalNz = grid->ft_boxgrid[2];
-
   nbins = std::stoi(v_line.at(2));
   double qmax = std::stod(v_line.at(3));
   dqbins = qmax/nbins;
@@ -161,6 +157,8 @@ void ComputeFtSphericalBin::loop()
   double dqy(domain->dqy());
   double dqz(domain->dqz());
 
+  int globalNy = grid->ft_boxgrid[1];
+  int globalNz = grid->ft_boxgrid[2];
 
 
   double l,m,n;
