@@ -19,10 +19,11 @@ FixGridGradient::FixGridGradient(PHAFD *phafd) : Fix(phafd),
 
 
 
-void FixGridGradient::init(const std::vector<std::string> &v_line)
+void FixGridGradient::init(const std::vector<std::string> &v_line,
+			   bool add_to_names)
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   if (v_line.size() > 1)
     throw std::runtime_error("invalid fix/gradient");

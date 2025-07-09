@@ -22,7 +22,8 @@ FixGridModelH::FixGridModelH(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridModelH::init(const std::vector<std::string> &v_line)
+void FixGridModelH::init(const std::vector<std::string> &v_line,
+			 bool add_to_names)
 /*
   v_line should have form
   
@@ -38,7 +39,7 @@ void FixGridModelH::init(const std::vector<std::string> &v_line)
  */
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   
 
@@ -125,7 +126,7 @@ void FixGridModelH::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(std::to_string(temp));
   new_v_line.push_back("immediate");
 
-  local_fixes.back()->init(new_v_line);
+  local_fixes.back()->init(new_v_line,false);
 
   local_fixes.push_back(std::make_unique<FixGridGradient>(phafd));
 
@@ -134,7 +135,7 @@ void FixGridModelH::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(name + "_gradphi");
   new_v_line.push_back("immediate");
 
-  local_fixes.back()->init(new_v_line);
+  local_fixes.back()->init(new_v_line,false);
 
   /*
 

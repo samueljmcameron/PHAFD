@@ -20,7 +20,7 @@ public:
   FixGridGradient(PHAFD *);
   ~FixGridGradient();
 
-  virtual void init(const std::vector<std::string> &) override;
+  virtual void init(const std::vector<std::string> &,bool) override;
 
   virtual void setup() override;
   virtual void pre_final_integrate() override {};

@@ -21,10 +21,11 @@ FixAtomDrag::FixAtomDrag(PHAFD *phafd) : Fix(phafd) {
 
 
 
-void FixAtomDrag::init(const std::vector<std::string> &v_line)
+void FixAtomDrag::init(const std::vector<std::string> &v_line,
+		       bool add_to_names)
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   find_group(v_line.at(1));
   drag = std::stod(v_line.at(2));

@@ -17,7 +17,7 @@ class FixGridModelBMobilityDBLquad : public FixGridModelBMobilityBase {
 public:
   FixGridModelBMobilityDBLquad(PHAFD *);
 
-  virtual void init(const std::vector<std::string> &) override;
+  virtual void init(const std::vector<std::string> &,bool) override;
   
   virtual void calculate_sqrt_mobility() override;
   virtual void calculate_mobility_deriv() override;

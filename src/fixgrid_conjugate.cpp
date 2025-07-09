@@ -18,10 +18,11 @@ FixGridConjugate<T>::FixGridConjugate(PHAFD *phafd) : Fix(phafd) {};
 
 
 template <typename T>
-void FixGridConjugate<T>::init(const std::vector<std::string> &v_line)
+void FixGridConjugate<T>::init(const std::vector<std::string> &v_line,
+			       bool add_to_names)
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line(v_line);
 

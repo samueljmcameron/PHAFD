@@ -20,7 +20,8 @@ Fix::Fix(PHAFD *phafd) : Pointers(phafd) {
 };
 
 
-void Fix::init(const std::vector<std::string> &v_line) 
+void Fix::init(const std::vector<std::string> &v_line,
+	       bool add_to_names) 
 {
   this_step = false;
   if (v_line.size() < 1)
@@ -29,11 +30,13 @@ void Fix::init(const std::vector<std::string> &v_line)
   name = v_line.at(0);
 
 
-  for (auto &fixname : NAMES)
-    if (fixname == name)
-      throw std::runtime_error("Error: Duplicate of fix " + name + std::string("."));
-
-  NAMES.push_back(name);
+  if (add_to_names) {
+    for (auto &fixname : NAMES)
+      if (fixname == name)
+	throw std::runtime_error("Error: Duplicate of fix " + name + std::string("."));
+    
+    NAMES.push_back(name);
+  }
 
 
 }

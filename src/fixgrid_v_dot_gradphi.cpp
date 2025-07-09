@@ -22,14 +22,15 @@ FixGridVdotGradPhi::FixGridVdotGradPhi(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridVdotGradPhi::init(const std::vector<std::string> &v_line)
+void FixGridVdotGradPhi::init(const std::vector<std::string> &v_line,
+			      bool add_to_names)
 /*
   v_line should take form:
   fixname,seedx,seedy,seedz,viscosity,temperature,(immediate)
  */
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line;
   
@@ -43,7 +44,7 @@ void FixGridVdotGradPhi::init(const std::vector<std::string> &v_line)
 
   new_v_line.at(0) = name + "_velocity";
   velocity = std::make_unique<FixGridVelocity>(phafd);
-  velocity->init(new_v_line);
+  velocity->init(new_v_line,false);
   
 }
 

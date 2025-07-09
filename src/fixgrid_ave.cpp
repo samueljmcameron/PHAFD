@@ -19,13 +19,14 @@ FixGridAve::FixGridAve(PHAFD *phafd) : Fix(phafd) {
 };
 
 
-void FixGridAve::init(const std::vector<std::string> &v_line)
+void FixGridAve::init(const std::vector<std::string> &v_line,
+		      bool add_to_names)
 {
 
   compute = nullptr;
   fix = nullptr;
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line(v_line);
 

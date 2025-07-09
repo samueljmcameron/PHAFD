@@ -17,7 +17,7 @@ class FixGridGradientSquare : public Fix {
 public:
   FixGridGradientSquare(PHAFD *);
 
-  virtual void init(const std::vector<std::string> &) override;
+  virtual void init(const std::vector<std::string> &,bool) override;
   
   virtual void post_force() override;
 

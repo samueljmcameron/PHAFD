@@ -20,13 +20,14 @@ FixOutputFile::FixOutputFile(PHAFD *phafd) : Fix(phafd) {
 };
 
 
-void FixOutputFile::init(const std::vector<std::string> &v_line)
+void FixOutputFile::init(const std::vector<std::string> &v_line,
+			 bool add_to_names)
 {
 
   compute = nullptr;
   fix = nullptr;
   
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line(v_line);
 
@@ -65,8 +66,8 @@ void FixOutputFile::init(const std::vector<std::string> &v_line)
     localNz = fix->localNz;
     localNy = fix->localNy;
     localNx = fix->localNx;
-    
-    utility::type_of_output(output_type,id,compute);  
+
+    utility::type_of_output(output_type,id,fix);  
 
     
   } else

@@ -19,10 +19,11 @@ FixGridGradientSquare::FixGridGradientSquare(PHAFD *phafd) : Fix(phafd) {
 
 
 
-void FixGridGradientSquare::init(const std::vector<std::string> &v_line)
+void FixGridGradientSquare::init(const std::vector<std::string> &v_line,
+				 bool add_to_names)
 {
 
-
+  Fix::init(v_line,add_to_names);
   prefac = std::stod(v_line.at(1));
 
   ft_phi_flag = false;
@@ -38,7 +39,7 @@ void FixGridGradientSquare::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(name+"_laplacian");
 
   laplacian = std::make_unique<FixGridLaplacian>(phafd);
-  laplacian->init(new_v_line);
+  laplacian->init(new_v_line,false);
 
   
 }

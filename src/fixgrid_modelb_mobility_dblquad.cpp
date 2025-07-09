@@ -22,7 +22,8 @@ FixGridModelBMobilityDBLquad::FixGridModelBMobilityDBLquad(PHAFD *phafd) : FixGr
 
 
 
-void FixGridModelBMobilityDBLquad::init(const std::vector<std::string> &v_line)
+void FixGridModelBMobilityDBLquad::init(const std::vector<std::string> &v_line,
+					bool add_to_names)
 /*
   v_line should have form
   fixname,seedx,seedy,seedz
@@ -45,7 +46,7 @@ void FixGridModelBMobilityDBLquad::init(const std::vector<std::string> &v_line)
   std::vector<std::string> new_v_line = v_line;
   new_v_line.pop_back();
   new_v_line.pop_back();
-  FixGridModelBMobilityBase::init(new_v_line);
+  FixGridModelBMobilityBase::init(new_v_line,add_to_names);
 
   
 }

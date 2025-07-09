@@ -20,11 +20,12 @@ FixGridModelBMobilityBase::FixGridModelBMobilityBase(PHAFD *phafd) : Fix(phafd),
 
 
 
-void FixGridModelBMobilityBase::init(const std::vector<std::string> &v_line)
+void FixGridModelBMobilityBase::init(const std::vector<std::string> &v_line,
+				     bool add_to_names)
 {
 
   
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   temp = -1;
   
@@ -79,7 +80,7 @@ void FixGridModelBMobilityBase::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(name+"_gradient");
 
   gradfix = std::make_unique<FixGridGradient>(phafd);
-  gradfix->init(new_v_line);
+  gradfix->init(new_v_line,false);
 
 
 
@@ -87,7 +88,7 @@ void FixGridModelBMobilityBase::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(name+"_divergence");
 
   divfix = std::make_unique<FixGridDivergence>(phafd);
-  divfix->init(new_v_line);
+  divfix->init(new_v_line,false);
 
   per_grid = true;
 

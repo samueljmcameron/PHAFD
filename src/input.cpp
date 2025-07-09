@@ -287,7 +287,7 @@ void Input::read()
 	throw std::runtime_error("Invalid fix.");
       
       
-      fixes.back()->init(v_line);
+      fixes.back()->init(v_line,true);
       
     } else if (firstword == "dump") {
       dumps.push_back(std::make_unique<Dump>(phafd));

@@ -19,10 +19,11 @@ FixGridLaplacianPhi::FixGridLaplacianPhi(PHAFD *phafd) : Fix(phafd) {
 
 
 
-void FixGridLaplacianPhi::init(const std::vector<std::string> &v_line)
+void FixGridLaplacianPhi::init(const std::vector<std::string> &v_line,
+			       bool add_to_names)
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   for (int iarg = 1; iarg < v_line.size(); iarg++) {
     if (v_line.at(iarg) == "ftphi")  ftphi_flag = true;

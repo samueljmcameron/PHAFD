@@ -20,7 +20,8 @@ public:
   Fix(PHAFD *);
 
   virtual ~Fix() = default;
-  virtual void init(const std::vector<std::string> &) ;
+  virtual void init(const std::vector<std::string> &,
+		    bool) ;
 
 
   // must call setup AFTER dump setup

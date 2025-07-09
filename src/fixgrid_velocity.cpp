@@ -21,14 +21,15 @@ FixGridVelocity::FixGridVelocity(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridVelocity::init(const std::vector<std::string> &v_line)
+void FixGridVelocity::init(const std::vector<std::string> &v_line,
+			   bool add_to_names)
 /*
   v_line should take form:
   fixname,seedx,seedy,seedz,viscosity,temperature,(immediate)
  */
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line;
   
@@ -43,7 +44,7 @@ void FixGridVelocity::init(const std::vector<std::string> &v_line)
   new_v_line.at(0) = name + "_vtherm";
   vtherm = std::make_unique<FixGridVtherm>(phafd);
 
-  vtherm->init(new_v_line);
+  vtherm->init(new_v_line,false);
 
   new_v_line.clear();
   new_v_line.push_back(name + "_vdet");
@@ -51,7 +52,7 @@ void FixGridVelocity::init(const std::vector<std::string> &v_line)
   new_v_line.push_back("immediate");
 
   vdet = std::make_unique<FixGridVdet>(phafd);
-  vdet->init(new_v_line);
+  vdet->init(new_v_line,false);
   
   
 }

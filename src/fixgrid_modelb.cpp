@@ -19,7 +19,8 @@ FixGridModelB::FixGridModelB(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridModelB::init(const std::vector<std::string> &v_line)
+void FixGridModelB::init(const std::vector<std::string> &v_line,
+			 bool add_to_names)
 /*
   v_line should have form
   fixname,seed
@@ -34,7 +35,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
 {
 
   per_grid = true;
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   double temp;
   mobility = temp = -1;
@@ -102,7 +103,7 @@ void FixGridModelB::init(const std::vector<std::string> &v_line)
   new_v_line.push_back(name+"_gradient");
 
   gradfix = std::make_unique<FixGridGradient>(phafd);
-  gradfix->init(new_v_line);
+  gradfix->init(new_v_line,false);
 
   
   

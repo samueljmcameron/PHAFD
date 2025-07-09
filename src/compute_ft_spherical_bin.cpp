@@ -124,7 +124,6 @@ void ComputeFtSphericalBin::init(const std::vector<std::string> &v_line) {
 void ComputeFtSphericalBin::start_of_step()
 {
   if (this_step) {
-    std::cout << "GOT HERE!" << std::endl;
     if (compute != nullptr)	
       compute->this_step = true;
     else if (fix != nullptr)
@@ -134,7 +133,7 @@ void ComputeFtSphericalBin::start_of_step()
 void ComputeFtSphericalBin::end_of_step()
 {
   if (!this_step) return;
-  std::cout << "doing it!" << std::endl;
+
   std::fill(output.begin(),output.end(),0);
 
   loop<0>();

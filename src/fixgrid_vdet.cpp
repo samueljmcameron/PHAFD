@@ -17,14 +17,15 @@ FixGridVdet::FixGridVdet(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridVdet::init(const std::vector<std::string> &v_line)
+void FixGridVdet::init(const std::vector<std::string> &v_line,
+		       bool add_to_names)
 /*
   v_line should take form:
   fixname,viscosity
  */
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   viscosity = std::stod(v_line.at(1));
 

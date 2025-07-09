@@ -15,7 +15,7 @@ class FixGridAve : public Fix {
 public:
   FixGridAve(PHAFD *);
 
-  virtual void init(const std::vector<std::string> &) override;
+  virtual void init(const std::vector<std::string> &,bool) override;
   
   virtual void setup() override;
 

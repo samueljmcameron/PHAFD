@@ -18,14 +18,15 @@ FixGridVtherm::FixGridVtherm(PHAFD *phafd) : Fix(phafd) {};
 
 
 
-void FixGridVtherm::init(const std::vector<std::string> &v_line)
+void FixGridVtherm::init(const std::vector<std::string> &v_line,
+			 bool add_to_names)
 /*
   v_line should take form:
   fixname,seedx,seedy,seedz,viscosity,temperature
  */
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   std::vector<std::string> new_v_line;
 

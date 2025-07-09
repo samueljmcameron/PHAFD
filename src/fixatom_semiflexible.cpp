@@ -25,10 +25,11 @@ FixAtomSemiFlexible<T>::FixAtomSemiFlexible(PHAFD *phafd) : Fix(phafd) {
 
 
 template <typename T>
-void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line)
+void FixAtomSemiFlexible<T>::init(const std::vector<std::string> &v_line,
+				  bool add_to_names)
 {
 
-  Fix::init(v_line);
+  Fix::init(v_line,add_to_names);
 
   find_group(v_line.at(1));
 
