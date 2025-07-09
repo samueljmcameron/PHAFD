@@ -50,6 +50,7 @@
 #include "fix_output_file.hpp"
 #include "compute_ft_spherical_bin.hpp"
 #include "compute_qshell.hpp"
+#include "fix_correlate_vector.hpp"
 
 #include <string>
 #include <set>
@@ -275,6 +276,10 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixOutputFile>(phafd));
+      } else if (firstword == "correlate/vector") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixCorrelateVector>(phafd));
       } else if (firstword == "grid/v_dot_gradphi") {
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
