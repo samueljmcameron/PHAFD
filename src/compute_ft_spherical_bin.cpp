@@ -145,6 +145,11 @@ void ComputeFtSphericalBin::end_of_step()
     array[ibin+2*nbins] = array[ibin+2*nbins]/global_counts[ibin];
   }
 
+  if (compute != nullptr)	
+    compute->this_step = false;
+  else if (fix != nullptr)
+    fix->this_step = false;
+
 
 }
 template <int Tp_COUNT>
