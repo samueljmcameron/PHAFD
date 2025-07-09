@@ -19,7 +19,7 @@ public:
   ~ComputeComplex();
 
 
-  virtual void init(const std::vector<std::string> &) override;
+  virtual void init(const std::vector<std::string> &,bool) override;
   virtual void in_fourier() override;
   virtual void end_of_step() override {};
 

@@ -22,7 +22,7 @@ public:
 
   std::string name;
 
-  virtual void init(const std::vector<std::string> &);
+  virtual void init(const std::vector<std::string> &,bool);
   virtual void in_fourier() = 0;
   virtual void start_of_step();
   virtual void end_of_step() = 0;

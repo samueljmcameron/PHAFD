@@ -315,7 +315,7 @@ void Input::read()
 	throw std::runtime_error("Invalid compute.");
       
       
-      computes.back()->init(v_line);
+      computes.back()->init(v_line,true);
       
     } else if (firstword == "timestep") {
       

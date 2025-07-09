@@ -15,9 +15,10 @@ ComputePair::ComputePair(PHAFD *phafd) : Compute(phafd) {
 }
 
 
-void ComputePair::init(const std::vector<std::string> &v_line) {
+void ComputePair::init(const std::vector<std::string> &v_line,
+		       bool add_to_names) {
 
-  Compute::init(v_line);
+  Compute::init(v_line,add_to_names);
 
 
   std::string pairname = v_line.at(1);

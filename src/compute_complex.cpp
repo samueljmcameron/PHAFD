@@ -18,9 +18,10 @@ ComputeComplex::~ComputeComplex()
 {
 }
 
-void ComputeComplex::init(const std::vector<std::string> &v_line) {
+void ComputeComplex::init(const std::vector<std::string> &v_line,
+			  bool add_to_names) {
 
-  Compute::init(v_line);
+  Compute::init(v_line,add_to_names);
 
 
   std::string arrname = v_line.at(1);
