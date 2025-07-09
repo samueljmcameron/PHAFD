@@ -49,6 +49,7 @@
 #include "fixgrid_gradient.hpp"
 #include "fix_output_file.hpp"
 #include "compute_ft_spherical_bin.hpp"
+#include "compute_qshell.hpp"
 
 #include <string>
 #include <set>
@@ -311,6 +312,9 @@ void Input::read()
       else if (firstword == "ft/spherical/bin")
 	
 	computes.push_back(std::make_unique<ComputeFtSphericalBin>(phafd));
+      else if (firstword == "qshell")
+	
+	computes.push_back(std::make_unique<ComputeQshell>(phafd));
       else
 	throw std::runtime_error("Invalid compute.");
       
