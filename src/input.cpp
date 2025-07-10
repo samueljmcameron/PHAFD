@@ -51,6 +51,7 @@
 #include "compute_ft_spherical_bin.hpp"
 #include "compute_qshell.hpp"
 #include "fix_correlate_vector.hpp"
+#include "read_vtp.hpp"
 
 #include <string>
 #include <set>
@@ -366,7 +367,16 @@ void Input::read()
 	integrate->run_until_touching(std::stod(v_line.at(1)),false,0);
       else
 	throw std::runtime_error("Must say whether to continue simulation after touching occurs.");    
-    }
+    } else if (firstword == "rerun") {
+      
+      if (integrate->dt <= 0.0)
+	throw std::runtime_error("Cannot run simulation without setting dt > 0.");
+      
+
+      ReadVTP read_vtp(phafd);
+      read_vtp.init(v_line);
+      read_vtp.read();
+    } 
   }
   return;
 }
