@@ -48,7 +48,7 @@ private:
   void read_binary_data(std::fstream &,
 			fftwArr::array3D<double> * ); 
 
-  void ignore_binary_data(std::fstream &);
+  void ignore_binary_data(std::fstream &,int);
 
   bool no_padding;
   

@@ -115,6 +115,7 @@ void ReadDump::process_grid_attributes()
 
   
   std::vector<std::string> found_attributes;
+  std::vector<int> found_attribute_components;
   int ignored_attributes = 0;
   while (std::getline(myfile,line)) {
 
@@ -127,16 +128,43 @@ void ReadDump::process_grid_attributes()
     bool found_attribute = false;
     for (auto &word : attributes) {
 
-      expected = "<DataArray Name=\"" + word + "\" type=\"Float64\" format=\"appended\" offset=\"";
+      expected = "<DataArray Name=\"" + word + "\"";
       if (line.substr(0,expected.length()) == expected) {
 	found_attributes.push_back(word);
 	found_attribute = true;
+	std::string::size_type vstart;
+	std::string finder = "NumberOfComponents=\"";
+	vstart = line.find(finder);
+
+	if (vstart != std::string::npos) {
+
+	  std::string subline = line.substr(vstart+finder.length());
+	  vstart = subline.find("\"");
+	  int ncfound = std::stoi(subline.substr(0,vstart)); 
+	  found_attribute_components.push_back(ncfound);
+	} else
+	  found_attribute_components.push_back(1);
+	
 	break;
       }
     }
 
     if (found_attribute == false && line.substr(0,expstart.length()) == expstart) {
       found_attributes.push_back("ignore");
+      std::string::size_type vstart;
+      std::string finder = "NumberOfComponents=\"";
+      vstart = line.find(finder);
+      
+      if (vstart != std::string::npos) {
+	
+	std::string subline = line.substr(vstart+finder.length());
+	vstart = subline.find("\"");
+	int ncfound = std::stoi(subline.substr(0,vstart)); 
+	found_attribute_components.push_back(ncfound);
+      } else
+	found_attribute_components.push_back(1);
+
+      
       ignored_attributes += 1;
     }
   }
@@ -162,9 +190,15 @@ void ReadDump::process_grid_attributes()
 
   // then read in all the array files
 
+  int attsize = found_attributes.size();
+  if (attsize != found_attribute_components.size())
+    throw std::runtime_error("SHOULD NOT GET HERE???");
 
-  for (const auto &word : found_attributes) {
+  for (int it = 0; it < attsize; it++) {
 
+    std::string word = found_attributes.at(it);
+    int ncfound = found_attribute_components.at(it);
+    
     if (word == "phi") {
       read_binary_data(myfile,grid->phi.get());
     } else if (word == "chempot") {
@@ -176,7 +210,7 @@ void ReadDump::process_grid_attributes()
     } else if (word == "gradphi_z") {
       read_binary_data(myfile,grid->gradphi[2].get());
     } else if (word == "ignore") {
-      ignore_binary_data(myfile);
+      ignore_binary_data(myfile,ncfound);
     } else {
       throw std::runtime_error("ReadDump error: Attribute does not exist.");
     }
@@ -359,7 +393,7 @@ void ReadDump::read_binary_data(std::fstream &myfile,
 
 }
 
-void ReadDump::ignore_binary_data(std::fstream &myfile) {
+void ReadDump::ignore_binary_data(std::fstream &myfile,int ncfound) {
 
   unsigned int bytelength;
   myfile.read((char*)&bytelength,sizeof(bytelength));
@@ -382,7 +416,7 @@ void ReadDump::ignore_binary_data(std::fstream &myfile) {
   int Ny = grid->phi->Ny();
   int Nz = grid->phi->Nz();
 
-  if (bytelength != (Nz+factor)*Ny*Nx*sizeof(double)) {
+  if (bytelength != (Nz+factor)*Ny*Nx*sizeof(double)*ncfound) {
     throw std::runtime_error("incorrect array size in " + filename);
   }
   
