@@ -52,6 +52,8 @@
 #include "compute_qshell.hpp"
 #include "fix_correlate_vector.hpp"
 #include "read_vtp.hpp"
+#include "fixgrid_modelb_advect.hpp"
+#include "fixgrid_modelb_semi_implicit.hpp"
 
 #include <string>
 #include <set>
@@ -285,6 +287,15 @@ void Input::read()
 	if (!grid->gridpopulated)
 	  throw std::runtime_error("Fix requires grid to be populated.");
 	fixes.push_back(std::make_unique<FixGridVdotGradPhi>(phafd));
+	
+      } else if (firstword == "grid/modelb/advect") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelBadvect>(phafd));
+      } else if (firstword == "grid/modelb/semiimplicit") {
+	if (!grid->gridpopulated)
+	  throw std::runtime_error("Fix requires grid to be populated.");
+	fixes.push_back(std::make_unique<FixGridModelBSemiImplicit>(phafd));
 	//} else if (firstword == "grid/modelh") {
 	//if (!grid->gridpopulated)
 	// throw std::runtime_error("Fix requires grid to be populated.");
