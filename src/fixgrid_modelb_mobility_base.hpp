@@ -6,6 +6,7 @@
 #include "fix.hpp"
 #include <fftw3-mpi.h>
 
+#include <array>
 #include <memory>
 #include <complex>
 

@@ -45,6 +45,7 @@ class NBin : protected Pointers {
   std::vector<int> atom2bin;    // bin assignment for each atom (local+ghost) (size is ngathered)
 
   NBin(PHAFD *);
+  virtual ~NBin() = default;
   virtual void copy_neighbor_info(const Neighbor *);
 
   virtual void setup_bins(double) = 0;

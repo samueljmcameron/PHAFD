@@ -192,6 +192,6 @@ void FixAtomSemiFlexible<T>::final_integrate()
 }
 
 
-template class FixAtomSemiFlexible<BeadRodPmer::NoTether>;
-template class FixAtomSemiFlexible<BeadRodPmer::SingleTether>;
-template class FixAtomSemiFlexible<BeadRodPmer::DoubleTether>;
+template class PHAFD_NS::FixAtomSemiFlexible<BeadRodPmer::NoTether>;
+template class PHAFD_NS::FixAtomSemiFlexible<BeadRodPmer::SingleTether>;
+template class PHAFD_NS::FixAtomSemiFlexible<BeadRodPmer::DoubleTether>;

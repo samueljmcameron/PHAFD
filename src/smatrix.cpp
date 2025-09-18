@@ -54,7 +54,8 @@ void sMatrix<T>::uncreate()
 
     iterator it = limit;
     while (it != arr)
-      alloc.destroy(--it);
+      std::allocator_traits<std::allocator<T>>::destroy(alloc,--it);
+    //alloc.destroy(--it);
 
     alloc.deallocate(arr,limit-arr);
   }
@@ -83,5 +84,5 @@ void sMatrix<T>::resize(size_type Ny, size_type Nx)
   
 }
 
-template class sMatrix<double>;
-template class sMatrix<std::complex<double>>;
+template class PHAFD_NS::sMatrix<double>;
+template class PHAFD_NS::sMatrix<std::complex<double>>;

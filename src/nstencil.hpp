@@ -30,6 +30,7 @@ public:
   int sx, sy, sz;            // extent of stencil in each dim
 
   NStencil();
+  virtual ~NStencil() = default;
   void copy_neighbor_info(const Neighbor *);
   void create_setup(const NBin *,int);
   double memory_usage();

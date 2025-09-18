@@ -26,10 +26,6 @@ ReadVTP::ReadVTP(PHAFD *phafd) : Pointers(phafd) {
 
 void ReadVTP::init(const std::vector<std::string> &v_line) {
 
-
-  v_line_for_read_dump;
-
-
   filename = v_line.at(0);
   check_pvd_extension();
   size_t endslash = filename.find_last_of("\\/");

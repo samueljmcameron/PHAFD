@@ -100,4 +100,4 @@ void FixGridConjugate<T>::post_final_integrate(bool invert_fft)
 }
 
 
-template class FixGridConjugate<ConjugateVolFrac>;
+template class PHAFD_NS::FixGridConjugate<ConjugateVolFrac>;

@@ -37,6 +37,7 @@ public:
   int last_build;     // last timestep build performed
 
   NPair(PHAFD *);
+  virtual ~NPair() = default;
   virtual void copy_neighbor_info(const Neighbor *);
   void build_setup(const NBin *, const NStencil *);
   virtual void build(class NeighList *) = 0;

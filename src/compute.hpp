@@ -19,7 +19,7 @@ class Compute : protected Pointers
 {
 public:
   Compute(PHAFD *);
-
+  virtual ~Compute() = default;
   std::string name;
 
   virtual void init(const std::vector<std::string> &,bool);

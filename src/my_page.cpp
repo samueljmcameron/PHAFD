@@ -137,9 +137,9 @@ template <class T> void MyPage<T>::deallocate()
 
 // explicit instantiations
 
-template class MyPage<int>;
-template class MyPage<long>;
-template class MyPage<long long>;
-template class MyPage<double>;
+template class PHAFD_NS::MyPage<int>;
+template class PHAFD_NS::MyPage<long>;
+template class PHAFD_NS::MyPage<long long>;
+template class PHAFD_NS::MyPage<double>;
 
 
